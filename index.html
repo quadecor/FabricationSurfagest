@@ -29,7 +29,7 @@
             background: white;
             border-radius: 15px;
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            overflow: hidden;
+            overflow: visible;
         }
 
         .header {
@@ -37,6 +37,36 @@
             color: white;
             padding: 30px;
             text-align: center;
+            position: relative;
+        }
+
+        .language-toggle {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .lang-btn {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 2px solid white;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .lang-btn:hover {
+            background: white;
+            color: #4CAF50;
+        }
+
+        .lang-btn.active {
+            background: white;
+            color: #4CAF50;
         }
 
         .header h1 {
@@ -51,6 +81,7 @@
 
         .content {
             padding: 30px;
+            min-height: 500px;
         }
 
         .form-section {
@@ -173,6 +204,20 @@
             background-color: #f8f9fa;
         }
 
+        tbody tr.selected-row {
+            background-color: #e3f2fd;
+        }
+
+        .checkbox-cell {
+            width: 40px;
+            text-align: center;
+        }
+
+        .player-checkbox {
+            transform: scale(1.5);
+            cursor: pointer;
+        }
+
         .action-buttons {
             display: flex;
             gap: 10px;
@@ -246,41 +291,194 @@
             font-size: 2em;
             font-weight: bold;
         }
+
+        /* Tab Navigation */
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            border-bottom: 3px solid #e0e0e0;
+        }
+
+        .tab {
+            padding: 15px 30px;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            font-size: 1.1em;
+            font-weight: 600;
+            color: #666;
+            transition: all 0.3s;
+            border-bottom: 3px solid transparent;
+            margin-bottom: -3px;
+        }
+
+        .tab:hover {
+            color: #4CAF50;
+            background: rgba(76, 175, 80, 0.05);
+        }
+
+        .tab.active {
+            color: #4CAF50;
+            border-bottom-color: #4CAF50;
+        }
+
+        .tab-content {
+            display: none;
+            padding: 20px;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* API Search Section */
+        .api-search-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 25px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            color: white;
+        }
+
+        .api-search-section h3 {
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+
+        .search-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .search-input {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid white;
+            border-radius: 8px;
+            font-size: 1em;
+        }
+
+        .btn-search {
+            padding: 12px 30px;
+            background: white;
+            color: #667eea;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-search:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+
+        .search-results {
+            max-height: 400px;
+            overflow-y: auto;
+            background: rgba(255,255,255,0.1);
+            border-radius: 8px;
+            padding: 15px;
+            display: none;
+        }
+
+        .search-results.show {
+            display: block;
+        }
+
+        .course-result {
+            background: white;
+            color: #333;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .course-info h4 {
+            margin-bottom: 5px;
+            color: #4CAF50;
+        }
+
+        .course-info p {
+            margin: 3px 0;
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .btn-add-course {
+            padding: 8px 20px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .btn-add-course:hover {
+            background: #45a049;
+            transform: scale(1.05);
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            font-size: 1.1em;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>⛳ Golf Players Manager</h1>
-            <p>Manage your golf players and track their average scores</p>
+            <div class="language-toggle">
+                <button class="lang-btn active" onclick="changeLanguage('en')" id="btnEn">EN</button>
+                <button class="lang-btn" onclick="changeLanguage('fr')" id="btnFr">FR</button>
+            </div>
+            <h1 id="headerTitle">⛳ Golf Players Manager</h1>
+            <p id="headerSubtitle">Manage your golf players and track their average scores</p>
         </div>
 
         <div class="content">
-            <div class="stats" id="stats">
-                <div class="stat-card">
-                    <h3>Total Players</h3>
-                    <p id="totalPlayers">0</p>
-                </div>
-                <div class="stat-card">
-                    <h3>Average Score</h3>
-                    <p id="avgScore">-</p>
-                </div>
-                <div class="stat-card">
-                    <h3>Best Player</h3>
-                    <p id="bestPlayer">-</p>
-                </div>
+            <!-- Tab Navigation -->
+            <div class="tabs">
+                <button class="tab active" onclick="switchTab('players')" id="tabPlayers">👥 Players</button>
+                <button class="tab" onclick="switchTab('courses')" id="tabCourses">🏌️ Courses</button>
             </div>
+
+            <!-- Players Tab Content -->
+            <div id="playersTab" class="tab-content active">
+                <div class="stats" id="stats">
+                    <div class="stat-card">
+                        <h3 id="labelTotalPlayers">Total Players</h3>
+                        <p id="totalPlayers">0</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3 id="labelAvgScore">Average Score</h3>
+                        <p id="avgScore">-</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3 id="labelBestPlayer">Best Player</h3>
+                        <p id="bestPlayer">-</p>
+                    </div>
+                </div>
 
             <div class="form-section">
                 <h2 id="formTitle">➕ Add New Player</h2>
                 <form id="playerForm">
                     <input type="hidden" id="editIndex" value="">
                     <div class="form-group">
-                        <label for="playerName">Player Name</label>
+                        <label for="playerName" id="labelPlayerName">Player Name</label>
                         <input type="text" id="playerName" placeholder="Enter player name" required>
                     </div>
                     <div class="form-group">
-                        <label for="averageScore">Average Score</label>
+                        <label for="averageScore" id="labelAvgScoreInput">Average Score</label>
                         <input type="number" id="averageScore" placeholder="Enter average score" step="0.1" required>
                     </div>
                     <div class="btn-container">
@@ -291,7 +489,7 @@
             </div>
 
             <div class="table-section">
-                <h2>📋 Players List</h2>
+                <h2 id="labelPlayersList">📋 Players List</h2>
                 <div id="tableContainer">
                     <div class="empty-state">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -302,15 +500,290 @@
                     </div>
                 </div>
             </div>
+            </div>
+            <!-- End Players Tab -->
+
+            <!-- Courses Tab Content -->
+            <div id="coursesTab" class="tab-content">
+                <div class="stats" id="courseStats">
+                    <div class="stat-card">
+                        <h3 id="labelTotalCourses">Total Courses</h3>
+                        <p id="totalCourses">0</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3 id="labelAvgPar">Average Par</h3>
+                        <p id="avgPar">-</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3 id="labelAvgHoles">Total Holes</h3>
+                        <p id="totalHoles">-</p>
+                    </div>
+                </div>
+
+                <!-- API Search Section -->
+                <div class="api-search-section">
+                    <h3 id="apiSearchTitle">🔍 Search Golf Courses (30,000+ courses)</h3>
+                    <div class="search-container">
+                        <input type="text" id="apiSearchInput" class="search-input" placeholder="Search by course name, city, or country...">
+                        <button type="button" class="btn-search" id="btnApiSearch" onclick="searchGolfCourses()">Search</button>
+                    </div>
+                    <div id="apiSearchResults" class="search-results"></div>
+                </div>
+
+                <div class="form-section">
+                    <h2 id="courseFormTitle">➕ Add New Course</h2>
+                    <form id="courseForm">
+                        <input type="hidden" id="editCourseIndex" value="">
+                        <div class="form-group">
+                            <label for="courseName" id="labelCourseName">Course Name</label>
+                            <input type="text" id="courseName" placeholder="Enter course name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="courseLocation" id="labelCourseLocation">Location</label>
+                            <input type="text" id="courseLocation" placeholder="Enter location" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="coursePar" id="labelCoursePar">Par</label>
+                            <input type="number" id="coursePar" placeholder="Enter par (e.g., 72)" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="courseHoles" id="labelCourseHoles">Number of Holes</label>
+                            <input type="number" id="courseHoles" placeholder="Enter number of holes (e.g., 18)" required>
+                        </div>
+                        <div class="btn-container">
+                            <button type="submit" class="btn btn-primary" id="submitCourseBtn">Add Course</button>
+                            <button type="button" class="btn btn-secondary" id="cancelCourseBtn" style="display: none;">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="table-section">
+                    <h2 id="labelCoursesList">📋 Courses List</h2>
+                    <div id="coursesTableContainer">
+                        <div class="empty-state">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <h3 id="labelNoCourses">No courses yet</h3>
+                            <p id="labelNoCoursesDesc">Add your first course to get started</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- End Courses Tab -->
+
         </div>
     </div>
 
     <script>
         // ========================================
+        // TRANSLATIONS
+        // ========================================
+        const translations = {
+            en: {
+                headerTitle: "⛳ Golf Players Manager",
+                headerSubtitle: "Manage your golf players and track their average scores",
+                tabPlayers: "👥 Players",
+                tabCourses: "🏌️ Courses",
+                labelTotalPlayers: "Total Players",
+                labelAvgScore: "Average Score",
+                labelBestPlayer: "Best Player",
+                formTitleAdd: "➕ Add New Player",
+                formTitleEdit: "✏️ Edit Player",
+                labelPlayerName: "Player Name",
+                labelAvgScoreInput: "Average Score",
+                placeholderName: "Enter player name",
+                placeholderScore: "Enter average score",
+                btnAdd: "Add Player",
+                btnUpdate: "Update Player",
+                btnCancel: "Cancel",
+                labelPlayersList: "📋 Players List",
+                noPlayers: "No players yet",
+                noPlayersDesc: "Add your first player to get started",
+                rank: "Rank",
+                actions: "Actions",
+                btnEdit: "Edit",
+                btnDelete: "Delete",
+                confirmDelete: "Are you sure you want to delete",
+                alertFillFields: "Please fill in all fields correctly",
+                alertConfigFirebase: "Please configure Firebase settings in the code!",
+                // Courses
+                labelTotalCourses: "Total Courses",
+                labelAvgPar: "Average Par",
+                labelAvgHoles: "Total Holes",
+                courseFormTitleAdd: "➕ Add New Course",
+                courseFormTitleEdit: "✏️ Edit Course",
+                labelCourseName: "Course Name",
+                labelCourseLocation: "Location",
+                labelCoursePar: "Par",
+                labelCourseHoles: "Number of Holes",
+                placeholderCourseName: "Enter course name",
+                placeholderCourseLocation: "Enter location",
+                placeholderCoursePar: "Enter par (e.g., 72)",
+                placeholderCourseHoles: "Enter number of holes (e.g., 18)",
+                btnAddCourse: "Add Course",
+                btnUpdateCourse: "Update Course",
+                labelCoursesList: "📋 Courses List",
+                labelNoCourses: "No courses yet",
+                labelNoCoursesDesc: "Add your first course to get started",
+                location: "Location",
+                // API Search
+                apiSearchTitle: "🔍 Search Golf Courses (30,000+ courses)",
+                apiSearchPlaceholder: "Search by course name, city, or country...",
+                btnSearch: "Search",
+                btnAddToCourses: "Add to My Courses",
+                searching: "Searching...",
+                noResults: "No courses found. Try a different search term.",
+                holes: "holes"
+            },
+            fr: {
+                headerTitle: "⛳ Gestionnaire de Golf",
+                headerSubtitle: "Gérez vos joueurs de golf et suivez leurs scores moyens",
+                tabPlayers: "👥 Joueurs",
+                tabCourses: "🏌️ Terrains",
+                labelTotalPlayers: "Total Joueurs",
+                labelAvgScore: "Score Moyen",
+                labelBestPlayer: "Meilleur Joueur",
+                formTitleAdd: "➕ Ajouter un Joueur",
+                formTitleEdit: "✏️ Modifier le Joueur",
+                labelPlayerName: "Nom du Joueur",
+                labelAvgScoreInput: "Score Moyen",
+                placeholderName: "Entrez le nom du joueur",
+                placeholderScore: "Entrez le score moyen",
+                btnAdd: "Ajouter Joueur",
+                btnUpdate: "Mettre à Jour",
+                btnCancel: "Annuler",
+                labelPlayersList: "📋 Liste des Joueurs",
+                noPlayers: "Aucun joueur pour le moment",
+                noPlayersDesc: "Ajoutez votre premier joueur pour commencer",
+                rank: "Rang",
+                actions: "Actions",
+                btnEdit: "Modifier",
+                btnDelete: "Supprimer",
+                confirmDelete: "Êtes-vous sûr de vouloir supprimer",
+                alertFillFields: "Veuillez remplir tous les champs correctement",
+                alertConfigFirebase: "Veuillez configurer les paramètres Firebase dans le code!",
+                // Courses
+                labelTotalCourses: "Total Terrains",
+                labelAvgPar: "Par Moyen",
+                labelAvgHoles: "Total Trous",
+                courseFormTitleAdd: "➕ Ajouter un Terrain",
+                courseFormTitleEdit: "✏️ Modifier le Terrain",
+                labelCourseName: "Nom du Terrain",
+                labelCourseLocation: "Emplacement",
+                labelCoursePar: "Par",
+                labelCourseHoles: "Nombre de Trous",
+                placeholderCourseName: "Entrez le nom du terrain",
+                placeholderCourseLocation: "Entrez l'emplacement",
+                placeholderCoursePar: "Entrez le par (ex: 72)",
+                placeholderCourseHoles: "Entrez le nombre de trous (ex: 18)",
+                btnAddCourse: "Ajouter Terrain",
+                btnUpdateCourse: "Mettre à Jour",
+                labelCoursesList: "📋 Liste des Terrains",
+                labelNoCourses: "Aucun terrain pour le moment",
+                labelNoCoursesDesc: "Ajoutez votre premier terrain pour commencer",
+                location: "Emplacement",
+                // API Search
+                apiSearchTitle: "🔍 Rechercher des Terrains (30 000+ terrains)",
+                apiSearchPlaceholder: "Rechercher par nom, ville ou pays...",
+                btnSearch: "Rechercher",
+                btnAddToCourses: "Ajouter à mes terrains",
+                searching: "Recherche en cours...",
+                noResults: "Aucun terrain trouvé. Essayez un autre terme de recherche.",
+                holes: "trous"
+            }
+        };
+
+        // Current language
+        let currentLang = localStorage.getItem('golfAppLanguage') || 'en';
+
+        // Change language function
+        function changeLanguage(lang) {
+            currentLang = lang;
+            localStorage.setItem('golfAppLanguage', lang);
+            
+            // Update button states
+            document.getElementById('btnEn').classList.toggle('active', lang === 'en');
+            document.getElementById('btnFr').classList.toggle('active', lang === 'fr');
+            
+            // Update all text
+            updateLanguage();
+        }
+
+        // Update all text based on current language
+        function updateLanguage() {
+            const t = translations[currentLang];
+            
+            // Header
+            document.getElementById('headerTitle').textContent = t.headerTitle;
+            document.getElementById('headerSubtitle').textContent = t.headerSubtitle;
+            
+            // Tabs
+            document.getElementById('tabPlayers').innerHTML = t.tabPlayers;
+            document.getElementById('tabCourses').innerHTML = t.tabCourses;
+            
+            // Players section
+            document.getElementById('labelTotalPlayers').textContent = t.labelTotalPlayers;
+            document.getElementById('labelAvgScore').textContent = t.labelAvgScore;
+            document.getElementById('labelBestPlayer').textContent = t.labelBestPlayer;
+            document.getElementById('labelPlayerName').textContent = t.labelPlayerName;
+            document.getElementById('labelAvgScoreInput').textContent = t.labelAvgScoreInput;
+            document.getElementById('playerName').placeholder = t.placeholderName;
+            document.getElementById('averageScore').placeholder = t.placeholderScore;
+            document.getElementById('cancelBtn').textContent = t.btnCancel;
+            document.getElementById('labelPlayersList').textContent = t.labelPlayersList;
+            
+            // Update form title based on edit state
+            const isEditing = editIndex.value !== '';
+            document.getElementById('formTitle').textContent = isEditing ? t.formTitleEdit : t.formTitleAdd;
+            document.getElementById('submitBtn').textContent = isEditing ? t.btnUpdate : t.btnAdd;
+            
+            // Courses section
+            document.getElementById('labelTotalCourses').textContent = t.labelTotalCourses;
+            document.getElementById('labelAvgPar').textContent = t.labelAvgPar;
+            document.getElementById('labelAvgHoles').textContent = t.labelAvgHoles;
+            document.getElementById('apiSearchTitle').textContent = t.apiSearchTitle;
+            document.getElementById('apiSearchInput').placeholder = t.apiSearchPlaceholder;
+            document.getElementById('btnApiSearch').textContent = t.btnSearch;
+            document.getElementById('labelCourseName').textContent = t.labelCourseName;
+            document.getElementById('labelCourseLocation').textContent = t.labelCourseLocation;
+            document.getElementById('labelCoursePar').textContent = t.labelCoursePar;
+            document.getElementById('labelCourseHoles').textContent = t.labelCourseHoles;
+            document.getElementById('courseName').placeholder = t.placeholderCourseName;
+            document.getElementById('courseLocation').placeholder = t.placeholderCourseLocation;
+            document.getElementById('coursePar').placeholder = t.placeholderCoursePar;
+            document.getElementById('courseHoles').placeholder = t.placeholderCourseHoles;
+            document.getElementById('cancelCourseBtn').textContent = t.btnCancel;
+            document.getElementById('labelCoursesList').textContent = t.labelCoursesList;
+            document.getElementById('labelNoCourses').textContent = t.labelNoCourses;
+            document.getElementById('labelNoCoursesDesc').textContent = t.labelNoCoursesDesc;
+            
+            // Update course form title based on edit state
+            const isCourseEditing = editCourseIndex.value !== '';
+            document.getElementById('courseFormTitle').textContent = isCourseEditing ? t.courseFormTitleEdit : t.courseFormTitleAdd;
+            document.getElementById('submitCourseBtn').textContent = isCourseEditing ? t.btnUpdateCourse : t.btnAddCourse;
+            
+            // Redisplay players and courses to update table headers
+            displayPlayers();
+            displayCourses();
+        }
+
+        // Tab switching function
+        function switchTab(tab) {
+            console.log('Switching to tab:', tab);
+            
+            // Update tab buttons
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.getElementById(tab === 'players' ? 'tabPlayers' : 'tabCourses').classList.add('active');
+            
+            // Update tab content
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.getElementById(tab + 'Tab').classList.add('active');
+        }
+
+        // ========================================
         // FIREBASE CONFIGURATION
         // ========================================
-        // TODO: Replace with your Firebase config
-        // Get this from: Firebase Console > Project Settings > Your apps > SDK setup and configuration
         const firebaseConfig = {
             apiKey: "AIzaSyBXj8K9fL2mN3pQ4rS5tU6vW7xY8zA9bC0",
             authDomain: "golfapp-42180.firebaseapp.com",
@@ -324,22 +797,28 @@
         // Initialize Firebase
         let database;
         let playersRef;
+        let coursesRef;
         
         try {
             firebase.initializeApp(firebaseConfig);
             database = firebase.database();
             playersRef = database.ref('players');
+            coursesRef = database.ref('courses');
             console.log('✅ Firebase connected successfully!');
         } catch (error) {
             console.error('❌ Firebase initialization error:', error);
-            alert('Please configure Firebase settings in the code!');
+            alert(translations[currentLang].alertConfigFirebase);
         }
 
         // Players data
         let players = [];
         let playerKeys = {}; // Map to store Firebase keys
 
-        // DOM elements
+        // Courses data
+        let courses = [];
+        let courseKeys = {}; // Map to store Firebase keys
+
+        // DOM elements - Players
         const playerForm = document.getElementById('playerForm');
         const playerName = document.getElementById('playerName');
         const averageScore = document.getElementById('averageScore');
@@ -349,8 +828,31 @@
         const cancelBtn = document.getElementById('cancelBtn');
         const editIndex = document.getElementById('editIndex');
 
-        // Initialize - Load players from Firebase
+        // DOM elements - Courses
+        const courseForm = document.getElementById('courseForm');
+        const courseName = document.getElementById('courseName');
+        const courseLocation = document.getElementById('courseLocation');
+        const coursePar = document.getElementById('coursePar');
+        const courseHoles = document.getElementById('courseHoles');
+        const coursesTableContainer = document.getElementById('coursesTableContainer');
+        const courseFormTitle = document.getElementById('courseFormTitle');
+        const submitCourseBtn = document.getElementById('submitCourseBtn');
+        const cancelCourseBtn = document.getElementById('cancelCourseBtn');
+        const editCourseIndex = document.getElementById('editCourseIndex');
+
+        // Check if all required elements exist
+        if (!playerForm || !courseForm) {
+            console.error('❌ Required form elements not found!');
+        } else {
+            console.log('✅ All form elements loaded successfully');
+        }
+
+        // Initialize - Load data from Firebase
         loadPlayers();
+        loadCourses();
+        
+        // Initialize language
+        changeLanguage(currentLang);
 
         // Form submit
         playerForm.addEventListener('submit', function(e) {
@@ -360,7 +862,7 @@
             const score = parseFloat(averageScore.value);
             
             if (!name || isNaN(score)) {
-                alert('Please fill in all fields correctly');
+                alert(translations[currentLang].alertFillFields);
                 return;
             }
 
@@ -431,14 +933,16 @@
 
         // Display players in table
         function displayPlayers() {
+            const t = translations[currentLang];
+            
             if (players.length === 0) {
                 tableContainer.innerHTML = `
                     <div class="empty-state">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                         </svg>
-                        <h3>No players yet</h3>
-                        <p>Add your first player to get started</p>
+                        <h3>${t.noPlayers}</h3>
+                        <p>${t.noPlayersDesc}</p>
                     </div>
                 `;
                 return;
@@ -450,10 +954,13 @@
                 <table>
                     <thead>
                         <tr>
-                            <th>Rank</th>
-                            <th>Player Name</th>
-                            <th>Average Score</th>
-                            <th>Actions</th>
+                            <th class="checkbox-cell">
+                                <input type="checkbox" id="selectAllPlayers" onchange="toggleAllPlayers(this)" class="player-checkbox">
+                            </th>
+                            <th>${t.rank}</th>
+                            <th>${t.labelPlayerName}</th>
+                            <th>${t.labelAvgScore}</th>
+                            <th>${t.actions}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -462,14 +969,17 @@
             sortedPlayers.forEach((player, index) => {
                 const originalIndex = players.findIndex(p => p === player);
                 html += `
-                    <tr>
+                    <tr id="player-row-${originalIndex}">
+                        <td class="checkbox-cell">
+                            <input type="checkbox" class="player-checkbox player-select-cb" onchange="togglePlayerSelection(this, ${originalIndex})" value="${originalIndex}">
+                        </td>
                         <td><strong>#${index + 1}</strong></td>
                         <td>${player.name}</td>
                         <td>${player.score.toFixed(1)}</td>
                         <td>
                             <div class="action-buttons">
-                                <button class="btn-edit" onclick="editPlayer(${originalIndex})">Edit</button>
-                                <button class="btn-delete" onclick="deletePlayer(${originalIndex})">Delete</button>
+                                <button class="btn-edit" onclick="editPlayer(${originalIndex})">${t.btnEdit}</button>
+                                <button class="btn-delete" onclick="deletePlayer(${originalIndex})">${t.btnDelete}</button>
                             </div>
                         </td>
                     </tr>
@@ -482,6 +992,47 @@
             `;
 
             tableContainer.innerHTML = html;
+        }
+
+        // Toggle all players selection
+        window.toggleAllPlayers = function(source) {
+            const checkboxes = document.querySelectorAll('.player-select-cb');
+            checkboxes.forEach(cb => {
+                cb.checked = source.checked;
+                const row = cb.closest('tr');
+                if (source.checked) {
+                    row.classList.add('selected-row');
+                } else {
+                    row.classList.remove('selected-row');
+                }
+            });
+            updateSelectedCount();
+        };
+
+        // Toggle single player selection
+        window.togglePlayerSelection = function(cb, index) {
+            const row = cb.closest('tr');
+            if (cb.checked) {
+                row.classList.add('selected-row');
+            } else {
+                row.classList.remove('selected-row');
+            }
+            
+            // Update "Select All" checkbox state
+            const allCheckboxes = document.querySelectorAll('.player-select-cb');
+            const allChecked = Array.from(allCheckboxes).every(c => c.checked);
+            const selectAllCb = document.getElementById('selectAllPlayers');
+            if (selectAllCb) {
+                selectAllCb.checked = allChecked;
+                selectAllCb.indeterminate = !allChecked && Array.from(allCheckboxes).some(c => c.checked);
+            }
+            updateSelectedCount();
+        };
+
+        function updateSelectedCount() {
+            const selected = document.querySelectorAll('.player-select-cb:checked').length;
+            console.log(`Selected players: ${selected}`);
+            // Future usage: enable/disable global action buttons based on selection
         }
 
         // Update statistics
@@ -502,19 +1053,21 @@
 
         // Edit player
         window.editPlayer = function(index) {
+            const t = translations[currentLang];
             const player = players[index];
             playerName.value = player.name;
             averageScore.value = player.score;
             editIndex.value = index;
-            formTitle.textContent = '✏️ Edit Player';
-            submitBtn.textContent = 'Update Player';
+            formTitle.textContent = t.formTitleEdit;
+            submitBtn.textContent = t.btnUpdate;
             cancelBtn.style.display = 'block';
             window.scrollTo({ top: 0, behavior: 'smooth' });
         };
 
         // Delete player
         window.deletePlayer = function(index) {
-            if (confirm(`Are you sure you want to delete ${players[index].name}?`)) {
+            const t = translations[currentLang];
+            if (confirm(`${t.confirmDelete} ${players[index].name}?`)) {
                 const playerKey = playerKeys[index];
                 playersRef.child(playerKey).remove()
                     .then(() => {
@@ -529,12 +1082,548 @@
 
         // Reset form
         function resetForm() {
+            const t = translations[currentLang];
             playerForm.reset();
             editIndex.value = '';
-            formTitle.textContent = '➕ Add New Player';
-            submitBtn.textContent = 'Add Player';
+            formTitle.textContent = t.formTitleAdd;
+            submitBtn.textContent = t.btnAdd;
             cancelBtn.style.display = 'none';
         }
+
+        // ========================================
+        // COURSES MANAGEMENT
+        // ========================================
+
+        // Course form submit
+        courseForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const name = courseName.value.trim();
+            const location = courseLocation.value.trim();
+            const par = parseInt(coursePar.value);
+            const holes = parseInt(courseHoles.value);
+            
+            if (!name || !location || isNaN(par) || isNaN(holes)) {
+                alert(translations[currentLang].alertFillFields);
+                return;
+            }
+
+            const index = editCourseIndex.value;
+            
+            if (index !== '') {
+                // Update existing course in Firebase
+                const courseKey = courseKeys[index];
+                coursesRef.child(courseKey).update({
+                    name: name,
+                    location: location,
+                    par: par,
+                    holes: holes
+                }).then(() => {
+                    console.log('Course updated successfully');
+                    resetCourseForm();
+                }).catch((error) => {
+                    console.error('Error updating course:', error);
+                    alert('Failed to update course');
+                });
+            } else {
+                // Add new course to Firebase
+                coursesRef.push({
+                    name: name,
+                    location: location,
+                    par: par,
+                    holes: holes,
+                    createdAt: Date.now()
+                }).then(() => {
+                    console.log('Course added successfully');
+                    resetCourseForm();
+                }).catch((error) => {
+                    console.error('Error adding course:', error);
+                    alert('Failed to add course');
+                });
+            }
+        });
+
+        // Cancel course edit
+        cancelCourseBtn.addEventListener('click', resetCourseForm);
+
+        // Load courses from Firebase
+        function loadCourses() {
+            coursesRef.on('value', (snapshot) => {
+                courses = [];
+                courseKeys = {};
+                
+                snapshot.forEach((childSnapshot) => {
+                    const key = childSnapshot.key;
+                    const data = childSnapshot.val();
+                    const index = courses.length;
+                    
+                    courses.push({
+                        name: data.name,
+                        location: data.location,
+                        par: data.par,
+                        holes: data.holes
+                    });
+                    courseKeys[index] = key;
+                });
+                
+                displayCourses();
+                updateCourseStats();
+            }, (error) => {
+                console.error('Error loading courses:', error);
+                alert('Failed to load courses from database');
+            });
+        }
+
+        // Display courses in table
+        function displayCourses() {
+            const t = translations[currentLang];
+            
+            if (courses.length === 0) {
+                coursesTableContainer.innerHTML = `
+                    <div class="empty-state">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <h3>${t.labelNoCourses}</h3>
+                        <p>${t.labelNoCoursesDesc}</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>${t.labelCourseName}</th>
+                            <th>${t.location}</th>
+                            <th>${t.labelCoursePar}</th>
+                            <th>${t.labelCourseHoles}</th>
+                            <th>${t.actions}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            courses.forEach((course, index) => {
+                html += `
+                    <tr>
+                        <td><strong>${course.name}</strong></td>
+                        <td>${course.location}</td>
+                        <td>${course.par}</td>
+                        <td>${course.holes}</td>
+                        <td>
+                            <div class="action-buttons">
+                                <button class="btn-edit" onclick="editCourse(${index})">${t.btnEdit}</button>
+                                <button class="btn-delete" onclick="deleteCourse(${index})">${t.btnDelete}</button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            html += `
+                    </tbody>
+                </table>
+            `;
+
+            coursesTableContainer.innerHTML = html;
+        }
+
+        // Update course statistics
+        function updateCourseStats() {
+            document.getElementById('totalCourses').textContent = courses.length;
+            
+            if (courses.length > 0) {
+                const avgPar = courses.reduce((sum, c) => sum + c.par, 0) / courses.length;
+                document.getElementById('avgPar').textContent = avgPar.toFixed(0);
+                
+                const totalHoles = courses.reduce((sum, c) => sum + c.holes, 0);
+                document.getElementById('totalHoles').textContent = totalHoles;
+            } else {
+                document.getElementById('avgPar').textContent = '-';
+                document.getElementById('totalHoles').textContent = '-';
+            }
+        }
+
+        // Edit course
+        window.editCourse = function(index) {
+            const t = translations[currentLang];
+            const course = courses[index];
+            courseName.value = course.name;
+            courseLocation.value = course.location;
+            coursePar.value = course.par;
+            courseHoles.value = course.holes;
+            editCourseIndex.value = index;
+            courseFormTitle.textContent = t.courseFormTitleEdit;
+            submitCourseBtn.textContent = t.btnUpdateCourse;
+            cancelCourseBtn.style.display = 'block';
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        };
+
+        // Delete course
+        window.deleteCourse = function(index) {
+            const t = translations[currentLang];
+            if (confirm(`${t.confirmDelete} ${courses[index].name}?`)) {
+                const courseKey = courseKeys[index];
+                coursesRef.child(courseKey).remove()
+                    .then(() => {
+                        console.log('Course deleted successfully');
+                    })
+                    .catch((error) => {
+                        console.error('Error deleting course:', error);
+                        alert('Failed to delete course');
+                    });
+            }
+        };
+
+        // Reset course form
+        function resetCourseForm() {
+            const t = translations[currentLang];
+            courseForm.reset();
+            editCourseIndex.value = '';
+            courseFormTitle.textContent = t.courseFormTitleAdd;
+            submitCourseBtn.textContent = t.btnAddCourse;
+            cancelCourseBtn.style.display = 'none';
+        }
+
+        // ========================================
+        // GOLF COURSE API INTEGRATION
+        // ========================================
+        
+        // GolfCourseAPI from RapidAPI
+        const RAPIDAPI_KEY = 'HAWPXVKNOI6TXTXXNFS4APWCRU';
+        const RAPIDAPI_HOST = 'golf-course-api.p.rapidapi.com';
+
+        // Search golf courses from API
+        window.searchGolfCourses = async function() {
+            const t = translations[currentLang];
+            const searchTerm = document.getElementById('apiSearchInput').value.trim();
+            const resultsContainer = document.getElementById('apiSearchResults');
+            
+            if (!searchTerm) {
+                alert(t.alertFillFields);
+                return;
+            }
+
+            // Show loading
+            resultsContainer.innerHTML = `<div class="loading">${t.searching}</div>`;
+            resultsContainer.classList.add('show');
+
+            // Try multiple possible endpoints
+            const endpoints = [
+                `https://${RAPIDAPI_HOST}/courses?name=${encodeURIComponent(searchTerm)}`,
+                `https://${RAPIDAPI_HOST}/search?q=${encodeURIComponent(searchTerm)}`
+            ];
+
+            let apiSuccess = false;
+            let lastError = '';
+
+            for (let i = 0; i < endpoints.length; i++) {
+                try {
+                    console.log(`Trying endpoint ${i + 1}:`, endpoints[i]);
+                    
+                    const response = await fetch(endpoints[i], {
+                        method: 'GET',
+                        headers: {
+                            'X-RapidAPI-Key': RAPIDAPI_KEY,
+                            'X-RapidAPI-Host': RAPIDAPI_HOST
+                        }
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        console.log('API Success! Data:', data);
+                        
+                        let courses = [];
+                        if (Array.isArray(data)) {
+                            courses = data;
+                        } else if (data.courses) {
+                            courses = data.courses;
+                        } else if (data.data) {
+                            courses = data.data;
+                        } else if (data.results) {
+                            courses = data.results;
+                        }
+                        
+                        if (courses.length > 0) {
+                            displayApiResults(courses);
+                            apiSuccess = true;
+                            return;
+                        }
+                    } else {
+                        lastError = `Status: ${response.status} (${response.statusText})`;
+                        if (response.status === 429) lastError = "Quota Exceeded (429)";
+                        if (response.status === 401 || response.status === 403) lastError = "Invalid API Key (401/403)";
+                        console.log(`Endpoint ${i + 1} failed:`, response.status);
+                    }
+                } catch (error) {
+                    console.error(`Endpoint ${i + 1} error:`, error);
+                    lastError = error.message;
+                }
+            }
+            
+            // All endpoints failed
+            if (!apiSuccess) {
+                console.log('All API endpoints failed. Using sample data.');
+                const errorMsg = `<strong>⚠️ API Connection Issue</strong><br>${lastError ? `Error: ${lastError}<br>` : ''}Showing database matches instead.`;
+                showSampleCourses(searchTerm, errorMsg);
+            }
+        };
+
+        // Show sample courses if API fails
+        function showSampleCourses(searchTerm, customErrorMsg = null) {
+            const t = translations[currentLang];
+            const sampleCourses = [
+                // West Palm Beach Area
+                { name: 'PGA National Resort - Champion Course', city: 'Palm Beach Gardens', state: 'Florida', country: 'USA', par: 72, holes: 18, yards: 7140, rating: 75.3, slope: 142, designer: 'Jack Nicklaus', type: 'Resort', year: 1981 },
+                { name: 'Trump International Golf Club', city: 'West Palm Beach', state: 'Florida', country: 'USA', par: 72, holes: 18, yards: 7279, rating: 76.4, slope: 155, designer: 'Jim Fazio', type: 'Private', year: 1999 },
+                { name: "The Bear's Club", city: 'Jupiter', state: 'Florida', country: 'USA', par: 72, holes: 18, yards: 7271, rating: 76.3, slope: 145, designer: 'Jack Nicklaus', type: 'Private', year: 2000 },
+                { name: 'Seminole Golf Club', city: 'Juno Beach', state: 'Florida', country: 'USA', par: 72, holes: 18, yards: 6838, rating: 74.5, slope: 136, designer: 'Donald Ross', type: 'Private', year: 1929 },
+                { name: 'Old Palm Golf Club', city: 'Palm Beach Gardens', state: 'Florida', country: 'USA', par: 72, holes: 18, yards: 7203, rating: 75.9, slope: 149, designer: 'Raymond Floyd', type: 'Private', year: 1997 },
+                { name: "Frenchman's Creek Beach & Country Club", city: 'Palm Beach Gardens', state: 'Florida', country: 'USA', par: 71, holes: 18, yards: 6741, rating: 73.1, slope: 132, designer: 'Desmond Muirhead', type: 'Private', year: 1970 },
+                { name: 'BallenIsles Country Club - North Course', city: 'Palm Beach Gardens', state: 'Florida', country: 'USA', par: 72, holes: 18, yards: 6826, rating: 73.4, slope: 134, designer: 'Bobby Weed', type: 'Private', year: 1987 },
+                { name: 'Mirasol Country Club - Sunrise Course', city: 'Palm Beach Gardens', state: 'Florida', country: 'USA', par: 72, holes: 18, yards: 7055, rating: 74.2, slope: 138, designer: 'Tom Fazio', type: 'Private', year: 1999 },
+                { name: 'Ibis Golf & Country Club - Legend Course', city: 'West Palm Beach', state: 'Florida', country: 'USA', par: 72, holes: 18, yards: 7207, rating: 75.4, slope: 144, designer: 'Jack Nicklaus', type: 'Private', year: 1991 },
+                { name: 'Breakers West Country Club', city: 'West Palm Beach', state: 'Florida', country: 'USA', par: 72, holes: 18, yards: 6900, rating: 73.8, slope: 135, designer: 'Willard Byrd', type: 'Private', year: 1971 },
+                { name: 'Palm Beach Par 3 Golf Course', city: 'Palm Beach', state: 'Florida', country: 'USA', par: 58, holes: 18, yards: 2458, rating: 58.5, slope: 95, designer: 'Dick Wilson', type: 'Public', year: 1961 },
+                { name: 'West Palm Beach Country Club', city: 'West Palm Beach', state: 'Florida', country: 'USA', par: 70, holes: 18, yards: 6432, rating: 71.2, slope: 126, designer: 'Unknown', type: 'Private', year: 1947 },
+                { name: 'Everglades Golf Club', city: 'Palm Beach Gardens', state: 'Florida', country: 'USA', par: 71, holes: 18, yards: 6636, rating: 72.4, slope: 130, designer: 'Robert von Hagge', type: 'Private', year: 1972 },
+                { name: 'Lost Tree Club', city: 'North Palm Beach', state: 'Florida', country: 'USA', par: 72, holes: 18, yards: 6734, rating: 73.0, slope: 133, designer: 'Dick Wilson', type: 'Private', year: 1961 },
+                { name: 'Madison Green Country Club', city: 'West Palm Beach', state: 'Florida', country: 'USA', par: 72, holes: 18, yards: 6875, rating: 73.2, slope: 132, designer: 'Gordon Lewis', type: 'Private', year: 1989 },
+                
+                // Jupiter/Tequesta Area
+                { name: 'Jupiter Hills Club - Hills Course', city: 'Tequesta', state: 'Florida', country: 'USA', par: 72, holes: 18, yards: 7043, rating: 74.5, slope: 142, designer: 'George Fazio & Tom Fazio', type: 'Private', year: 1970 },
+                { name: 'Admirals Cove', city: 'Jupiter', state: 'Florida', country: 'USA', par: 72, holes: 18, yards: 7007, rating: 74.1, slope: 138, designer: 'Robert von Hagge', type: 'Private', year: 1988 },
+                { name: "Jonathan's Landing Golf Club", city: 'Jupiter', state: 'Florida', country: 'USA', par: 72, holes: 18, yards: 6945, rating: 73.7, slope: 135, designer: 'Joe Lee', type: 'Private', year: 1989 },
+                { name: 'Abacoa Golf Club', city: 'Jupiter', state: 'Florida', country: 'USA', par: 72, holes: 18, yards: 7159, rating: 74.8, slope: 137, designer: 'Joe Lee', type: 'Semi-Private', year: 1999 },
+                { name: 'Jupiter Country Club', city: 'Jupiter', state: 'Florida', country: 'USA', par: 72, holes: 18, yards: 6586, rating: 71.8, slope: 128, designer: 'Charles Ankrom', type: 'Private', year: 1981 },
+                
+                // Boca Raton Area
+                { name: 'The Club at Boca Pointe', city: 'Boca Raton', state: 'Florida', country: 'USA', par: 72, holes: 18, yards: 6724, rating: 72.4, slope: 131, designer: 'Dave Wallace', type: 'Private', year: 1984 },
+                { name: 'Boca West Country Club - Boca Dunes', city: 'Boca Raton', state: 'Florida', country: 'USA', par: 72, holes: 18, yards: 7031, rating: 73.9, slope: 135, designer: 'Pete Dye', type: 'Private', year: 1984 },
+                { name: 'St. Andrews Country Club - North Course', city: 'Boca Raton', state: 'Florida', country: 'USA', par: 72, holes: 18, yards: 6882, rating: 73.1, slope: 132, designer: 'Gordon Lewis', type: 'Private', year: 1988 },
+                { name: 'Woodfield Country Club', city: 'Boca Raton', state: 'Florida', country: 'USA', par: 72, holes: 18, yards: 7006, rating: 74.0, slope: 136, designer: 'Joe Lee', type: 'Private', year: 1980 },
+                { name: 'Mizner Country Club', city: 'Delray Beach', state: 'Florida', country: 'USA', par: 72, holes: 18, yards: 6850, rating: 73.2, slope: 133, designer: 'Gordon Lewis', type: 'Private', year: 1989 },
+                { name: 'Broken Sound Club - Old Course', city: 'Boca Raton', state: 'Florida', country: 'USA', par: 72, holes: 18, yards: 6837, rating: 73.4, slope: 137, designer: 'Joe Lee', type: 'Private', year: 1980 },
+                { name: 'Addison Reserve Country Club', city: 'Delray Beach', state: 'Florida', country: 'USA', par: 72, holes: 18, yards: 7000, rating: 74.2, slope: 140, designer: 'Arthur Hills', type: 'Private', year: 2000 },
+                { name: 'The Polo Club of Boca Raton', city: 'Boca Raton', state: 'Florida', country: 'USA', par: 72, holes: 18, yards: 7117, rating: 74.6, slope: 139, designer: 'Pete Dye & P.B. Dye', type: 'Private', year: 1984 },
+                { name: 'Boca Grove Golf & Tennis Club', city: 'Boca Raton', state: 'Florida', country: 'USA', par: 72, holes: 18, yards: 7001, rating: 74.1, slope: 136, designer: 'Chip Powell', type: 'Private', year: 2000 },
+                { name: 'Boca Rio Golf Club', city: 'Boca Raton', state: 'Florida', country: 'USA', par: 72, holes: 18, yards: 6250, rating: 69.8, slope: 118, designer: 'Bruce Devlin', type: 'Semi-Private', year: 1967 },
+                
+                // Delray Beach Area
+                { name: 'Delray Beach Golf Club', city: 'Delray Beach', state: 'Florida', country: 'USA', par: 72, holes: 18, yards: 6907, rating: 73.4, slope: 131, designer: 'Donald Ross', type: 'Public', year: 1923 },
+                { name: 'Atlantic National Golf Club', city: 'Lake Worth', state: 'Florida', country: 'USA', par: 71, holes: 18, yards: 6619, rating: 71.8, slope: 127, designer: 'Joe Lee', type: 'Public', year: 1999 },
+                { name: 'Seagate Country Club', city: 'Delray Beach', state: 'Florida', country: 'USA', par: 72, holes: 18, yards: 6780, rating: 72.8, slope: 129, designer: 'Bruce Devlin', type: 'Private', year: 1973 },
+                { name: 'The Bridges at Springtree', city: 'Sunrise', state: 'Florida', country: 'USA', par: 72, holes: 18, yards: 6906, rating: 73.2, slope: 134, designer: 'Lloyd Clifton', type: 'Semi-Private', year: 2001 },
+                { name: 'Pine Tree Golf Club', city: 'Boynton Beach', state: 'Florida', country: 'USA', par: 71, holes: 18, yards: 7065, rating: 74.7, slope: 144, designer: 'Dick Wilson', type: 'Private', year: 1962 },
+                
+                // Fort Lauderdale Area
+                { name: 'The Club at Emerald Hills', city: 'Hollywood', state: 'Florida', country: 'USA', par: 72, holes: 18, yards: 7035, rating: 74.3, slope: 139, designer: 'Bruce Devlin & Robert von Hagge', type: 'Private', year: 1962 },
+                { name: 'Fort Lauderdale Country Club', city: 'Fort Lauderdale', state: 'Florida', country: 'USA', par: 72, holes: 18, yards: 6513, rating: 71.2, slope: 125, designer: 'William Mitchell', type: 'Private', year: 1956 },
+                { name: 'Jacaranda Golf Club - East Course', city: 'Plantation', state: 'Florida', country: 'USA', par: 72, holes: 18, yards: 7239, rating: 75.6, slope: 141, designer: 'Mark Mahannah', type: 'Public', year: 1972 },
+                { name: 'Woodmont Country Club', city: 'Tamarac', state: 'Florida', country: 'USA', par: 72, holes: 18, yards: 6750, rating: 72.5, slope: 130, designer: 'Bruce Devlin', type: 'Private', year: 1973 },
+                { name: 'Colony West Country Club', city: 'Tamarac', state: 'Florida', country: 'USA', par: 71, holes: 18, yards: 6758, rating: 72.9, slope: 131, designer: 'Bruce Devlin', type: 'Public', year: 1970 },
+                { name: 'Coral Ridge Country Club', city: 'Fort Lauderdale', state: 'Florida', country: 'USA', par: 71, holes: 18, yards: 6671, rating: 72.3, slope: 129, designer: 'Robert von Hagge', type: 'Private', year: 1957 },
+                { name: 'Plantation Golf Course', city: 'Fort Lauderdale', state: 'Florida', country: 'USA', par: 72, holes: 18, yards: 6709, rating: 72.1, slope: 124, designer: 'Ron Garl', type: 'Public', year: 1971 },
+                { name: 'Rolling Hills Golf Resort', city: 'Fort Lauderdale', state: 'Florida', country: 'USA', par: 60, holes: 18, yards: 3085, rating: 58.2, slope: 91, designer: 'Red Lawrence', type: 'Public', year: 1958 },
+                { name: 'Inverrary Country Club - East Course', city: 'Lauderhill', state: 'Florida', country: 'USA', par: 72, holes: 18, yards: 7127, rating: 74.5, slope: 138, designer: 'Robert Trent Jones Sr.', type: 'Private', year: 1972 },
+                { name: 'TPC Eagle Trace', city: 'Coral Springs', state: 'Florida', country: 'USA', par: 72, holes: 18, yards: 7030, rating: 74.0, slope: 137, designer: 'Arthur Hills', type: 'Public', year: 1984 },
+                
+                // Pompano Beach/Deerfield Area
+                { name: 'Palm-Aire Country Club - Cypress Course', city: 'Pompano Beach', state: 'Florida', country: 'USA', par: 72, holes: 18, yards: 6957, rating: 73.5, slope: 132, designer: 'Bill Watts', type: 'Semi-Private', year: 1970 },
+                { name: 'Crystal Lake Country Club', city: 'Pompano Beach', state: 'Florida', country: 'USA', par: 71, holes: 18, yards: 6584, rating: 71.5, slope: 126, designer: 'Bruce Devlin', type: 'Semi-Private', year: 1969 },
+                { name: 'Deer Creek Golf Club - South Course', city: 'Deerfield Beach', state: 'Florida', country: 'USA', par: 72, holes: 18, yards: 6835, rating: 72.9, slope: 133, designer: 'Arthur Hills', type: 'Public', year: 1989 },
+                { name: 'Hillsboro Pines Golf Course', city: 'Deerfield Beach', state: 'Florida', country: 'USA', par: 71, holes: 18, yards: 6405, rating: 70.4, slope: 119, designer: 'Charles Ankrom', type: 'Public', year: 1969 },
+                
+                // Weston/Pembroke Pines Area
+                { name: 'Bonaventure Country Club - East Course', city: 'Weston', state: 'Florida', country: 'USA', par: 72, holes: 18, yards: 7011, rating: 73.8, slope: 136, designer: 'Joe Lee', type: 'Private', year: 1971 },
+                { name: 'Weston Hills Country Club', city: 'Weston', state: 'Florida', country: 'USA', par: 72, holes: 18, yards: 6920, rating: 73.4, slope: 134, designer: 'Robert Trent Jones Jr.', type: 'Private', year: 1987 },
+                { name: 'Pembroke Lakes Golf & Racquet Club', city: 'Pembroke Pines', state: 'Florida', country: 'USA', par: 72, holes: 18, yards: 6475, rating: 70.9, slope: 123, designer: 'Charles Ankrom', type: 'Public', year: 1974 },
+                { name: 'Grand Palms Golf & Country Club', city: 'Pembroke Pines', state: 'Florida', country: 'USA', par: 72, holes: 18, yards: 6929, rating: 73.2, slope: 132, designer: 'Ward Northrup', type: 'Semi-Private', year: 1986 },
+                { name: 'Flamingo Lakes Country Club', city: 'Pembroke Pines', state: 'Florida', country: 'USA', par: 72, holes: 18, yards: 6512, rating: 71.1, slope: 124, designer: 'Arthur Hills', type: 'Private', year: 1980 },
+                
+                // Miami/Miami Beach/Doral Area
+                { name: 'Trump National Doral - Blue Monster', city: 'Doral', state: 'Florida', country: 'USA', par: 72, holes: 18, yards: 7590, rating: 77.6, slope: 150, designer: 'Dick Wilson/Gil Hanse', type: 'Resort', year: 1962 },
+                { name: 'Miami Beach Golf Club', city: 'Miami Beach', state: 'Florida', country: 'USA', par: 72, holes: 18, yards: 6958, rating: 73.4, slope: 128, designer: 'Arthur Hills', type: 'Public', year: 1923 },
+                { name: 'Crandon Golf at Key Biscayne', city: 'Key Biscayne', state: 'Florida', country: 'USA', par: 72, holes: 18, yards: 7301, rating: 75.8, slope: 142, designer: 'Robert von Hagge & Bruce Devlin', type: 'Public', year: 1972 },
+                { name: 'Melreese Country Club', city: 'Miami', state: 'Florida', country: 'USA', par: 70, holes: 18, yards: 6407, rating: 70.6, slope: 119, designer: 'Unknown', type: 'Public', year: 1962 },
+                { name: 'Biltmore Golf Course', city: 'Coral Gables', state: 'Florida', country: 'USA', par: 71, holes: 18, yards: 6755, rating: 72.7, slope: 129, designer: 'Donald Ross', type: 'Public', year: 1925 },
+                { name: 'Doral Park Golf & Country Club', city: 'Doral', state: 'Florida', country: 'USA', par: 72, holes: 18, yards: 6859, rating: 72.8, slope: 130, designer: 'Mark Mahannah', type: 'Semi-Private', year: 1988 },
+                { name: 'Costa del Sol Golf Club', city: 'Doral', state: 'Florida', country: 'USA', par: 72, holes: 18, yards: 7055, rating: 73.9, slope: 133, designer: 'Bruce Devlin', type: 'Semi-Private', year: 1980 },
+                { name: "Shula's Golf Club", city: 'Miami Lakes', state: 'Florida', country: 'USA', par: 70, holes: 18, yards: 7055, rating: 74.2, slope: 134, designer: 'Arthur Hills', type: 'Semi-Private', year: 1962 },
+                { name: 'Miami Shores Country Club', city: 'Miami Shores', state: 'Florida', country: 'USA', par: 72, holes: 18, yards: 6491, rating: 71.0, slope: 122, designer: 'Desmond Muirhead', type: 'Private', year: 1939 },
+                { name: 'Palmetto Golf Course', city: 'Miami', state: 'Florida', country: 'USA', par: 70, holes: 18, yards: 7045, rating: 74.2, slope: 132, designer: 'Dick Wilson', type: 'Public', year: 1959 },
+                
+                // Coral Gables/Kendall/Miami Lakes Area
+                { name: 'Riviera Country Club', city: 'Coral Gables', state: 'Florida', country: 'USA', par: 71, holes: 18, yards: 6690, rating: 72.1, slope: 128, designer: 'Unknown', type: 'Private', year: 1946 },
+                { name: "Don Shula's Hotel & Golf Club", city: 'Miami Lakes', state: 'Florida', country: 'USA', par: 72, holes: 18, yards: 6941, rating: 73.3, slope: 131, designer: 'Bill Watts', type: 'Resort', year: 1962 },
+                { name: 'Killian Greens Golf Course', city: 'Miami', state: 'Florida', country: 'USA', par: 70, holes: 18, yards: 6228, rating: 69.2, slope: 114, designer: 'Unknown', type: 'Public', year: 1965 },
+                { name: 'Calusa Country Club', city: 'Kendall', state: 'Florida', country: 'USA', par: 72, holes: 18, yards: 6550, rating: 71.3, slope: 124, designer: 'Mark Mahannah', type: 'Private', year: 1968 },
+                { name: 'Westview Golf Course', city: 'Miami', state: 'Florida', country: 'USA', par: 72, holes: 18, yards: 6330, rating: 69.8, slope: 116, designer: 'Unknown', type: 'Public', year: 1962 },
+                
+                // Homestead/South Miami Area
+                { name: 'Redland Golf & Country Club', city: 'Homestead', state: 'Florida', country: 'USA', par: 72, holes: 18, yards: 7012, rating: 73.8, slope: 131, designer: 'Dave Postlewait', type: 'Semi-Private', year: 2000 },
+                { name: 'Keys Gate Golf Club', city: 'Homestead', state: 'Florida', country: 'USA', par: 71, holes: 18, yards: 6649, rating: 71.9, slope: 126, designer: 'Joe Lee', type: 'Semi-Private', year: 1994 },
+                { name: 'Fontainebleau Golf Course', city: 'Miami', state: 'Florida', country: 'USA', par: 72, holes: 18, yards: 6615, rating: 71.5, slope: 123, designer: 'Mark Mahannah', type: 'Public', year: 1968 },
+                
+                // Additional Palm Beach County Courses
+                { name: 'Banyan Cay Resort & Golf', city: 'West Palm Beach', state: 'Florida', country: 'USA', par: 61, holes: 18, yards: 4111, rating: 62.3, slope: 103, designer: 'Unknown', type: 'Resort', year: 1974 },
+                { name: 'Wellington Country Club', city: 'Wellington', state: 'Florida', country: 'USA', par: 72, holes: 18, yards: 6805, rating: 72.6, slope: 129, designer: 'Joe Lee', type: 'Private', year: 1989 },
+                { name: 'Palm Beach National Golf & Country Club', city: 'Lake Worth', state: 'Florida', country: 'USA', par: 72, holes: 18, yards: 6731, rating: 72.3, slope: 127, designer: 'Joe Lee', type: 'Semi-Private', year: 1999 },
+                { name: 'Winston Trails Golf Club', city: 'Lake Worth', state: 'Florida', country: 'USA', par: 72, holes: 18, yards: 6835, rating: 72.8, slope: 131, designer: 'Joe Lee', type: 'Semi-Private', year: 1993 },
+                { name: 'Indian Spring Country Club', city: 'Boynton Beach', state: 'Florida', country: 'USA', par: 72, holes: 18, yards: 6890, rating: 73.1, slope: 132, designer: 'Arthur Hills', type: 'Private', year: 1973 },
+                { name: 'Aberdeen Golf & Country Club', city: 'Boynton Beach', state: 'Florida', country: 'USA', par: 72, holes: 18, yards: 6740, rating: 72.4, slope: 128, designer: 'Joe Lee', type: 'Private', year: 1989 },
+                { name: 'Canyon Isles Golf Club', city: 'Boynton Beach', state: 'Florida', country: 'USA', par: 72, holes: 18, yards: 6615, rating: 71.5, slope: 125, designer: 'Gordon Lewis', type: 'Semi-Private', year: 1988 },
+                { name: 'Cypress Lakes Golf Club', city: 'Lake Worth', state: 'Florida', country: 'USA', par: 71, holes: 18, yards: 6505, rating: 70.8, slope: 122, designer: 'Gordon Lewis', type: 'Semi-Private', year: 1989 },
+                { name: 'Village Golf Club', city: 'Wellington', state: 'Florida', country: 'USA', par: 72, holes: 18, yards: 6955, rating: 73.6, slope: 133, designer: 'Joe Lee', type: 'Private', year: 1987 },
+                { name: 'West Palm Beach Municipal Golf Course', city: 'West Palm Beach', state: 'Florida', country: 'USA', par: 72, holes: 18, yards: 6219, rating: 69.4, slope: 117, designer: 'Unknown', type: 'Public', year: 1947 },
+                
+                // Additional Broward County Courses
+                { name: 'Sunrise Country Club', city: 'Sunrise', state: 'Florida', country: 'USA', par: 72, holes: 18, yards: 6840, rating: 72.9, slope: 130, designer: 'Bruce Devlin', type: 'Public', year: 1974 },
+                { name: 'Orangebrook Golf & Country Club', city: 'Hollywood', state: 'Florida', country: 'USA', par: 70, holes: 18, yards: 6210, rating: 69.1, slope: 115, designer: 'Unknown', type: 'Public', year: 1937 },
+                { name: 'Arrowhead Golf Club', city: 'Davie', state: 'Florida', country: 'USA', par: 71, holes: 18, yards: 6741, rating: 72.4, slope: 129, designer: 'Robert von Hagge', type: 'Public', year: 1992 },
+                { name: 'Davie Golf & Country Club', city: 'Davie', state: 'Florida', country: 'USA', par: 72, holes: 18, yards: 6556, rating: 71.4, slope: 124, designer: 'Lloyd Clifton', type: 'Semi-Private', year: 1963 },
+                { name: 'Plantation Preserve Golf Course', city: 'Plantation', state: 'Florida', country: 'USA', par: 72, holes: 18, yards: 6815, rating: 72.6, slope: 128, designer: 'Arthur Hills', type: 'Public', year: 1990 },
+                { name: 'Eagle Trace Golf Club', city: 'Coral Springs', state: 'Florida', country: 'USA', par: 72, holes: 18, yards: 6404, rating: 70.5, slope: 120, designer: 'Unknown', type: 'Public', year: 1986 },
+                { name: 'Heron Bay Golf Club', city: 'Coral Springs', state: 'Florida', country: 'USA', par: 72, holes: 18, yards: 7202, rating: 75.1, slope: 141, designer: 'Robert Trent Jones Jr.', type: 'Private', year: 2001 },
+                { name: 'Wycliffe Golf & Country Club', city: 'Wellington', state: 'Florida', country: 'USA', par: 72, holes: 18, yards: 6949, rating: 73.5, slope: 134, designer: 'Karl Litten', type: 'Private', year: 1980 },
+                { name: 'Westchester Golf & Country Club', city: 'Boynton Beach', state: 'Florida', country: 'USA', par: 72, holes: 18, yards: 6670, rating: 71.9, slope: 127, designer: 'Joe Lee', type: 'Private', year: 1988 },
+                { name: 'Glades Golf & Country Club', city: 'Lake Worth', state: 'Florida', country: 'USA', par: 72, holes: 18, yards: 6515, rating: 70.9, slope: 122, designer: 'Unknown', type: 'Private', year: 1975 },
+                
+                // Additional Miami-Dade Courses
+                { name: 'Miami Lakes Golf Club', city: 'Miami Lakes', state: 'Florida', country: 'USA', par: 72, holes: 18, yards: 6960, rating: 73.5, slope: 131, designer: 'Arthur Hills', type: 'Private', year: 1962 },
+                { name: 'Country Club of Miami', city: 'Miami', state: 'Florida', country: 'USA', par: 72, holes: 18, yards: 6897, rating: 73.2, slope: 130, designer: 'Robert Trent Jones Sr.', type: 'Private', year: 1961 },
+                { name: 'Normandy Shores Golf Club', city: 'Miami Beach', state: 'Florida', country: 'USA', par: 71, holes: 18, yards: 6410, rating: 70.5, slope: 120, designer: 'William Langford', type: 'Public', year: 1940 },
+                { name: 'Palm Aire Country Club - Oaks Course', city: 'Pompano Beach', state: 'Florida', country: 'USA', par: 71, holes: 18, yards: 6910, rating: 73.1, slope: 128, designer: 'George Fazio & Tom Fazio', type: 'Semi-Private', year: 1971 },
+                { name: 'Foxfire Golf Club', city: 'West Palm Beach', state: 'Florida', country: 'USA', par: 61, holes: 18, yards: 4264, rating: 62.8, slope: 105, designer: 'Ron Garl', type: 'Semi-Private', year: 1989 }
+            ];
+            
+            const searchLower = searchTerm.toLowerCase();
+            const filtered = sampleCourses.filter(c => 
+                c.name.toLowerCase().includes(searchLower) ||
+                c.city.toLowerCase().includes(searchLower) ||
+                c.state.toLowerCase().includes(searchLower) ||
+                c.country.toLowerCase().includes(searchLower)
+            );
+            
+            const msg = customErrorMsg || "⚠️ API unavailable. Showing sample famous courses.";
+
+            if (filtered.length > 0) {
+                displayApiResults(filtered);
+            } else {
+                displayApiResults(sampleCourses);
+            }
+            
+            const resultsContainer = document.getElementById('apiSearchResults');
+            resultsContainer.innerHTML = `<div class="loading" style="background: #fff3cd; color: #856404; padding: 10px; border-radius: 5px; margin-bottom: 10px;">${msg}</div>` + resultsContainer.innerHTML;
+        }
+
+        // Display API search results
+        function displayApiResults(courses) {
+            const t = translations[currentLang];
+            const resultsContainer = document.getElementById('apiSearchResults');
+
+            if (!courses || courses.length === 0) {
+                resultsContainer.innerHTML = `<div class="loading">${t.noResults}</div>`;
+                return;
+            }
+
+            let html = '';
+            courses.forEach((course, index) => {
+                // Build location string from available data
+                const locationParts = [];
+                if (course.city) locationParts.push(course.city);
+                if (course.state_province) locationParts.push(course.state_province);
+                if (course.state) locationParts.push(course.state);
+                if (course.country) locationParts.push(course.country);
+                const location = locationParts.join(', ') || 'Location not specified';
+                
+                // Get detailed data
+                const holes = course.holes || course.hole_count || 18;
+                const par = course.par || 72;
+                const yards = course.yards || course.yardage || null;
+                const designer = course.designer || null;
+                const type = course.type || null;
+                const rating = course.rating || course.course_rating || null;
+                const slope = course.slope || course.slope_rating || null;
+
+                html += `
+                    <div class="course-result">
+                        <div class="course-info">
+                            <h4>${course.name || 'Unknown Course'}</h4>
+                            <p>📍 ${location}</p>
+                            <p>⛳ Par: ${par} | ${holes} ${t.holes}${yards ? ` | ${yards} yards` : ''}</p>
+                            ${rating && slope ? `<p>📊 Rating: ${rating} | Slope: ${slope}</p>` : ''}
+                            ${designer ? `<p>🏗️ Designer: ${designer}${course.year ? ` (${course.year})` : ''}</p>` : ''}
+                            ${type ? `<p>🏛️ Type: ${type}</p>` : ''}
+                        </div>
+                        <button class="btn-add-course" onclick="addCourseFromApi(${index})">
+                            ${t.btnAddToCourses}
+                        </button>
+                    </div>
+                `;
+            });
+
+            resultsContainer.innerHTML = html;
+            
+            // Store courses temporarily for adding
+            window.apiCoursesCache = courses;
+        }
+
+        // Add course from API to Firebase
+        window.addCourseFromApi = function(index) {
+            const course = window.apiCoursesCache[index];
+            
+            // Build location string
+            const locationParts = [];
+            if (course.city) locationParts.push(course.city);
+            if (course.state_province) locationParts.push(course.state_province);
+            if (course.state) locationParts.push(course.state);
+            if (course.country) locationParts.push(course.country);
+            const location = locationParts.join(', ') || 'Location not specified';
+            
+            const holes = course.holes || course.hole_count || 18;
+            const par = course.par || 72;
+            const yards = course.yards || course.yardage || null;
+            const rating = course.rating || course.course_rating || null;
+            const slope = course.slope || course.slope_rating || null;
+            const designer = course.designer || null;
+            const type = course.type || null;
+            const year = course.year || null;
+
+            // Add to Firebase with all available data
+            const courseData = {
+                name: course.name || 'Unknown Course',
+                location: location,
+                par: par,
+                holes: holes,
+                createdAt: Date.now()
+            };
+            
+            // Add optional fields if available
+            if (yards) courseData.yards = yards;
+            if (rating) courseData.rating = rating;
+            if (slope) courseData.slope = slope;
+            if (designer) courseData.designer = designer;
+            if (type) courseData.type = type;
+            if (year) courseData.year = year;
+
+            coursesRef.push(courseData).then(() => {
+                console.log('Course added successfully from API with detailed data');
+                alert(`✅ ${course.name} added to your courses!`);
+            }).catch((error) => {
+                console.error('Error adding course:', error);
+                alert('Failed to add course');
+            });
+        };
+
+        // Add enter key support for search
+        document.getElementById('apiSearchInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                searchGolfCourses();
+            }
+        });
     </script>
 </body>
 </html>
