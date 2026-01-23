@@ -738,6 +738,8 @@
                 optBestAvg: "🏆 Best Average Together",
                 btnGenerate: "Generate Pairings",
                 btnSaveGame: "💾 Save Game",
+                btnUpdateGame: "💾 Update Game",
+                btnLoadGame: "✏️ Load/Edit",
                 labelPairings: "📋 Generated Pairings & Foursomes",
                 labelGroup: "Group",
                 labelGameDate: "Game Date:",
@@ -812,6 +814,8 @@
                 optBestAvg: "🏆 Meilleurs Scores Ensemble",
                 btnGenerate: "Générer les Équipes",
                 btnSaveGame: "💾 Sauvegarder la Partie",
+                btnUpdateGame: "💾 Mettre à Jour la Partie",
+                btnLoadGame: "✏️ Modifier/Charger",
                 labelPairings: "📋 Équipes et Quatuors Générés",
                 labelGroup: "Quatuor",
                 labelGameDate: "Date de la Partie :",
@@ -1914,10 +1918,11 @@
             html += `</div>`;
             
             // Add Save Button
+            const btnText = currentGameData.key ? t.btnUpdateGame : t.btnSaveGame;
             html += `
                 <div style="text-align: center; margin-bottom: 20px;">
                     <button class="btn btn-primary" onclick="saveGame()" style="background: #2196F3; font-size: 1.1em;">
-                        ${t.btnSaveGame}
+                        ${btnText}
                     </button>
                 </div>
             `;
@@ -1953,9 +1958,21 @@
         window.saveGame = function() {
             if (!currentGameData) return;
             
-            gamesRef.push(currentGameData).then(() => {
-                const t = translations[currentLang];
-                alert("Game saved successfully!");
+            const t = translations[currentLang];
+            const dataToSave = { ...currentGameData };
+            const key = dataToSave.key;
+            delete dataToSave.key; // Don't save key in the data
+            
+            let promise;
+            if (key) {
+                promise = gamesRef.child(key).update(dataToSave);
+            } else {
+                promise = gamesRef.push(dataToSave);
+            }
+
+            promise.then(() => {
+                const msg = key ? (currentLang === 'fr' ? "Partie mise à jour!" : "Game updated!") : (currentLang === 'fr' ? "Partie sauvegardée!" : "Game saved!");
+                alert(msg);
                 currentGameData = null; // Reset
                 document.getElementById('pairingsResults').innerHTML = `<div class="empty-state"><p>${t.labelPairings}</p></div>`; // Clear view
                 loadGameHistory(); // Refresh history
@@ -1963,6 +1980,30 @@
                 console.error('Error saving game:', error);
                 alert('Failed to save game');
             });
+        };
+
+        window.loadGameForEditing = function(gameKey) {
+            const game = window.historyGames.find(g => g.key === gameKey);
+            if (!game) return;
+
+            // Deep copy to avoid mutating history directly until saved
+            currentGameData = JSON.parse(JSON.stringify(game));
+            swapSelection = null;
+            
+            // Populate inputs
+            if (game.date) document.getElementById('planningDate').value = game.date;
+            if (game.course) document.getElementById('planningCourseSelect').value = game.course;
+            if (game.startTime) document.getElementById('planningStartTime').value = game.startTime;
+            if (game.interval) document.getElementById('planningTimeInterval').value = game.interval;
+            if (game.strategy) {
+                 const radios = document.getElementsByName('groupingStrategy');
+                 radios.forEach(r => r.checked = (r.value === game.strategy));
+            }
+
+            renderCurrentPairings();
+            
+            // Scroll to top
+            document.getElementById('pairingsResults').scrollIntoView({ behavior: 'smooth' });
         };
 
         window.loadGameHistory = function() {
@@ -1980,6 +2021,9 @@
                     games.push({ key: child.key, ...child.val() });
                 });
                 
+                // Store globally
+                window.historyGames = games;                
+
                 // Sort by date descending
                 games.sort((a, b) => new Date(b.date) - new Date(a.date));
 
@@ -1987,8 +2031,11 @@
                 games.forEach(game => {
                     html += `
                         <div style="background: white; border: 1px solid #ddd; border-radius: 8px; padding: 15px; margin-bottom: 15px;">
-                            <h4 style="color: #333; margin-bottom: 10px; border-bottom: 2px solid #4CAF50; padding-bottom: 5px;">
-                                📅 ${game.date} | ⛳ ${game.course}
+                            <h4 style="color: #333; margin-bottom: 10px; border-bottom: 2px solid #4CAF50; padding-bottom: 5px; display: flex; justify-content: space-between; align-items: center;">
+                                <span>📅 ${game.date} | ⛳ ${game.course}</span>
+                                <button onclick="loadGameForEditing('${game.key}')" style="background: #FF9800; color: white; border: none; padding: 5px 12px; border-radius: 4px; cursor: pointer; font-size: 0.8em;">
+                                    ${t.btnLoadGame}
+                                </button>
                             </h4>
                             <p style="font-size: 0.9em; color: #666; margin-bottom: 10px;">
                                 Strategy: ${game.strategy === 'random' ? t.optMixMatch : t.optBestAvg}
