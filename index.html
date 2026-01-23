@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -35,7 +35,7 @@
         }
 
         .header {
-            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
             color: white;
             padding: 30px;
             text-align: center;
@@ -63,12 +63,12 @@
 
         .lang-btn:hover {
             background: white;
-            color: #4CAF50;
+            color: #2196F3;
         }
 
         .lang-btn.active {
             background: white;
-            color: #4CAF50;
+            color: #2196F3;
         }
 
         .header h1 {
@@ -121,7 +121,7 @@
 
         .form-group input:focus {
             outline: none;
-            border-color: #4CAF50;
+            border-color: #2196F3;
         }
 
         .btn-container {
@@ -141,15 +141,15 @@
         }
 
         .btn-primary {
-            background: #4CAF50;
+            background: #2196F3;
             color: white;
             flex: 1;
         }
 
         .btn-primary:hover {
-            background: #45a049;
+            background: #1976D2;
             transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(76, 175, 80, 0.3);
+            box-shadow: 0 5px 15px rgba(33, 150, 243, 0.3);
         }
 
         .btn-secondary {
@@ -316,13 +316,13 @@
         }
 
         .tab:hover {
-            color: #4CAF50;
-            background: rgba(76, 175, 80, 0.05);
+            color: #2196F3;
+            background: rgba(33, 150, 243, 0.05);
         }
 
         .tab.active {
-            color: #4CAF50;
-            border-bottom-color: #4CAF50;
+            color: #2196F3;
+            border-bottom-color: #2196F3;
         }
 
         .tab-content {
@@ -428,7 +428,7 @@
 
         .course-info h4 {
             margin-bottom: 5px;
-            color: #4CAF50;
+            color: #2196F3;
         }
 
         .course-info p {
@@ -439,7 +439,7 @@
 
         .btn-add-course {
             padding: 8px 20px;
-            background: #4CAF50;
+            background: #2196F3;
             color: white;
             border: none;
             border-radius: 5px;
@@ -449,7 +449,7 @@
         }
 
         .btn-add-course:hover {
-            background: #45a049;
+            background: #1976D2;
             transform: scale(1.05);
         }
 
@@ -458,12 +458,214 @@
             padding: 20px;
             font-size: 1.1em;
         }
+
+        /* Login Page Styles */
+        .login-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .login-card {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .login-header h2 {
+            color: #2196F3;
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        .login-header p {
+            color: #666;
+        }
+
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+
+        .modal-card {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+        }
+
+        .settings-btn {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 2px solid white;
+            padding: 8px;
+            border-radius: 5px;
+            cursor: pointer;
+            width: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2em;
+            transition: all 0.3s;
+        }
+        
+        .settings-btn:hover {
+            background: white;
+            color: #2196F3;
+        }
+
+        .help-toggle {
+            position: absolute;
+            top: 20px;
+            left: 30px;
+        }
+
+        .help-btn {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 2px solid white;
+            padding: 8px;
+            border-radius: 50%;
+            cursor: pointer;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2em;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        
+        .help-btn:hover {
+            background: white;
+            color: #2196F3;
+            transform: scale(1.1);
+        }
+
+        .help-content {
+            max-height: 70vh;
+            overflow-y: auto;
+            text-align: left;
+            padding-right: 10px;
+        }
+
+        .help-section {
+            margin-bottom: 20px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 15px;
+        }
+
+        .help-section:last-child {
+            border-bottom: none;
+        }
+
+        .help-section h4 {
+            color: #2196F3;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
     </style>
 </head>
 <body>
-    <div class="container">
+    <!-- Help Modal -->
+    <div class="modal-overlay" id="helpModal">
+        <div class="modal-card" style="max-width: 600px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="color: #2196F3; font-size: 1.5em; margin: 0;" id="helpTitle">📖 User Guide</h3>
+                <button onclick="closeHelp()" style="background: none; border: none; font-size: 1.5em; cursor: pointer; color: #666;">&times;</button>
+            </div>
+            
+            <div class="help-content" id="helpBody">
+                <!-- Content injected via JS based on language -->
+            </div>
+
+            <div style="text-align: right; margin-top: 20px;">
+                <button type="button" class="btn btn-primary" onclick="closeHelp()" id="btnCloseHelp">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Login Page -->
+    <div class="login-container" id="loginPage">
+        <div class="login-card">
+            <div class="login-header">
+                <h2>⛳ Golf Manager</h2>
+                <p>Secured Access</p>
+            </div>
+            <form id="loginForm" onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label for="loginUser">Login</label>
+                    <input type="text" id="loginUser" placeholder="Enter login" required>
+                </div>
+                <div class="form-group">
+                    <label for="loginPwd">Password</label>
+                    <input type="password" id="loginPwd" placeholder="Enter password" required>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Access</button>
+                <p id="loginError" style="color: #f44336; margin-top: 15px; display: none; text-align: center; font-weight: bold;">Invalid credentials</p>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div class="container" id="appContainer" style="display: none;">
+        <!-- ... existing content ... -->
+        
+    <!-- Settings Modal -->
+    <div class="modal-overlay" id="settingsModal">
+        <div class="modal-card">
+            <h3 style="margin-bottom: 20px; color: #2196F3;">⚙️ Admin Settings</h3>
+            <form onsubmit="saveSettings(event)">
+                <div class="form-group">
+                    <label>New User Login</label>
+                    <input type="text" id="settingUser" required>
+                </div>
+                <div class="form-group">
+                    <label>New Password</label>
+                    <input type="text" id="settingPwd" required>
+                </div>
+                <div class="btn-container">
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeSettings()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
         <div class="header">
+            <div class="help-toggle">
+                <button class="help-btn" onclick="openHelp()" title="Help / Aide">❓</button>
+            </div>
             <div class="language-toggle">
+                <button class="settings-btn" onclick="openSettings()" title="Settings">⚙️</button>
                 <button class="lang-btn active" onclick="changeLanguage('en')" id="btnEn">EN</button>
                 <button class="lang-btn" onclick="changeLanguage('fr')" id="btnFr">FR</button>
             </div>
@@ -670,6 +872,175 @@
     </div>
 
     <script>
+        // Login Logic
+        async function handleLogin(e) {
+            e.preventDefault();
+            const user = document.getElementById('loginUser').value;
+            const pwd = document.getElementById('loginPwd').value;
+            const errorMsg = document.getElementById('loginError');
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+
+            // Indicate loading
+            const originalBtnText = submitBtn.textContent;
+            submitBtn.textContent = 'Verifying...';
+            submitBtn.disabled = true;
+
+            try {
+                // Check if adminRef is available (it should be initialized below immediately)
+                // We use defaults if DB is empty, otherwise DB values
+                let validUser = 'aztec';
+                let validPwd = 'golf';
+                
+                if (adminRef) {
+                    const snapshot = await adminRef.once('value');
+                    if (snapshot.exists()) {
+                        const creds = snapshot.val();
+                        validUser = creds.username || 'aztec';
+                        validPwd = creds.password || 'golf';
+                    } else {
+                        // First time run or empty DB: Save defaults to DB so they persist
+                        adminRef.set({ username: 'aztec', password: 'golf' });
+                    }
+                }
+
+                if (user === validUser && pwd === validPwd) {
+                    // Success
+                    document.getElementById('loginPage').style.display = 'none';
+                    document.getElementById('appContainer').style.display = 'block';
+                } else {
+                    throw new Error('Invalid credentials');
+                }
+            } catch (err) {
+                console.error("Login failed", err);
+                // Fail
+                errorMsg.style.display = 'block';
+                // Shake effect
+                const card = document.querySelector('.login-card');
+                card.style.transform = 'translateX(10px)';
+                setTimeout(() => card.style.transform = 'translateX(-10px)', 100);
+                setTimeout(() => card.style.transform = 'translateX(0)', 200);
+            } finally {
+                submitBtn.textContent = originalBtnText;
+                submitBtn.disabled = false;
+            }
+        }
+        
+        // Settings / Admin Logic
+        function openSettings() {
+            document.getElementById('settingsModal').style.display = 'flex';
+            // Prefill current values if possible, but for security maybe blank?
+            // Let's fetch current to show
+            if(adminRef) {
+                adminRef.once('value', (snapshot) => {
+                    const creds = snapshot.val() || { username: 'aztec', password: 'golf' };
+                    document.getElementById('settingUser').value = creds.username;
+                    document.getElementById('settingPwd').value = creds.password;
+                });
+            }
+        }
+
+        function closeSettings() {
+             document.getElementById('settingsModal').style.display = 'none';
+        }
+
+        // Help Logic
+        function openHelp() {
+            document.getElementById('helpModal').style.display = 'flex';
+            const t = translations[currentLang];
+            
+            document.getElementById('helpTitle').textContent = currentLang === 'en' ? "📖 User Guide" : "📖 Guide d'utilisation";
+            document.getElementById('btnCloseHelp').textContent = currentLang === 'en' ? "Close" : "Fermer";
+            
+            const helpHTML = currentLang === 'en' ? `
+                <div class="help-section">
+                    <h4>👥 Players Tab</h4>
+                    <p>Manage your roster. <strong>Add players</strong> with their average score. Use the edit/delete buttons in the list to maintain your player database.</p>
+                </div>
+                <div class="help-section">
+                    <h4>🏌️ Courses Tab</h4>
+                    <p>Manage golf courses. You can <strong>add custom courses</strong> manually or use the <strong>Search</strong> feature to find real courses from a database of 30,000+. Added courses will appear in the Planning dropdown.</p>
+                </div>
+                <div class="help-section">
+                    <h4>📅 Planning Tab</h4>
+                    <p>Organize your game!</p>
+                    <ul>
+                        <li>Select a <strong>Course</strong> and <strong>Date</strong>.</li>
+                        <li>Check "Available Players" list on the right.</li>
+                        <li>Choose a <strong>Strategy</strong>:
+                            <br>&nbsp;• <em>Mix & Match</em>: Randomizes groups.
+                            <br>&nbsp;• <em>Best Average</em>: Balances teams by skill.
+                        </li>
+                        <li><strong>Generate</strong>: Creates prompt pairings.</li>
+                        <li><strong>Edit</strong>: You can swap players by clicking them or add new ones with the (+) button.</li>
+                        <li><strong>Save</strong>: Keeps a history of your games below.</li>
+                    </ul>
+                </div>
+                <div class="help-section">
+                    <h4>⚙️ Settings</h4>
+                    <p>Use the gear icon (top right) to change your login credentials. Default is <em>aztec / golf</em>.</p>
+                </div>
+            ` : `
+                <div class="help-section">
+                    <h4>👥 Onglet Joueurs</h4>
+                    <p>Gérez votre liste. <strong>Ajoutez des joueurs</strong> avec leur score moyen. Utilisez les boutons modifier/supprimer pour maintenir votre base de données à jour.</p>
+                </div>
+                <div class="help-section">
+                    <h4>🏌️ Onglet Terrains</h4>
+                    <p>Gérez les terrains de golf. Vous pouvez <strong>ajouter manuellement</strong> ou utiliser la <strong>Recherche</strong> pour trouver de vrais terrains parmi +30 000. Les terrains ajoutés apparaîtront dans la planification.</p>
+                </div>
+                <div class="help-section">
+                    <h4>📅 Onglet Planification</h4>
+                    <p>Organisez votre partie !</p>
+                    <ul>
+                        <li>Choisissez un <strong>Terrain</strong> et une <strong>Date</strong>.</li>
+                        <li>Consultez la liste des "Joueurs Disponibles" à droite.</li>
+                        <li>Choisissez une <strong>Stratégie</strong> :
+                            <br>&nbsp;• <em>Mélanger</em> : Groupes aléatoires.
+                            <br>&nbsp;• <em>Meilleurs Scores</em> : Équilibre les équipes par niveau.
+                        </li>
+                        <li><strong>Générer</strong> : Crée les quatuors.</li>
+                        <li><strong>Modifier</strong> : Échangez les joueurs en cliquant dessus ou ajoutez-en avec le bouton (+).</li>
+                        <li><strong>Sauvegarder</strong> : Conserve un historique de vos parties en bas de page.</li>
+                    </ul>
+                </div>
+                <div class="help-section">
+                    <h4>⚙️ Paramètres</h4>
+                    <p>Utilisez l'icône d'engrenage (haut droite) pour changer vos identifiants. Par défaut : <em>aztec / golf</em>.</p>
+                </div>
+            `;
+            
+            document.getElementById('helpBody').innerHTML = helpHTML;
+        }
+
+        function closeHelp() {
+            document.getElementById('helpModal').style.display = 'none';
+        }
+
+        function saveSettings(e) {
+            e.preventDefault();
+            const newUser = document.getElementById('settingUser').value;
+            const newPwd = document.getElementById('settingPwd').value;
+             
+            if(!newUser || !newPwd) {
+                alert("Please fill both fields");
+                return;
+            }
+
+            if(adminRef) {
+                adminRef.set({ username: newUser, password: newPwd })
+                    .then(() => {
+                        alert("Credentials updated successfully!");
+                        closeSettings();
+                    })
+                    .catch((err) => {
+                        console.error(err);
+                        alert("Failed to update credentials");
+                    });
+            } else {
+                alert("Database not connected");
+            }
+        }
+
         // ========================================
         // TRANSLATIONS
         // ========================================
@@ -735,6 +1106,11 @@
                 msgLocationUnknown: "Location not specified",
                 msgUnknownCourse: "Unknown Course",
                 unitYards: "yards",
+                /* API Result Labels */
+                labelRating: "Rating",
+                labelSlope: "Slope",
+                labelDesigner: "Designer",
+                labelType: "Type",
                 alertCourseAdded: "added to your courses!",
                 alertAddCourseFailed: "Failed to add course",
                 alertQuotaExceeded: "Quota Exceeded (429)",
@@ -773,6 +1149,10 @@
                 btnCancelEdit: "Cancel Edit",
                 msgAllAssigned: "All players assigned.",
                 alertSelectAvailable: "Please select a player from the 'Available Players' list first.",
+                labelGameAt: "Game at",
+                labelStrategy: "Strategy",
+                labelAvg: "Avg",
+                tooltipAddPlayer: "Add Selected Player",
                 footerText: "© 2026 Application Property of Sylvain Trepanier"
             },
             fr: {
@@ -836,6 +1216,11 @@
                 msgLocationUnknown: "Emplacement non spécifié",
                 msgUnknownCourse: "Terrain Inconnu",
                 unitYards: "verges",
+                /* API Result Labels */
+                labelRating: "Éval",
+                labelSlope: "Pente",
+                labelDesigner: "Architecte",
+                labelType: "Type",
                 alertCourseAdded: "ajouté à vos terrains !",
                 alertAddCourseFailed: "Échec de l'ajout du terrain",
                 alertQuotaExceeded: "Quota Dépassé (429)",
@@ -874,6 +1259,10 @@
                 btnCancelEdit: "Annuler Modification",
                 msgAllAssigned: "Tous les joueurs sont assignés.",
                 alertSelectAvailable: "Veuillez d'abord sélectionner un joueur dans la liste 'Joueurs Disponibles'.",
+                labelGameAt: "Partie à",
+                labelStrategy: "Stratégie",
+                labelAvg: "Moy",
+                tooltipAddPlayer: "Ajouter le joueur sélectionné",
                 footerText: "© 2026 Cette application est la propriété de Sylvain Trepanier"
             }
         };
@@ -898,100 +1287,112 @@
         function updateLanguage() {
             const t = translations[currentLang];
             
-            // Header
-            document.getElementById('headerTitle').textContent = t.headerTitle;
-            document.getElementById('headerSubtitle').textContent = t.headerSubtitle;
-            document.getElementById('footerText').textContent = t.footerText;
-            
-            // Tabs
-            document.getElementById('tabPlayers').innerHTML = t.tabPlayers;
-            document.getElementById('tabCourses').innerHTML = t.tabCourses;
-            document.getElementById('tabPlanning').innerHTML = t.tabPlanning;
-            
-            // Players section
-            document.getElementById('labelTotalPlayers').textContent = t.labelTotalPlayers;
-            document.getElementById('labelAvgScore').textContent = t.labelAvgScore;
-            document.getElementById('labelBestPlayer').textContent = t.labelBestPlayer;
-            document.getElementById('labelPlayerName').textContent = t.labelPlayerName;
-            document.getElementById('labelAvgScoreInput').textContent = t.labelAvgScoreInput;
-            document.getElementById('playerName').placeholder = t.placeholderName;
-            document.getElementById('averageScore').placeholder = t.placeholderScore;
-            document.getElementById('cancelBtn').textContent = t.btnCancel;
-            document.getElementById('labelPlayersList').textContent = t.labelPlayersList;
-            
-            // Update form title based on edit state
-            const isEditing = editIndex.value !== '';
-            document.getElementById('formTitle').textContent = isEditing ? t.formTitleEdit : t.formTitleAdd;
-            document.getElementById('submitBtn').textContent = isEditing ? t.btnUpdate : t.btnAdd;
-                        
-            // Courses section
-            document.getElementById('labelTotalCourses').textContent = t.labelTotalCourses;
-            document.getElementById('labelAvgPar').textContent = t.labelAvgPar;
-            document.getElementById('labelAvgHoles').textContent = t.labelAvgHoles;
-            document.getElementById('apiSearchTitle').textContent = t.apiSearchTitle;
-            document.getElementById('apiSearchInput').placeholder = t.apiSearchPlaceholder;
-            document.getElementById('btnApiSearch').textContent = t.btnSearch;
-            document.getElementById('labelCourseName').textContent = t.labelCourseName;
-            document.getElementById('labelCourseLocation').textContent = t.labelCourseLocation;
-            document.getElementById('labelCoursePar').textContent = t.labelCoursePar;
-            document.getElementById('labelCourseHoles').textContent = t.labelCourseHoles;
-            document.getElementById('courseName').placeholder = t.placeholderCourseName;
-            document.getElementById('courseLocation').placeholder = t.placeholderCourseLocation;
-            document.getElementById('coursePar').placeholder = t.placeholderCoursePar;
-            document.getElementById('courseHoles').placeholder = t.placeholderCourseHoles;
-            document.getElementById('cancelCourseBtn').textContent = t.btnCancel;
-            document.getElementById('labelCoursesList').textContent = t.labelCoursesList;
-            document.getElementById('labelNoCourses').textContent = t.labelNoCourses;
-            document.getElementById('labelNoCoursesDesc').textContent = t.labelNoCoursesDesc;
+            try {
+                // Header
+                if(document.getElementById('headerTitle')) document.getElementById('headerTitle').textContent = t.headerTitle;
+                if(document.getElementById('headerSubtitle')) document.getElementById('headerSubtitle').textContent = t.headerSubtitle;
+                if(document.getElementById('footerText')) document.getElementById('footerText').textContent = t.footerText;
+                
+                // Tabs
+                if(document.getElementById('tabPlayers')) document.getElementById('tabPlayers').innerHTML = t.tabPlayers;
+                if(document.getElementById('tabCourses')) document.getElementById('tabCourses').innerHTML = t.tabCourses;
+                if(document.getElementById('tabPlanning')) document.getElementById('tabPlanning').innerHTML = t.tabPlanning;
+                
+                // Players section
+                if(document.getElementById('labelTotalPlayers')) document.getElementById('labelTotalPlayers').textContent = t.labelTotalPlayers;
+                if(document.getElementById('labelAvgScore')) document.getElementById('labelAvgScore').textContent = t.labelAvgScore;
+                if(document.getElementById('labelBestPlayer')) document.getElementById('labelBestPlayer').textContent = t.labelBestPlayer;
+                if(document.getElementById('labelPlayerName')) document.getElementById('labelPlayerName').textContent = t.labelPlayerName;
+                if(document.getElementById('labelAvgScoreInput')) document.getElementById('labelAvgScoreInput').textContent = t.labelAvgScoreInput;
+                if(document.getElementById('playerName')) document.getElementById('playerName').placeholder = t.placeholderName;
+                if(document.getElementById('averageScore')) document.getElementById('averageScore').placeholder = t.placeholderScore;
+                if(document.getElementById('cancelBtn')) document.getElementById('cancelBtn').textContent = t.btnCancel;
+                if(document.getElementById('labelPlayersList')) document.getElementById('labelPlayersList').textContent = t.labelPlayersList;
+                
+                // Update form title based on edit state
+                if(typeof editIndex !== 'undefined' && editIndex) {
+                    const isEditing = editIndex.value !== '';
+                    if(document.getElementById('formTitle')) document.getElementById('formTitle').textContent = isEditing ? t.formTitleEdit : t.formTitleAdd;
+                    if(document.getElementById('submitBtn')) document.getElementById('submitBtn').textContent = isEditing ? t.btnUpdate : t.btnAdd;
+                }
+                            
+                // Courses section
+                if(document.getElementById('labelTotalCourses')) document.getElementById('labelTotalCourses').textContent = t.labelTotalCourses;
+                if(document.getElementById('labelAvgPar')) document.getElementById('labelAvgPar').textContent = t.labelAvgPar;
+                if(document.getElementById('labelAvgHoles')) document.getElementById('labelAvgHoles').textContent = t.labelAvgHoles;
+                if(document.getElementById('apiSearchTitle')) document.getElementById('apiSearchTitle').textContent = t.apiSearchTitle;
+                if(document.getElementById('apiSearchInput')) document.getElementById('apiSearchInput').placeholder = t.apiSearchPlaceholder;
+                if(document.getElementById('btnApiSearch')) document.getElementById('btnApiSearch').textContent = t.btnSearch;
+                if(document.getElementById('labelCourseName')) document.getElementById('labelCourseName').textContent = t.labelCourseName;
+                if(document.getElementById('labelCourseLocation')) document.getElementById('labelCourseLocation').textContent = t.labelCourseLocation;
+                if(document.getElementById('labelCoursePar')) document.getElementById('labelCoursePar').textContent = t.labelCoursePar;
+                if(document.getElementById('labelCourseHoles')) document.getElementById('labelCourseHoles').textContent = t.labelCourseHoles;
+                if(document.getElementById('courseName')) document.getElementById('courseName').placeholder = t.placeholderCourseName;
+                if(document.getElementById('courseLocation')) document.getElementById('courseLocation').placeholder = t.placeholderCourseLocation;
+                if(document.getElementById('coursePar')) document.getElementById('coursePar').placeholder = t.placeholderCoursePar;
+                if(document.getElementById('courseHoles')) document.getElementById('courseHoles').placeholder = t.placeholderCourseHoles;
+                if(document.getElementById('cancelCourseBtn')) document.getElementById('cancelCourseBtn').textContent = t.btnCancel;
+                if(document.getElementById('labelCoursesList')) document.getElementById('labelCoursesList').textContent = t.labelCoursesList;
+                if(document.getElementById('labelNoCourses')) document.getElementById('labelNoCourses').textContent = t.labelNoCourses;
+                if(document.getElementById('labelNoCoursesDesc')) document.getElementById('labelNoCoursesDesc').textContent = t.labelNoCoursesDesc;
+            } catch(e) { console.error("Error in core translation updates", e); }
             
             // Update course form title based on edit state
-            const isCourseEditing = editCourseIndex.value !== '';
-            document.getElementById('courseFormTitle').textContent = isCourseEditing ? t.courseFormTitleEdit : t.courseFormTitleAdd;
-            document.getElementById('submitCourseBtn').textContent = isCourseEditing ? t.btnUpdateCourse : t.btnAddCourse;
+            try {
+                if(typeof editCourseIndex !== 'undefined' && editCourseIndex) {
+                    const isCourseEditing = editCourseIndex.value !== '';
+                    if(document.getElementById('courseFormTitle')) document.getElementById('courseFormTitle').textContent = isCourseEditing ? t.courseFormTitleEdit : t.courseFormTitleAdd;
+                    if(document.getElementById('submitCourseBtn')) document.getElementById('submitCourseBtn').textContent = isCourseEditing ? t.btnUpdateCourse : t.btnAddCourse;
+                }
+            } catch(e) { console.error("Error updating course form title", e); }
             
             // Redisplay players and courses to update table headers
-            displayPlayers();
-            displayCourses();
+            try { displayPlayers(); } catch(e) { console.error("Error displaying players", e); }
+            try { displayCourses(); } catch(e) { console.error("Error displaying courses", e); }
 
             // Planning
-            if (document.getElementById('planningTitle')) {
-                document.getElementById('planningTitle').textContent = t.planningTitle;
-                document.getElementById('labelSelectCourse').textContent = t.labelSelectCourse;
-                document.getElementById('labelGameType').textContent = t.labelGameType;
-                document.getElementById('labelStartTime').textContent = t.labelStartTime;
-                document.getElementById('labelTimeInterval').textContent = t.labelTimeInterval;
-                document.getElementById('optMixMatch').textContent = t.optMixMatch;
-                document.getElementById('optBestAvg').textContent = t.optBestAvg;
-                document.getElementById('btnGenerate').textContent = t.btnGenerate;
-                document.getElementById('labelPairings').textContent = t.labelPairings;
-                document.getElementById('labelGameDate').textContent = t.labelGameDate;
-                document.getElementById('labelHistory').textContent = t.labelHistory;
-                if (document.getElementById('msgSelectPlayers')) document.getElementById('msgSelectPlayers').textContent = t.msgSelectPlayers;
-                if (document.getElementById('msgLoadingHistory')) document.getElementById('msgLoadingHistory').textContent = t.msgLoadingHistory;
-                if (document.getElementById('labelAvailable')) document.getElementById('labelAvailable').textContent = t.labelAvailable;
-                if (document.getElementById('msgAvailability')) document.getElementById('msgAvailability').textContent = t.msgAvailability;
-                
-                // Update dropdown default option if it exists
-                const courseSelect = document.getElementById('planningCourseSelect');
-                if (courseSelect && courseSelect.options.length > 0 && courseSelect.options[0].value === "") {
-                    courseSelect.options[0].textContent = t.optChooseCourse;
-                }
-                
-                // Refresh pairings logic if visible to update dynamic texts
-                if (currentGameData) {
-                    renderCurrentPairings();
-                } else {
-                    // Update empty state if needed
-                    const container = document.getElementById('pairingsResults');
-                    if(container && container.querySelector('.empty-state p')) {
-                         container.querySelector('.empty-state p').textContent = t.msgSelectPlayers;
+            try {
+                if (document.getElementById('planningTitle')) {
+                    document.getElementById('planningTitle').textContent = t.planningTitle;
+                    document.getElementById('labelSelectCourse').textContent = t.labelSelectCourse;
+                    document.getElementById('labelGameType').textContent = t.labelGameType;
+                    document.getElementById('labelStartTime').textContent = t.labelStartTime;
+                    document.getElementById('labelTimeInterval').textContent = t.labelTimeInterval;
+                    document.getElementById('optMixMatch').innerHTML = t.optMixMatch; // Use innerHTML for emoji
+                    document.getElementById('optBestAvg').innerHTML = t.optBestAvg; // Use innerHTML for emoji
+                    document.getElementById('btnGenerate').textContent = t.btnGenerate;
+                    document.getElementById('labelPairings').textContent = t.labelPairings;
+                    document.getElementById('labelGameDate').textContent = t.labelGameDate;
+                    document.getElementById('labelHistory').textContent = t.labelHistory;
+                    if (document.getElementById('msgSelectPlayers')) document.getElementById('msgSelectPlayers').textContent = t.msgSelectPlayers;
+                    if (document.getElementById('msgLoadingHistory')) document.getElementById('msgLoadingHistory').textContent = t.msgLoadingHistory;
+                    if (document.getElementById('labelAvailable')) document.getElementById('labelAvailable').textContent = t.labelAvailable;
+                    if (document.getElementById('msgAvailability')) document.getElementById('msgAvailability').textContent = t.msgAvailability;
+                    
+                    // Update dropdown default option if it exists
+                    const courseSelect = document.getElementById('planningCourseSelect');
+                    if (courseSelect && courseSelect.options.length > 0 && courseSelect.options[0].value === "") {
+                        courseSelect.options[0].textContent = t.optChooseCourse;
+                    }
+                    
+                    // Refresh pairings logic if visible to update dynamic texts
+                    if (currentGameData) {
+                        try { renderCurrentPairings(); } catch(e) { console.error("Error rendering pairings", e); }
+                    } else {
+                        // Update empty state if needed
+                        const container = document.getElementById('pairingsResults');
+                        if(container && container.querySelector('.empty-state p')) {
+                            container.querySelector('.empty-state p').textContent = t.msgSelectPlayers;
+                        }
+                    }
+                    
+                    // Reload history to update texts (like "Load/Edit" button)
+                    if (document.getElementById('historyContainer')) {
+                         try { loadGameHistory(); } catch(e) { console.error("Error loading history", e); }
                     }
                 }
-                
-                // Reload history to update texts (like "Load/Edit" button)
-                if (document.getElementById('historyContainer')) {
-                    loadGameHistory();
-                }
+            } catch (e) {
+                console.error("Error updating Planning tab translations", e);
             }
         }
 
@@ -1036,6 +1437,7 @@
         let playersRef;
         let coursesRef;
         let gamesRef;
+        let adminRef;
         
         try {
             firebase.initializeApp(firebaseConfig);
@@ -1043,6 +1445,7 @@
             playersRef = database.ref('players');
             coursesRef = database.ref('courses');
             gamesRef = database.ref('games');
+            adminRef = database.ref('admin/credentials');
             console.log('✅ Firebase connected successfully!');
         } catch (error) {
             console.error('❌ Firebase initialization error:', error);
@@ -1794,9 +2197,9 @@
                             <h4>${course.name || t.msgUnknownCourse}</h4>
                             <p>📍 ${location}</p>
                             <p>⛳ Par: ${par} | ${holes} ${t.holes}${yards ? ` | ${yards} ${t.unitYards}` : ''}</p>
-                            ${rating && slope ? `<p>📊 Rating: ${rating} | Slope: ${slope}</p>` : ''}
-                            ${designer ? `<p>🏗️ Designer: ${designer}${course.year ? ` (${course.year})` : ''}</p>` : ''}
-                            ${type ? `<p>🏛️ Type: ${type}</p>` : ''}
+                            ${rating && slope ? `<p>📊 ${t.labelRating}: ${rating} | ${t.labelSlope}: ${slope}</p>` : ''}
+                            ${designer ? `<p>🏗️ ${t.labelDesigner}: ${designer}${course.year ? ` (${course.year})` : ''}</p>` : ''}
+                            ${type ? `<p>🏛️ ${t.labelType}: ${type}</p>` : ''}
                         </div>
                         <button class="btn-add-course" onclick="addCourseFromApi(${index})">
                             ${t.btnAddToCourses}
@@ -1963,8 +2366,8 @@
                 <div style="display: flex; gap: 20px; flex-wrap: wrap;">
                     <div style="flex: 2; min-width: 300px;">
                         <div style="background: white; padding: 20px; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.1);">
-                            <h3 style="margin-bottom: 10px; color: #4CAF50;">⛳ Game at ${course}</h3>
-                            <p style="margin-bottom: 10px; color: #666;">Strategy: ${strategy === 'random' ? t.optMixMatch : t.optBestAvg}</p>
+                            <h3 style="margin-bottom: 10px; color: #2196F3;">⛳ ${t.labelGameAt} ${course}</h3>
+                            <p style="margin-bottom: 10px; color: #666;">${t.labelStrategy}: ${strategy === 'random' ? t.optMixMatch : t.optBestAvg}</p>
                             <p style="margin-bottom: 20px; background: #fff3e0; color: #e65100; padding: 10px; border-radius: 5px; font-size: 0.9em; border: 1px solid #ffe0b2;">
                                 ${t.msgSwapInstruction}
                             </p>
@@ -1990,11 +2393,11 @@
                         <h4 style="margin-bottom: 10px; color: #333; display: flex; justify-content: space-between; align-items: center;">
                             <span>
                                 ${t.labelGroup} ${gIdx + 1} ${teeTimeDisplay}
-                                <button onclick="addPlayerToGroup(${gIdx})" style="margin-left: 10px; background: #4CAF50; color: white; border: none; width: 24px; height: 24px; border-radius: 50%; cursor: pointer;" title="Add Selected Player">
+                                <button onclick="addPlayerToGroup(${gIdx})" style="margin-left: 10px; background: #2196F3; color: white; border: none; width: 24px; height: 24px; border-radius: 50%; cursor: pointer;" title="${t.tooltipAddPlayer}">
                                     +
                                 </button>
                             </span>
-                            <span style="font-size: 0.9em; color: #666; font-weight: normal;">Avg: ${groupAvg}</span>
+                            <span style="font-size: 0.9em; color: #666; font-weight: normal;">${t.labelAvg}: ${groupAvg}</span>
                         </h4>
                         <div class="players-list" style="min-height: 50px;">
                 `;
@@ -2235,14 +2638,14 @@
                 games.forEach(game => {
                     html += `
                         <div style="background: white; border: 1px solid #ddd; border-radius: 8px; padding: 15px; margin-bottom: 15px;">
-                            <h4 style="color: #333; margin-bottom: 10px; border-bottom: 2px solid #4CAF50; padding-bottom: 5px; display: flex; justify-content: space-between; align-items: center;">
+                            <h4 style="color: #333; margin-bottom: 10px; border-bottom: 2px solid #2196F3; padding-bottom: 5px; display: flex; justify-content: space-between; align-items: center;">
                                 <span>📅 ${game.date} | ⛳ ${game.course}</span>
                                 <button onclick="loadGameForEditing('${game.key}')" style="background: #FF9800; color: white; border: none; padding: 5px 12px; border-radius: 4px; cursor: pointer; font-size: 0.8em;">
                                     ${t.btnLoadGame}
                                 </button>
                             </h4>
                             <p style="font-size: 0.9em; color: #666; margin-bottom: 10px;">
-                                Strategy: ${game.strategy === 'random' ? t.optMixMatch : t.optBestAvg}
+                                ${t.labelStrategy}: ${game.strategy === 'random' ? t.optMixMatch : t.optBestAvg}
                             </p>
                     `;
                     

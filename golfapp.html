@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Golf Players Manager</title>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .form-section {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+
+        .form-section h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 600;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #4CAF50;
+        }
+
+        .btn-container {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #4CAF50;
+            color: white;
+            flex: 1;
+        }
+
+        .btn-primary:hover {
+            background: #45a049;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(76, 175, 80, 0.3);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+            flex: 1;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+            transform: translateY(-2px);
+        }
+
+        .table-section {
+            margin-top: 30px;
+        }
+
+        .table-section h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        thead {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        th {
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        td {
+            padding: 15px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        tbody tr {
+            transition: background-color 0.3s;
+        }
+
+        tbody tr:hover {
+            background-color: #f8f9fa;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-edit, .btn-delete {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9em;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .btn-edit {
+            background: #2196F3;
+            color: white;
+        }
+
+        .btn-edit:hover {
+            background: #0b7dda;
+            transform: scale(1.05);
+        }
+
+        .btn-delete {
+            background: #f44336;
+            color: white;
+        }
+
+        .btn-delete:hover {
+            background: #da190b;
+            transform: scale(1.05);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 50px 20px;
+            color: #999;
+        }
+
+        .empty-state svg {
+            width: 100px;
+            height: 100px;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .stat-card h3 {
+            font-size: 0.9em;
+            opacity: 0.9;
+            margin-bottom: 10px;
+        }
+
+        .stat-card p {
+            font-size: 2em;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>⛳ Golf Players Manager</h1>
+            <p>Manage your golf players and track their average scores</p>
+        </div>
+
+        <div class="content">
+            <div class="stats" id="stats">
+                <div class="stat-card">
+                    <h3>Total Players</h3>
+                    <p id="totalPlayers">0</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Average Score</h3>
+                    <p id="avgScore">-</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Best Player</h3>
+                    <p id="bestPlayer">-</p>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h2 id="formTitle">➕ Add New Player</h2>
+                <form id="playerForm">
+                    <input type="hidden" id="editIndex" value="">
+                    <div class="form-group">
+                        <label for="playerName">Player Name</label>
+                        <input type="text" id="playerName" placeholder="Enter player name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="averageScore">Average Score</label>
+                        <input type="number" id="averageScore" placeholder="Enter average score" step="0.1" required>
+                    </div>
+                    <div class="btn-container">
+                        <button type="submit" class="btn btn-primary" id="submitBtn">Add Player</button>
+                        <button type="button" class="btn btn-secondary" id="cancelBtn" style="display: none;">Cancel</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="table-section">
+                <h2>📋 Players List</h2>
+                <div id="tableContainer">
+                    <div class="empty-state">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                        </svg>
+                        <h3>No players yet</h3>
+                        <p>Add your first player to get started</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ========================================
+        // FIREBASE CONFIGURATION
+        // ========================================
+        // TODO: Replace with your Firebase config
+        // Get this from: Firebase Console > Project Settings > Your apps > SDK setup and configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyBXj8K9fL2mN3pQ4rS5tU6vW7xY8zA9bC0",
+            authDomain: "golfapp-42180.firebaseapp.com",
+            databaseURL: "https://golfapp-42180-default-rtdb.firebaseio.com/",
+            projectId: "golfapp-42180",
+            storageBucket: "golfapp-42180.appspot.com",
+            messagingSenderId: "513230475459",
+            appId: "1:513230475459:web:a1b2c3d4e5f6g7h8i9j0"
+        };
+
+        // Initialize Firebase
+        let database;
+        let playersRef;
+        
+        try {
+            firebase.initializeApp(firebaseConfig);
+            database = firebase.database();
+            playersRef = database.ref('players');
+            console.log('✅ Firebase connected successfully!');
+        } catch (error) {
+            console.error('❌ Firebase initialization error:', error);
+            alert('Please configure Firebase settings in the code!');
+        }
+
+        // Players data
+        let players = [];
+        let playerKeys = {}; // Map to store Firebase keys
+
+        // DOM elements
+        const playerForm = document.getElementById('playerForm');
+        const playerName = document.getElementById('playerName');
+        const averageScore = document.getElementById('averageScore');
+        const tableContainer = document.getElementById('tableContainer');
+        const formTitle = document.getElementById('formTitle');
+        const submitBtn = document.getElementById('submitBtn');
+        const cancelBtn = document.getElementById('cancelBtn');
+        const editIndex = document.getElementById('editIndex');
+
+        // Initialize - Load players from Firebase
+        loadPlayers();
+
+        // Form submit
+        playerForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const name = playerName.value.trim();
+            const score = parseFloat(averageScore.value);
+            
+            if (!name || isNaN(score)) {
+                alert('Please fill in all fields correctly');
+                return;
+            }
+
+            const index = editIndex.value;
+            
+            if (index !== '') {
+                // Update existing player in Firebase
+                const playerKey = playerKeys[index];
+                playersRef.child(playerKey).update({
+                    name: name,
+                    score: score
+                }).then(() => {
+                    console.log('Player updated successfully');
+                    resetForm();
+                }).catch((error) => {
+                    console.error('Error updating player:', error);
+                    alert('Failed to update player');
+                });
+            } else {
+                // Add new player to Firebase
+                playersRef.push({
+                    name: name,
+                    score: score,
+                    createdAt: Date.now()
+                }).then(() => {
+                    console.log('Player added successfully');
+                    resetForm();
+                }).catch((error) => {
+                    console.error('Error adding player:', error);
+                    alert('Failed to add player');
+                });
+            }
+        });
+
+        // Cancel edit
+        cancelBtn.addEventListener('click', resetForm);
+
+        // Load players from Firebase
+        function loadPlayers() {
+            playersRef.on('value', (snapshot) => {
+                players = [];
+                playerKeys = {};
+                
+                snapshot.forEach((childSnapshot) => {
+                    const key = childSnapshot.key;
+                    const data = childSnapshot.val();
+                    const index = players.length;
+                    
+                    players.push({
+                        name: data.name,
+                        score: data.score
+                    });
+                    playerKeys[index] = key;
+                });
+                
+                displayPlayers();
+                updateStats();
+            }, (error) => {
+                console.error('Error loading players:', error);
+                alert('Failed to load players from database');
+            });
+        }
+
+        // Save to localStorage (removed - using Firebase now)
+        function savePlayers() {
+            // No longer needed - Firebase handles saving automatically
+        }
+
+        // Display players in table
+        function displayPlayers() {
+            if (players.length === 0) {
+                tableContainer.innerHTML = `
+                    <div class="empty-state">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                        </svg>
+                        <h3>No players yet</h3>
+                        <p>Add your first player to get started</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const sortedPlayers = [...players].sort((a, b) => a.score - b.score);
+
+            let html = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>Player Name</th>
+                            <th>Average Score</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            sortedPlayers.forEach((player, index) => {
+                const originalIndex = players.findIndex(p => p === player);
+                html += `
+                    <tr>
+                        <td><strong>#${index + 1}</strong></td>
+                        <td>${player.name}</td>
+                        <td>${player.score.toFixed(1)}</td>
+                        <td>
+                            <div class="action-buttons">
+                                <button class="btn-edit" onclick="editPlayer(${originalIndex})">Edit</button>
+                                <button class="btn-delete" onclick="deletePlayer(${originalIndex})">Delete</button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            html += `
+                    </tbody>
+                </table>
+            `;
+
+            tableContainer.innerHTML = html;
+        }
+
+        // Update statistics
+        function updateStats() {
+            document.getElementById('totalPlayers').textContent = players.length;
+            
+            if (players.length > 0) {
+                const avgScore = players.reduce((sum, p) => sum + p.score, 0) / players.length;
+                document.getElementById('avgScore').textContent = avgScore.toFixed(1);
+                
+                const bestPlayer = players.reduce((best, p) => p.score < best.score ? p : best);
+                document.getElementById('bestPlayer').textContent = bestPlayer.name;
+            } else {
+                document.getElementById('avgScore').textContent = '-';
+                document.getElementById('bestPlayer').textContent = '-';
+            }
+        }
+
+        // Edit player
+        window.editPlayer = function(index) {
+            const player = players[index];
+            playerName.value = player.name;
+            averageScore.value = player.score;
+            editIndex.value = index;
+            formTitle.textContent = '✏️ Edit Player';
+            submitBtn.textContent = 'Update Player';
+            cancelBtn.style.display = 'block';
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        };
+
+        // Delete player
+        window.deletePlayer = function(index) {
+            if (confirm(`Are you sure you want to delete ${players[index].name}?`)) {
+                const playerKey = playerKeys[index];
+                playersRef.child(playerKey).remove()
+                    .then(() => {
+                        console.log('Player deleted successfully');
+                    })
+                    .catch((error) => {
+                        console.error('Error deleting player:', error);
+                        alert('Failed to delete player');
+                    });
+            }
+        };
+
+        // Reset form
+        function resetForm() {
+            playerForm.reset();
+            editIndex.value = '';
+            formTitle.textContent = '➕ Add New Player';
+            submitBtn.textContent = 'Add Player';
+            cancelBtn.style.display = 'none';
+        }
+    </script>
+</body>
+</html>
