@@ -593,6 +593,130 @@
             align-items: center;
             gap: 8px;
         }
+
+        /* --- RESPONSIVE DESIGN (MOBILE) --- */
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+            
+            .container {
+                width: 100%;
+                overflow-x: hidden;
+            }
+
+            .header {
+                padding: 20px 15px;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+            }
+
+            /* Stack the header controls */
+            .help-toggle, .language-toggle {
+                position: static;
+                width: 100%;
+                justify-content: center;
+                margin-bottom: 15px;
+            }
+            
+            .header h1 {
+                font-size: 1.8em;
+                margin-top: 5px;
+            }
+            
+            .header p {
+                font-size: 1em;
+                padding: 0 10px;
+            }
+
+            /* Modal adjustments */
+            .modal-card {
+                padding: 20px;
+                width: 90%;
+            }
+
+            /* Tabs adjust */
+            .tabs {
+                flex-wrap: wrap;
+                margin-bottom: 20px;
+            }
+            
+            .tab {
+                flex: 1 1 auto;
+                padding: 12px 10px;
+                font-size: 0.95em;
+                white-space: nowrap;
+            }
+            
+            /* Form inputs stack better */
+            .btn-container {
+                flex-direction: column;
+            }
+            
+            .btn {
+                width: 100%;
+                margin-bottom: 5px;
+            }
+
+            /* Adjust stats cards */
+            .stats {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+            
+            /* Hide some non-critical table columns on really small screens if needed */
+            /* For now, just let table scroll if needed */
+            .table-section {
+                overflow-x: auto;
+            }
+        }
+
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #appContainer, #appContainer * {
+                visibility: visible;
+            }
+            /* Hide everything in app container except the Printable Area */
+            #appContainer > * {
+                display: none;
+            }
+            #appContainer .content {
+                display: block;
+                padding: 0;
+            }
+            .content > * {
+                display: none;
+            }
+            #planningTab {
+                display: block !important;
+            }
+            #planningTab > * {
+                display: none;
+            }
+            #pairingsResults {
+                display: block !important;
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+            }
+            #pairingsResults * {
+                visibility: visible;
+            }
+            
+            /* Hide buttons and interactive elements in print view */
+            .no-print, button, .language-toggle, .help-toggle, .form-section, .table-section h2 {
+                display: none !important;
+            }
+            
+            /* Specific fix for the pairings graphics */
+            .player-card-swap button {
+                display: none !important;
+            }
+        }
     </style>
 </head>
 <body>
@@ -1153,7 +1277,13 @@
                 labelStrategy: "Strategy",
                 labelAvg: "Avg",
                 tooltipAddPlayer: "Add Selected Player",
-                footerText: "© 2026 Application Property of Sylvain Trepanier"
+                footerText: "© 2026 Application Property of Sylvain Trepanier",
+                // Sharing
+                btnShare: "Share (Copy)",
+                btnEmail: "Email",
+                btnPrint: "Print/PDF",
+                msgCopied: "Copied to clipboard!",
+                msgShareError: "Error sharing"
             },
             fr: {
                 headerTitle: "⛳ Gestionnaire de Golf",
@@ -1263,7 +1393,13 @@
                 labelStrategy: "Stratégie",
                 labelAvg: "Moy",
                 tooltipAddPlayer: "Ajouter le joueur sélectionné",
-                footerText: "© 2026 Cette application est la propriété de Sylvain Trepanier"
+                footerText: "© 2026 Cette application est la propriété de Sylvain Trepanier",
+                // Partage
+                btnShare: "Partager (Copier)",
+                btnEmail: "Courriel",
+                btnPrint: "Imprimer/PDF",
+                msgCopied: "Copié dans le presse-papier !",
+                msgShareError: "Erreur de partage"
             }
         };
 
@@ -2349,11 +2485,121 @@
             renderCurrentPairings();
         };
 
-        window.renderCurrentPairings = function() {
-            if (!currentGameData) return;
+        // --- SHARING FUNCTIONS ---
+        window.printGroups = function() {
+            window.print();
+        };
+
+        window.formatGroupsForText = function() {
+            if (!currentGameData) return '';
+            const t = translations[currentLang];
+            const { groups, course, startTime, interval } = currentGameData;
             
+            let text = `⛳ ${course}\n📅 ${currentGameData.date}\n\n`;
+            
+            groups.forEach((group, i) => {
+                let teeTimeDisplay = '';
+                if (startTime) {
+                    const [hours, minutes] = startTime.split(':').map(Number);
+                    const totalMinutes = (hours * 60) + minutes + (i * (parseInt(interval) || 10));
+                    const h = Math.floor(totalMinutes / 60);
+                    const m = totalMinutes % 60;
+                    teeTimeDisplay = ` - ⏰ ${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+                }
+                
+                text += `🚩 ${t.labelGroup} #${i + 1}${teeTimeDisplay}\n`;
+                group.forEach(p => {
+                    text += `   • ${p.name} (${p.score})\n`;
+                });
+                text += '\n';
+            });
+            
+            return text;
+        };
+
+        window.shareGroups = function() {
+            const text = formatGroupsForText();
+            const t = translations[currentLang];
+            
+            // Try Native Share API first (mobile)
+            if (navigator.share) {
+                navigator.share({
+                    title: 'Golf Pairings',
+                    text: text
+                }).catch(err => {
+                    copyToClipboard(text);
+                });
+            } else {
+                copyToClipboard(text);
+            }
+        };
+
+        window.copyToClipboard = function(text) {
+             const t = translations[currentLang];
+             if (navigator.clipboard && window.isSecureContext) {
+                 navigator.clipboard.writeText(text).then(() => {
+                     alert(t.msgCopied);
+                 }).catch(err => {
+                     console.error('Failed to copy: ', err);
+                     fallbackCopyTextToClipboard(text);
+                 });
+             } else {
+                 fallbackCopyTextToClipboard(text);
+             }
+        };
+
+        window.fallbackCopyTextToClipboard = function(text) {
+            const t = translations[currentLang];
+            var textArea = document.createElement("textarea");
+            textArea.value = text;
+            
+            // Avoid scrolling to bottom
+            textArea.style.top = "0";
+            textArea.style.left = "0";
+            textArea.style.position = "fixed";
+            
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            
+            try {
+                var successful = document.execCommand('copy');
+                if (successful) {
+                    alert(t.msgCopied);
+                } else {
+                    alert(t.msgShareError);
+                }
+            } catch (err) {
+                console.error('Fallback: Oops, unable to copy', err);
+                alert(t.msgShareError);
+            }
+            
+            document.body.removeChild(textArea);
+        };
+
+        window.emailGroups = function() {
+            const text = formatGroupsForText();
+            const subject = encodeURIComponent(`Golf Pairings - ${currentGameData.course}`);
+            const body = encodeURIComponent(text);
+            window.location.href = `mailto:?subject=${subject}&body=${body}`;
+        };
+        // -------------------------
+
+        window.renderCurrentPairings = function() {
             const container = document.getElementById('pairingsResults');
             const t = translations[currentLang];
+
+            if (!currentGameData) {
+                if(container) {
+                     container.innerHTML = `
+                        <div class="empty-state">
+                            <p id="msgSelectPlayers">${t.msgSelectPlayers}</p>
+                        </div>
+                     `;
+                }
+                return;
+            }
+            
             const { groups, course, strategy, startTime, interval } = currentGameData;
             
             // Calculate available players (in DB but not in current game groups)
@@ -2367,6 +2613,14 @@
                     <div style="flex: 2; min-width: 300px;">
                         <div style="background: white; padding: 20px; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.1);">
                             <h3 style="margin-bottom: 10px; color: #2196F3;">⛳ ${t.labelGameAt} ${course}</h3>
+                            
+                            <!-- ACTIONS BAR -->
+                            <div class="no-print" style="margin-bottom: 15px; display: flex; gap: 10px; flex-wrap: wrap;">
+                                <button onclick="printGroups()" class="btn btn-secondary" style="padding: 8px 12px; font-size: 0.9em; background: #607d8b;">🖨️ ${t.btnPrint}</button>
+                                <button onclick="shareGroups()" class="btn btn-secondary" style="padding: 8px 12px; font-size: 0.9em; background: #607d8b;">🔗 ${t.btnShare}</button>
+                                <button onclick="emailGroups()" class="btn btn-secondary" style="padding: 8px 12px; font-size: 0.9em; background: #607d8b;">✉️ ${t.btnEmail}</button>
+                            </div>
+
                             <p style="margin-bottom: 10px; color: #666;">${t.labelStrategy}: ${strategy === 'random' ? t.optMixMatch : t.optBestAvg}</p>
                             <p style="margin-bottom: 20px; background: #fff3e0; color: #e65100; padding: 10px; border-radius: 5px; font-size: 0.9em; border: 1px solid #ffe0b2;">
                                 ${t.msgSwapInstruction}
