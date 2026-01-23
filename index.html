@@ -741,6 +741,8 @@
                 btnUpdateGame: "💾 Update Game",
                 btnLoadGame: "✏️ Load/Edit",
                 labelPairings: "📋 Generated Pairings & Foursomes",
+                labelAvailable: "👥 Available Players",
+                msgAvailability: "Click to Select/Add to group",
                 labelGroup: "Group",
                 labelGameDate: "Game Date:",
                 labelHistory: "📅 Game History",
@@ -817,6 +819,8 @@
                 btnUpdateGame: "💾 Mettre à Jour la Partie",
                 btnLoadGame: "✏️ Modifier/Charger",
                 labelPairings: "📋 Équipes et Quatuors Générés",
+                labelAvailable: "👥 Joueurs Disponibles",
+                msgAvailability: "Cliquez pour Sélectionner/Ajouter au groupe",
                 labelGroup: "Quatuor",
                 labelGameDate: "Date de la Partie :",
                 labelHistory: "📅 Historique des Parties",
@@ -871,7 +875,7 @@
             const isEditing = editIndex.value !== '';
             document.getElementById('formTitle').textContent = isEditing ? t.formTitleEdit : t.formTitleAdd;
             document.getElementById('submitBtn').textContent = isEditing ? t.btnUpdate : t.btnAdd;
-            
+                        
             // Courses section
             document.getElementById('labelTotalCourses').textContent = t.labelTotalCourses;
             document.getElementById('labelAvgPar').textContent = t.labelAvgPar;
@@ -1869,17 +1873,25 @@
             const t = translations[currentLang];
             const { groups, course, strategy, startTime, interval } = currentGameData;
             
+            // Calculate available players (in DB but not in current game groups)
+            const playersInGame = new Set();
+            groups.forEach(g => g.forEach(p => playersInGame.add(p.name)));
+            
+            const availablePlayers = players.filter(p => !playersInGame.has(p.name));
+            
             let html = `
-                <div style="background: white; padding: 20px; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.1);">
-                    <h3 style="margin-bottom: 10px; color: #4CAF50;">⛳ Game at ${course}</h3>
-                    <p style="margin-bottom: 10px; color: #666;">Strategy: ${strategy === 'random' ? t.optMixMatch : t.optBestAvg}</p>
-                    <p style="margin-bottom: 20px; background: #fff3e0; color: #e65100; padding: 10px; border-radius: 5px; font-size: 0.9em; border: 1px solid #ffe0b2;">
-                        ${t.msgSwapInstruction}
-                    </p>
+                <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+                    <div style="flex: 2; min-width: 300px;">
+                        <div style="background: white; padding: 20px; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.1);">
+                            <h3 style="margin-bottom: 10px; color: #4CAF50;">⛳ Game at ${course}</h3>
+                            <p style="margin-bottom: 10px; color: #666;">Strategy: ${strategy === 'random' ? t.optMixMatch : t.optBestAvg}</p>
+                            <p style="margin-bottom: 20px; background: #fff3e0; color: #e65100; padding: 10px; border-radius: 5px; font-size: 0.9em; border: 1px solid #ffe0b2;">
+                                ${t.msgSwapInstruction}
+                            </p>
             `;
 
             groups.forEach((group, gIdx) => {
-                const groupAvg = (group.reduce((sum, p) => sum + p.score, 0) / group.length).toFixed(1);
+                const groupAvg = group.length > 0 ? (group.reduce((sum, p) => sum + p.score, 0) / group.length).toFixed(1) : '0.0';
                 
                 // Calculate Tee Time
                 let teeTimeDisplay = '';
@@ -1896,21 +1908,33 @@
                 html += `
                     <div style="border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px; margin-bottom: 15px; background: #f9f9f9;">
                         <h4 style="margin-bottom: 10px; color: #333; display: flex; justify-content: space-between; align-items: center;">
-                            <span>${t.labelGroup} ${gIdx + 1} ${teeTimeDisplay}</span>
+                            <span>
+                                ${t.labelGroup} ${gIdx + 1} ${teeTimeDisplay}
+                                <button onclick="addPlayerToGroup(${gIdx})" style="margin-left: 10px; background: #4CAF50; color: white; border: none; width: 24px; height: 24px; border-radius: 50%; cursor: pointer;" title="Add Selected Player">
+                                    +
+                                </button>
+                            </span>
                             <span style="font-size: 0.9em; color: #666; font-weight: normal;">Avg: ${groupAvg}</span>
                         </h4>
-                        <div class="players-list">
+                        <div class="players-list" style="min-height: 50px;">
                 `;
                 
-                group.forEach((player, pIdx) => {
-                    const isSelected = swapSelection && swapSelection.gIdx === gIdx && swapSelection.pIdx === pIdx;
-                    html += `
-                        <div class="player-card-swap ${isSelected ? 'selected-swap' : ''}" onclick="handlePlayerSwapClick(${gIdx}, ${pIdx})">
-                            <span style="font-weight: 500;">${player.name}</span>
-                            <span style="color: #666;">${player.score.toFixed(1)}</span>
-                        </div>
-                    `;
-                });
+                if (group.length === 0) {
+                     html += `<div style="color: #999; font-style: italic; padding: 10px; text-align: center;">Empty Group</div>`;
+                } else {
+                    group.forEach((player, pIdx) => {
+                        const isSelected = swapSelection && swapSelection.type === 'group' && swapSelection.gIdx === gIdx && swapSelection.pIdx === pIdx;
+                        html += `
+                            <div class="player-card-swap ${isSelected ? 'selected-swap' : ''}" style="position: relative;">
+                                <div onclick="handlePlayerSwapClick(${gIdx}, ${pIdx})" style="flex-grow: 1; display: flex; justify-content: space-between;">
+                                    <span style="font-weight: 500;">${player.name}</span>
+                                    <span style="color: #666;">${player.score.toFixed(1)}</span>
+                                </div>
+                                <button onclick="removePlayerFromGroup(${gIdx}, ${pIdx})" style="margin-left: 10px; background: none; border: none; color: #f44336; cursor: pointer; font-weight: bold;">✕</button>
+                            </div>
+                        `;
+                    });
+                }
                 
                 html += `</div></div>`;
             });
@@ -1924,32 +1948,131 @@
                     <button class="btn btn-primary" onclick="saveGame()" style="background: #2196F3; font-size: 1.1em;">
                         ${btnText}
                     </button>
+                    ${currentGameData.key ? `<button class="btn btn-secondary" onclick="currentGameData=null; renderCurrentPairings();" style="margin-left: 10px;">Cancel Edit</button>` : ''}
                 </div>
             `;
             
+            html += `</div>`; // Close main column
+
+            // Available Players Column
+            html += `
+                <div style="flex: 1; min-width: 250px;">
+                    <div style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); position: sticky; top: 20px;">
+                        <h4 style="margin-bottom: 15px; color: #333; border-bottom: 2px solid #ddd; padding-bottom: 10px;">
+                            ${t.labelAvailable}
+                        </h4>
+                        <p style="font-size: 0.85em; color: #666; margin-bottom: 10px;">${t.msgAvailability}</p>
+                        <div style="max-height: 600px; overflow-y: auto;">
+            `;
+
+            if (availablePlayers.length === 0) {
+                html += `<p style="color: #999; font-style: italic;">All players assigned.</p>`;
+            } else {
+                availablePlayers.forEach((player, idx) => {
+                     // Find original index in global array to ensure uniqueness if needed, 
+                     // but here we just need to track index in this local list for selection
+                     const isSelected = swapSelection && swapSelection.type === 'available' && swapSelection.pIdx === idx;
+                     html += `
+                        <div class="player-card-swap ${isSelected ? 'selected-swap' : ''}" onclick="handleAvailablePlayerClick(${idx})">
+                            <span style="font-weight: 500;">${player.name}</span>
+                            <span style="color: #666;">${player.score.toFixed(1)}</span>
+                        </div>
+                     `;
+                });
+            }
+
+            html += `</div></div></div></div>`; // Close available column & container
+            
             container.innerHTML = html;
+            
+            // Store available players temporarily for reference
+            window.currentAvailablePlayers = availablePlayers;
+        };
+
+        window.handleAvailablePlayerClick = function(availIdx) {
+            if (!swapSelection) {
+                swapSelection = { type: 'available', pIdx: availIdx };
+            } else {
+                if (swapSelection.type === 'available' && swapSelection.pIdx === availIdx) {
+                    swapSelection = null; // Deselect
+                } else if (swapSelection.type === 'group') {
+                    // Substitute! (Group Player -> Available Player)
+                    const groupParams = swapSelection;
+                    const availPlayer = window.currentAvailablePlayers[availIdx];
+                    
+                    // Replace group player with available player
+                    currentGameData.groups[groupParams.gIdx][groupParams.pIdx] = {
+                        name: availPlayer.name,
+                        score: availPlayer.score
+                    };
+                    
+                    // Old group player goes back to available pool implicitly (next render)
+                    swapSelection = null;
+                } else {
+                    swapSelection = { type: 'available', pIdx: availIdx }; // Change selection
+                }
+            }
+            renderCurrentPairings();
+        };
+        
+        window.addPlayerToGroup = function(gIdx) {
+            if (!swapSelection || swapSelection.type !== 'available') {
+                alert("Please select a player from the 'Available Players' list first.");
+                return;
+            }
+            
+            const availPlayer = window.currentAvailablePlayers[swapSelection.pIdx];
+            
+            // Add to group
+            currentGameData.groups[gIdx].push({
+                name: availPlayer.name,
+                score: availPlayer.score
+            });
+            
+            swapSelection = null;
+            renderCurrentPairings();
+        };
+        
+        window.removePlayerFromGroup = function(gIdx, pIdx) {
+            // Remove from group
+            currentGameData.groups[gIdx].splice(pIdx, 1);
+            
+            // Clear any selection involving this index to prevent errors
+            if (swapSelection && swapSelection.type === 'group' && swapSelection.gIdx === gIdx) {
+                swapSelection = null;
+            }
+            
+            renderCurrentPairings();
         };
 
         window.handlePlayerSwapClick = function(gIdx, pIdx) {
             if (!swapSelection) {
                 // Select first player
-                swapSelection = { gIdx, pIdx };
+                swapSelection = { type: 'group', gIdx, pIdx };
             } else {
-                // Determine if same player clicked
-                if (swapSelection.gIdx === gIdx && swapSelection.pIdx === pIdx) {
-                    // Deselect
-                    swapSelection = null;
-                } else {
-                    // Swap logic
-                    const p1 = currentGameData.groups[swapSelection.gIdx][swapSelection.pIdx];
-                    const p2 = currentGameData.groups[gIdx][pIdx];
+                if (swapSelection.type === 'available') {
+                    // Substitute! (Available Player -> Group Player)
+                    const availPlayer = window.currentAvailablePlayers[swapSelection.pIdx];
                     
-                    // Perform swap
-                    currentGameData.groups[swapSelection.gIdx][swapSelection.pIdx] = p2;
-                    currentGameData.groups[gIdx][pIdx] = p1;
-                    
-                    // Reset selection
+                    // Replace group player with available player
+                    currentGameData.groups[gIdx][pIdx] = {
+                        name: availPlayer.name,
+                        score: availPlayer.score
+                    };
                     swapSelection = null;
+                } else if (swapSelection.type === 'group') {
+                    // Group <-> Group Swap
+                    if (swapSelection.gIdx === gIdx && swapSelection.pIdx === pIdx) {
+                        swapSelection = null; // Deselect
+                    } else {
+                        const p1 = currentGameData.groups[swapSelection.gIdx][swapSelection.pIdx];
+                        const p2 = currentGameData.groups[gIdx][pIdx];
+                        
+                        currentGameData.groups[swapSelection.gIdx][swapSelection.pIdx] = p2;
+                        currentGameData.groups[gIdx][pIdx] = p1;
+                        
+                        swapSelection = null;
+                    }
                 }
             }
             renderCurrentPairings();
