@@ -1,0 +1,20 @@
+/* Custom Scrollbar for Sidebar */
+aside::-webkit-scrollbar {
+    width: 6px;
+}
+aside::-webkit-scrollbar-track {
+    background: #1f2937; 
+}
+aside::-webkit-scrollbar-thumb {
+    background: #374151; 
+    border-radius: 3px;
+}
+
+.card-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+.transition-all-300 {
+    transition: all 0.3s ease-in-out;
+}
