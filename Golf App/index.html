@@ -756,6 +756,43 @@
                 </div>
                 <button type="submit" class="btn btn-primary" style="width: 100%;">Access</button>
                 <p id="loginError" style="color: #f44336; margin-top: 15px; display: none; text-align: center; font-weight: bold;">Invalid credentials</p>
+                <div style="text-align: center; margin-top: 20px;">
+                    <button type="button" class="btn btn-secondary" onclick="showSignupForm()" style="width: 100%; background: #4CAF50;">
+                        ➕ Create Account
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Signup Page -->
+    <div class="login-container" id="signupPage" style="display: none;">
+        <div class="login-card">
+            <div class="login-header">
+                <h2>⛳ Golf Manager</h2>
+                <p>Create New Account</p>
+            </div>
+            <form id="signupForm" onsubmit="handleSignup(event)">
+                <div class="form-group">
+                    <label for="signupEmail">Email</label>
+                    <input type="email" id="signupEmail" placeholder="Enter your email" required>
+                </div>
+                <div class="form-group">
+                    <label for="signupPwd">Password</label>
+                    <input type="password" id="signupPwd" placeholder="Enter password (min 6 characters)" required minlength="6">
+                </div>
+                <div class="form-group">
+                    <label for="signupPwdConfirm">Confirm Password</label>
+                    <input type="password" id="signupPwdConfirm" placeholder="Confirm password" required minlength="6">
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Create Account</button>
+                <p id="signupError" style="color: #f44336; margin-top: 15px; display: none; text-align: center; font-weight: bold;"></p>
+                <p id="signupSuccess" style="color: #4CAF50; margin-top: 15px; display: none; text-align: center; font-weight: bold;"></p>
+                <div style="text-align: center; margin-top: 20px;">
+                    <button type="button" class="btn btn-secondary" onclick="showLoginForm()" style="width: 100%;">
+                        ← Back to Login
+                    </button>
+                </div>
             </form>
         </div>
     </div>
@@ -1010,8 +1047,32 @@
             submitBtn.disabled = true;
 
             try {
-                // Check if adminRef is available (it should be initialized below immediately)
-                // We use defaults if DB is empty, otherwise DB values
+                // Try Firebase Auth first if available
+                if (auth && typeof auth.signInWithEmailAndPassword === 'function') {
+                    try {
+                        const userCredential = await auth.signInWithEmailAndPassword(user, pwd);
+                        const firebaseUser = userCredential.user;
+                        
+                        if (!firebaseUser.emailVerified) {
+                            errorMsg.textContent = 'Please verify your email before logging in. Check your inbox.';
+                            errorMsg.style.display = 'block';
+                            await auth.signOut();
+                            return;
+                        }
+                        
+                        // Success with Firebase Auth
+                        window.currentUserId = firebaseUser.uid;
+                        initializeUserDatabase(firebaseUser.uid);
+                        document.getElementById('loginPage').style.display = 'none';
+                        document.getElementById('appContainer').style.display = 'block';
+                        return;
+                    } catch (authError) {
+                        // Fall back to legacy credentials if Firebase Auth fails
+                        console.log('Firebase Auth failed, trying legacy credentials', authError);
+                    }
+                }
+                
+                // Legacy credential check (backwards compatibility)
                 let validUser = 'aztec';
                 let validPwd = 'golf';
                 
@@ -1028,7 +1089,9 @@
                 }
 
                 if (user === validUser && pwd === validPwd) {
-                    // Success
+                    // Success with legacy auth
+                    window.currentUserId = 'default';
+                    initializeUserDatabase('default');
                     document.getElementById('loginPage').style.display = 'none';
                     document.getElementById('appContainer').style.display = 'block';
                 } else {
@@ -1037,6 +1100,7 @@
             } catch (err) {
                 console.error("Login failed", err);
                 // Fail
+                errorMsg.textContent = 'Invalid credentials';
                 errorMsg.style.display = 'block';
                 // Shake effect
                 const card = document.querySelector('.login-card');
@@ -1047,6 +1111,112 @@
                 submitBtn.textContent = originalBtnText;
                 submitBtn.disabled = false;
             }
+        }
+
+        function showSignupForm() {
+            document.getElementById('loginPage').style.display = 'none';
+            document.getElementById('signupPage').style.display = 'flex';
+        }
+
+        function showLoginForm() {
+            document.getElementById('signupPage').style.display = 'none';
+            document.getElementById('loginPage').style.display = 'flex';
+        }
+
+        async function handleSignup(e) {
+            e.preventDefault();
+            const email = document.getElementById('signupEmail').value;
+            const password = document.getElementById('signupPwd').value;
+            const confirmPwd = document.getElementById('signupPwdConfirm').value;
+            const errorMsg = document.getElementById('signupError');
+            const successMsg = document.getElementById('signupSuccess');
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+
+            // Hide previous messages
+            errorMsg.style.display = 'none';
+            successMsg.style.display = 'none';
+
+            // Validate passwords match
+            if (password !== confirmPwd) {
+                errorMsg.textContent = 'Passwords do not match!';
+                errorMsg.style.display = 'block';
+                return;
+            }
+
+            // Indicate loading
+            const originalBtnText = submitBtn.textContent;
+            submitBtn.textContent = 'Creating Account...';
+            submitBtn.disabled = true;
+
+            try {
+                // Check if Firebase Auth is available
+                if (!auth || typeof auth.createUserWithEmailAndPassword !== 'function') {
+                    throw new Error('Firebase Authentication is not configured. Please check that Firebase Auth is enabled in your Firebase Console.');
+                }
+
+                // Create user with email and password
+                const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+                const user = userCredential.user;
+
+                // Send email verification
+                await user.sendEmailVerification();
+
+                // Create user's own database structure
+                const userDbRef = database.ref(`users/${user.uid}`);
+                await userDbRef.set({
+                    email: email,
+                    createdAt: Date.now(),
+                    players: {},
+                    courses: {},
+                    games: {}
+                });
+
+                // Show success message
+                successMsg.textContent = `Account created successfully! A verification email has been sent to ${email}. Please verify your email before logging in.`;
+                successMsg.style.display = 'block';
+
+                // Clear form
+                document.getElementById('signupForm').reset();
+
+                // Redirect to login after 5 seconds
+                setTimeout(() => {
+                    showLoginForm();
+                }, 5000);
+
+            } catch (err) {
+                console.error("Signup failed", err);
+                
+                // Handle specific Firebase errors
+                let errorMessage = 'Failed to create account. Please try again.';
+                if (err.code === 'auth/email-already-in-use') {
+                    errorMessage = 'This email is already registered. Please login instead.';
+                } else if (err.code === 'auth/weak-password') {
+                    errorMessage = 'Password is too weak. Use at least 6 characters.';
+                } else if (err.code === 'auth/invalid-email') {
+                    errorMessage = 'Invalid email address.';
+                } else if (err.message) {
+                    errorMessage = err.message;
+                }
+                
+                errorMsg.textContent = errorMessage;
+                errorMsg.style.display = 'block';
+            } finally {
+                submitBtn.textContent = originalBtnText;
+                submitBtn.disabled = false;
+            }
+        }
+
+        function initializeUserDatabase(userId) {
+            // Update Firebase references to use user-specific paths
+            window.currentUserId = userId;
+            window.playersRef = firebase.database().ref(`users/${userId}/players`);
+            window.coursesRef = firebase.database().ref(`users/${userId}/courses`);
+            window.gamesRef = firebase.database().ref(`users/${userId}/games`);
+            
+            // Reload data for this user
+            loadPlayers();
+            loadCourses();
+            loadGameHistory();
         }
         
         // Settings / Admin Logic
@@ -1284,6 +1454,7 @@
                 btnShare: "Share (Copy)",
                 btnEmail: "Email",
                 btnPrint: "Print/PDF",
+                btnAddFoursome: "Add Foursome",
                 msgCopied: "Copied to clipboard!",
                 msgShareError: "Error sharing"
             },
@@ -1402,6 +1573,7 @@
                 btnShare: "Partager (Copier)",
                 btnEmail: "Courriel",
                 btnPrint: "Imprimer/PDF",
+                btnAddFoursome: "Ajouter un Foursome",
                 msgCopied: "Copié dans le presse-papier !",
                 msgShareError: "Erreur de partage"
             }
@@ -1578,15 +1750,18 @@
         let coursesRef;
         let gamesRef;
         let adminRef;
+        let auth;
         
         try {
             firebase.initializeApp(firebaseConfig);
             database = firebase.database();
+            auth = firebase.auth();
             playersRef = database.ref('players');
             coursesRef = database.ref('courses');
             gamesRef = database.ref('games');
             adminRef = database.ref('admin/credentials');
             console.log('✅ Firebase connected successfully!');
+            console.log('✅ Firebase Auth available:', !!auth);
         } catch (error) {
             console.error('❌ Firebase initialization error:', error);
             alert(translations[currentLang].alertConfigFirebase);
@@ -2633,6 +2808,7 @@
                                 <button onclick="printGroups()" class="btn btn-secondary" style="padding: 8px 12px; font-size: 0.9em; background: #607d8b;">🖨️ ${t.btnPrint}</button>
                                 <button onclick="shareGroups()" class="btn btn-secondary" style="padding: 8px 12px; font-size: 0.9em; background: #607d8b;">🔗 ${t.btnShare}</button>
                                 <button onclick="emailGroups()" class="btn btn-secondary" style="padding: 8px 12px; font-size: 0.9em; background: #607d8b;">✉️ ${t.btnEmail}</button>
+                                <button onclick="addNewFoursome()" class="btn btn-primary" style="padding: 8px 12px; font-size: 0.9em; background: #4CAF50;">➕ ${t.btnAddFoursome || 'Ajouter un Foursome'}</button>
                             </div>
 
                             <p style="margin-bottom: 10px; color: #666;">${t.labelStrategy}: ${strategy === 'random' ? t.optMixMatch : t.optBestAvg}</p>
@@ -2712,21 +2888,25 @@
                         <h4 style="margin-bottom: 15px; color: #333; border-bottom: 2px solid #ddd; padding-bottom: 10px;">
                             ${t.labelAvailable}
                         </h4>
-                        <p style="font-size: 0.85em; color: #666; margin-bottom: 10px;">${t.msgAvailability}</p>
-                        <div style="max-height: 600px; overflow-y: auto;">
+                        <p style="font-size: 0.85em; color: #666; margin-bottom: 10px;">${t.msgAvailabilityMultiple || 'Cochez les joueurs à ajouter'}</p>
+                        <div class="no-print" style="margin-bottom: 10px; display: flex; gap: 5px;">
+                            <button onclick="selectAllAvailable()" class="btn btn-secondary" style="padding: 5px 10px; font-size: 0.8em; flex: 1;">Tous</button>
+                            <button onclick="deselectAllAvailable()" class="btn btn-secondary" style="padding: 5px 10px; font-size: 0.8em; flex: 1;">Aucun</button>
+                        </div>
+                        <div style="max-height: 600px; overflow-y: auto;" id="availablePlayersContainer">
             `;
 
             if (availablePlayers.length === 0) {
                 html += `<p style="color: #999; font-style: italic;">${t.msgAllAssigned}</p>`;
             } else {
                 availablePlayers.forEach((player, idx) => {
-                     // Find original index in global array to ensure uniqueness if needed, 
-                     // but here we just need to track index in this local list for selection
-                     const isSelected = swapSelection && swapSelection.type === 'available' && swapSelection.pIdx === idx;
                      html += `
-                        <div class="player-card-swap ${isSelected ? 'selected-swap' : ''}" onclick="handleAvailablePlayerClick(${idx})">
-                            <span style="font-weight: 500;">${player.name}</span>
-                            <span style="color: #666;">${player.score.toFixed(1)}</span>
+                        <div class="player-card-available" style="display: flex; align-items: center; padding: 10px; margin-bottom: 8px; border: 1px solid #ddd; border-radius: 5px; background: white; cursor: pointer;" onclick="toggleAvailablePlayer(${idx})">
+                            <input type="checkbox" id="avail-cb-${idx}" class="available-player-cb" style="margin-right: 10px; cursor: pointer;" onclick="event.stopPropagation();" onchange="toggleAvailablePlayer(${idx})">
+                            <div style="flex-grow: 1;">
+                                <span style="font-weight: 500;">${player.name}</span>
+                                <span style="color: #666; margin-left: 10px;">${player.score.toFixed(1)}</span>
+                            </div>
                         </div>
                      `;
                 });
@@ -2738,6 +2918,31 @@
             
             // Store available players temporarily for reference
             window.currentAvailablePlayers = availablePlayers;
+        };
+
+        window.toggleAvailablePlayer = function(idx) {
+            const cb = document.getElementById(`avail-cb-${idx}`);
+            if (cb) {
+                cb.checked = !cb.checked;
+            }
+        };
+        
+        window.selectAllAvailable = function() {
+            const checkboxes = document.querySelectorAll('.available-player-cb');
+            checkboxes.forEach(cb => cb.checked = true);
+        };
+        
+        window.deselectAllAvailable = function() {
+            const checkboxes = document.querySelectorAll('.available-player-cb');
+            checkboxes.forEach(cb => cb.checked = false);
+        };
+        
+        window.getSelectedAvailablePlayers = function() {
+            const checkboxes = document.querySelectorAll('.available-player-cb:checked');
+            return Array.from(checkboxes).map(cb => {
+                const idx = parseInt(cb.id.replace('avail-cb-', ''));
+                return window.currentAvailablePlayers[idx];
+            });
         };
 
         window.handleAvailablePlayerClick = function(availIdx) {
@@ -2768,21 +2973,50 @@
         
         window.addPlayerToGroup = function(gIdx) {
             const t = translations[currentLang];
-            if (!swapSelection || swapSelection.type !== 'available') {
+            const selectedPlayers = getSelectedAvailablePlayers();
+            
+            if (selectedPlayers.length === 0) {
                 alert(t.alertSelectAvailable);
                 return;
             }
             
-            const availPlayer = window.currentAvailablePlayers[swapSelection.pIdx];
-            
-            // Add to group
-            currentGameData.groups[gIdx].push({
-                name: availPlayer.name,
-                score: availPlayer.score
+            // Add all selected players to group
+            selectedPlayers.forEach(player => {
+                currentGameData.groups[gIdx].push({
+                    name: player.name,
+                    score: player.score
+                });
             });
             
             swapSelection = null;
             renderCurrentPairings();
+        };
+        
+        window.addNewFoursome = function() {
+            if (!currentGameData) return;
+            
+            const selectedPlayers = getSelectedAvailablePlayers();
+            
+            // Create new group with selected players (or empty if none selected)
+            const newGroup = selectedPlayers.map(player => ({
+                name: player.name,
+                score: player.score
+            }));
+            
+            currentGameData.groups.push(newGroup);
+            
+            // Clear any selection
+            swapSelection = null;
+            
+            renderCurrentPairings();
+            
+            // Scroll to the new group
+            setTimeout(() => {
+                const container = document.getElementById('pairingsResults');
+                if (container) {
+                    container.scrollTop = container.scrollHeight;
+                }
+            }, 100);
         };
         
         window.removePlayerFromGroup = function(gIdx, pIdx) {
