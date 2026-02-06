@@ -10,6 +10,7 @@
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     
     <style>
         * {
@@ -1581,6 +1582,10 @@
 
         // Current language
         let currentLang = localStorage.getItem('golfAppLanguage') || 'en';
+        
+        // Game planning variables
+        let currentGameData = null;
+        let swapSelection = null; // {gIdx, pIdx}
 
         // Change language function
         function changeLanguage(lang) {
@@ -1735,7 +1740,7 @@
         // FIREBASE CONFIGURATION
         // ========================================
         const firebaseConfig = {
-            apiKey: "AIzaSyBXj8K9fL2mN3pQ4rS5tU6vW7xY8zA9bC0",
+            apiKey: "AIzaSyC5BqbVPWCPnI6KUgHzzk1XNLL_rjNnG48",
             authDomain: "golfapp-42180.firebaseapp.com",
             databaseURL: "https://golfapp-42180-default-rtdb.firebaseio.com/",
             projectId: "golfapp-42180",
@@ -1761,7 +1766,9 @@
             gamesRef = database.ref('games');
             adminRef = database.ref('admin/credentials');
             console.log('✅ Firebase connected successfully!');
+            console.log('✅ Firebase Auth object:', auth);
             console.log('✅ Firebase Auth available:', !!auth);
+            console.log('✅ createUserWithEmailAndPassword available:', typeof auth.createUserWithEmailAndPassword);
         } catch (error) {
             console.error('❌ Firebase initialization error:', error);
             alert(translations[currentLang].alertConfigFirebase);
@@ -2589,9 +2596,6 @@
         // PLANNING LOGIC
         // ========================================
         
-        let currentGameData = null;
-        let swapSelection = null; // {gIdx, pIdx}
-
         function updatePlanningDropdown() {
             const t = translations[currentLang];
             const select = document.getElementById('planningCourseSelect');

@@ -1,0 +1,5829 @@
+const { useState, useEffect, useRef } = React;
+
+// --- Translations ---
+const translations = {
+    en: {
+        // Sidebar
+        systemOnline: "System Online",
+        dashboard: "Dashboard",
+        production: "Production",
+        inventory: "Inventory",
+        settings: "Settings",
+        dataEntry: "Data Entry",
+        rawWood: "Raw Wood Treatment",
+        efficiency: "Employee Efficiency",
+        // Header
+        headerTitle: "Production Overview",
+        adminUser: "Admin User",
+        // Dashboard Stats
+        totalProduction: "Total Production",
+        efficiency: "Efficiency",
+        activeErrors: "Active Errors",
+        revenue: "Revenue",
+        vsLastMonth: "vs last month",
+        productionTrend: "Daily Production Evolution",
+        recentAlerts: "Recent Alerts",
+        alertBeckage: "Calibration Required",
+        descBeckage: "Station 1 - Precision deviation > 0.5mm",
+        alertMoulding: "Material Low",
+        descMoulding: "Station 3 - Input hopper < 10%",
+        alertFinishing: "Ventilation Error",
+        descFinishing: "Station 4 - Filter obstruction",
+        minsAgo: "mins ago",
+        chartPlaceholder: "[Chart Visualization Output Placeholder]",
+        // Production View
+        activeLines: "Active Production Lines",
+        newBatch: "New Batch",
+        colBatchId: "Prod No",
+        colClient: "Client", // New
+        colTxnId: "Transaction ID",
+        colProduct: "Product/Wood", // Renamed
+        colProcess: "Process",
+        colTreatment: "Treatment",
+        colQty: "Quantity (pc)", // New
+        colQtySqFt: "Area (sq ft)", // New
+        colDate: "Date Req.", // New
+        colDateTreatment: "Treatment Date",
+        colSupplier: "Supplier",
+        colQtyPMP: "Qty (BF)",
+        colOrderNo: "Order No",
+        colStockNo: "Stock No",
+        colStatus: "Status",
+        colProgress: "Progress",
+        colEstCompletion: "Est. Completion",
+        colTally: "Tally",
+        colStateRaw: "State",
+        colThickness: "Thickness",
+        colStation: "Station Assignment",
+        stationPlaceholder: "Assign Station",
+        station1: "Station 1",
+        station2: "Station 2",
+        subcontractor: "Subcontractor / External",
+        station3: "Station 3",
+        station4: "Station 4",
+        station5: "Station 5",
+        statusRunning: "RUNNING",
+        statusPaused: "PAUSED",
+        statusError: "ALERT IN PROGRESS",
+        statusPlanning: "PLANNING", 
+        statusCompleted: "COMPLETED",
+        procBeckage: "Beckage",
+        procMoulding: "Moulding",
+        procSanding1: "Sanding 1 Side",
+        procSanding2: "Sanding 2 Sides",
+        procStaining: "Staining",
+        procBrushing: "Brushing",
+        procPolishing: "Polishing",
+        procOiling: "Oiling",
+        procPainting: "Painting",
+        // Data Entry View
+        enterDataTitle: "Enter Production Data",
+        labelClient: "Client Name",
+        labelTxn: "Transaction No.",
+        labelQty: "Quantity (pc)",
+        labelProcess: "Process",
+        labelWood: "Wood Species",
+        labelDate: "Required Date",
+        btnAddData: "Add Production Order",
+        // Raw Wood Data Entry
+        titleRawWood: "Raw Wood Data",
+        labelOrderNo: "Order Number",
+        labelSupplier: "Supplier",
+        labelSpecies: "Species",
+        labelQtyPMP: "Qty (BF)",
+        labelState: "State / Process",
+        btnAddRawWood: "Add Raw Wood Batch",
+        // Misc
+        settingsLoading: "Settings Module Loading...",
+        // Worker View
+        jobQueue: "Job Queue",
+        currentJob: "Current Job",
+        startJob: "START JOB",
+        pauseJob: "PAUSE",
+        finishJob: "FINISH JOB",
+        reportIssue: "Report Issue",
+        issueType: "Issue Type",
+        notes: "Notes",
+        confirm: "Confirm",
+        cancel: "Cancel",
+        qtyProducedPrompt: "Enter quantity produced in this session:",
+        noDate: "No Active Job",
+        waitingForJob: "Waiting for assignment...",
+        elapsedTime: "Elapsed Time",
+        timeStarted: "Started at",
+        closePallet: "Close Pallet",
+        reclassifyWood: "Reclassify Wood",
+        palletQty: "Pallet Quantity (PL)",
+        selectGrade: "Select Grade/Classification",
+        grade1: "Grade 1 - Premium",
+        grade2: "Grade 2 - Select",
+        grade3: "Grade 3 - Standard",
+        grade4: "Grade 4 - Economy",
+        gradeReject: "Reject/Waste",
+        palletClosed: "Pallet Closed",
+        woodReclassified: "Wood Reclassified",
+        settingsMode: "Interface Mode",
+        modeAdmin: "Administrator View",
+        modeStation1: "Station 1 View",
+        modeStation2: "Station 2 View",
+        modeStation3: "Station 3 View",
+        modeStation4: "Station 4 View",
+        modeStation5: "Station 5 View",
+        autoAssign: "Automatic Station Assignment",
+        configDesc: "Map production processes to specific stations for auto-assignment.",
+        processLabel: "Process Type",
+        stationLabel: "Default Station",
+        saveConfig: "Save Configuration",
+        deleteLabel: "Delete",
+        confirmDelete: "Are you sure you want to delete this item?",
+        selectOption: "-- Select --",
+        navDashboard: "Dashboard",
+        navProduction: "Production",
+        navRawWood: "Raw Wood",
+        navDataEntry: "Data Entry",
+        navSettings: "Settings",
+        printLabel: "Print Label",
+        labelRecipe: "Recipe / Process",
+        labelSubOrder: "Subcontract Order",
+        labelStain: "Stain Color",
+        labelPaint: "Paint Color",
+        acknowledge: "ACKNOWLEDGE",
+        colNotes: "Notes",
+        viewNotes: "View Production Notes",
+        copyNotes: "Copy",
+        close: "Close",
+        notesCopied: "Notes copied to clipboard",
+        // Inventory
+        inventoryTitle: "Inventory Management",
+        addStock: "Add Stock",
+        colLocation: "Location",
+        colGrade: "Grade",
+        colState: "State",
+        colDateAdded: "Date Added",
+        editStock: "Edit",
+        deleteStock: "Delete",
+        stockDetails: "Stock Details",
+        enterStockNo: "Stock Number",
+        enterWood: "Wood Species",
+        enterGrade: "Grade",
+        enterProductCode: "Product Code",
+        enterQty: "Quantity (pc)",
+        enterLocation: "Location",
+        enterState: "State",
+        colProductCode: "Product Code",
+        save: "Save",
+        stockAdded: "Stock added successfully",
+        stockUpdated: "Stock updated successfully",
+        stockDeleted: "Stock deleted successfully",
+    },
+    fr: {
+        // Sidebar
+        systemOnline: "Système En Ligne",
+        dashboard: "Tableau de Bord",
+        production: "Production",
+        inventory: "Inventaire",
+        settings: "Paramètre",
+        dataEntry: "Saisie de Données",
+        rawWood: "Traitement bois brut",
+        employeeEfficiency: "Efficacité Employés",
+        // Header
+        headerTitle: "Tableau de production",
+        adminUser: "Administrateur",
+        // Dashboard Stats
+        totalProduction: "Production Totale",
+        efficiency: "Efficacité",
+        activeErrors: "Alerte Mensuel",
+        revenue: "Revenu mensuel",
+        vsLastMonth: "vs mois dernier",
+        productionTrend: "Évolution de la production journalière",
+        recentAlerts: "Alertes Récentes",
+        alertBeckage: "Requis Calibration",
+        descBeckage: "Poste 1 - Écart précision > 0.5mm",
+        alertMoulding: "Matière Faible",
+        descMoulding: "Poste 3 - Trémie entrée < 10%",
+        alertFinishing: "Erreur Ventilation",
+        descFinishing: "Poste 4 - Obstruction filtre",
+        minsAgo: "il y a 2 min",
+        chartPlaceholder: "[Espace réservé pour graphique]",
+        // Production View
+        activeLines: "Lignes de Production Actives",
+        newBatch: "Nouveau Lot",
+        colBatchId: "No Prod",
+        colClient: "Client", // New
+        colTxnId: "ID Transaction",
+        colProduct: "Produit/Essence", // Renamed
+        colProcess: "Procédé",
+        colTreatment: "Traitement",
+        colQty: "Quantité (pc)", // New
+        colQtySqFt: "Surface (pi²)", // New
+        colDate: "Date Req.", // New
+        colDateTreatment: "Date Traitement",
+        colSupplier: "Fournisseur",
+        colQtyPMP: "Qte (PMP)",
+        colOrderNo: "No Commande",
+        colStockNo: "No Stock",
+        colStatus: "Statut",
+        colProgress: "Progression",
+        colEstCompletion: "Fin Estimée",
+        colTally: "Tally",
+        colStateRaw: "État",
+        colThickness: "Épaisseur",
+        colStation: "Assignation Poste",
+        stationPlaceholder: "Assigner Poste",
+        station1: "Poste 1",
+        station2: "Poste 2",
+        subcontractor: "Sous-traitant / Externe",
+        station3: "Poste 3",
+        station4: "Poste 4",
+        station5: "Poste 5",
+        statusRunning: "En Production",
+        statusPaused: "En Pause",
+        statusError: "Alerte en cours",
+        statusPlanning: "En Planification",
+        statusCompleted: "Terminé",
+        procBeckage: "Beckage",
+        procMoulding: "Moulurage",
+        procSanding1: "Sablage 1 Côté",
+        procSanding2: "Sablage 2 Côtés",
+        procStaining: "Teinture",
+        procBrushing: "Brossage",
+        procPolishing: "Polissage",
+        procOiling: "Huilage",
+        procPainting: "Peinture",
+        // Data Entry View
+        enterDataTitle: "Saisir des Données de Production",
+        labelClient: "Nom du Client",
+        labelTxn: "No Transaction",
+        labelQty: "Quantité (pc)",
+        labelProcess: "Procédé",
+        labelWood: "Essence de Bois",
+        labelDate: "Date Requise",
+        btnAddData: "Ajouter Commande",
+        // Raw Wood Data Entry
+        titleRawWood: "Données de bois brut",
+        labelOrderNo: "Numéro de commande",
+        labelSupplier: "Fournisseur",
+        labelSpecies: "Essences",
+        labelQtyPMP: "Qté (PMP)",
+        labelState: "État",
+        btnAddRawWood: "Ajouter Lot Bois Brut",
+        // Misc
+        settingsLoading: "Module Paramètres en chargement...",
+        // Worker View
+        jobQueue: "File d'Attente",
+        currentJob: "Tâche Actuelle",
+        startJob: "DÉMARRER",
+        pauseJob: "PAUSE",
+        finishJob: "TERMINER",
+        reportIssue: "Signaler Problème",
+        issueType: "Type de Problème",
+        deleteLabel: "Supprimer",
+        confirmDelete: "Êtes-vous sûr de vouloir supprimer cet élément ?",
+        selectOption: "-- Sélectionner --",
+        notes: "Notes",
+        confirm: "Confirmer",
+        cancel: "Annuler",
+        qtyProducedPrompt: "Entrez la quantité produite dans cette session:",
+        noDate: "Pas de tâche active",
+        waitingForJob: "En attente d'assignation...",
+        elapsedTime: "Temps Écoulé",
+        timeStarted: "Commencé à",
+        closePallet: "Fermer Palette",
+        reclassifyWood: "Reclasser Bois",
+        palletQty: "Quantité Palette (PL)",
+        selectGrade: "Sélectionnez le Classement",
+        grade1: "Classe 1 - Premium",
+        grade2: "Classe 2 - Sélect",
+        grade3: "Classe 3 - Standard",
+        grade4: "Classe 4 - Économique",
+        gradeReject: "Rebut/Déchet",
+        palletClosed: "Palette Fermée",
+        woodReclassified: "Bois Reclassé",
+        settingsMode: "Mode Interface",
+        modeAdmin: "Vue Administrateur",
+        modeStation1: "Vue Poste 1",
+        modeStation2: "Vue Poste 2",
+        modeStation3: "Vue Poste 3",
+        modeStation4: "Vue Poste 4",
+        modeStation5: "Vue Poste 5",
+        autoAssign: "Assignation Automatique",
+        configDesc: "Associez les procédés de fabrication à des postes spécifiques.",
+        processLabel: "Type Procédé",
+        stationLabel: "Poste par Défaut",
+        saveConfig: "Sauvegarder Configuration",
+        subcontractor: "Sous-traitant / Externe",
+        navDashboard: "Tableau de Bord",
+        navProduction: "Production",
+        navRawWood: "Traitement bois brut",
+        navDataEntry: "Saisie de Données",
+        navSettings: "Paramètres",
+        printLabel: "Imprimer Étiquette",
+        labelRecipe: "Recette / Procédé",
+        labelSubOrder: "Commande Sous-traitance",
+        labelStain: "Couleur Teinture",
+        labelPaint: "Couleur Peinture",
+        acknowledge: "ACCEPTER / RECONNAÎTRE",
+        colNotes: "Notes",
+        viewNotes: "Voir les notes de production",
+        copyNotes: "Copier",
+        close: "Fermer",
+        notesCopied: "Notes copiées dans le presse-papier",
+        // Inventory
+        inventoryTitle: "Gestion d'Inventaire",
+        addStock: "Ajouter Stock",
+        colLocation: "Localisation",
+        colGrade: "Grade",
+        colState: "État",
+        colDateAdded: "Date Ajout",
+        editStock: "Modifier",
+        deleteStock: "Supprimer",
+        stockDetails: "Détails du Stock",
+        enterStockNo: "Numéro de Stock",
+        enterWood: "Essence de Bois",
+        enterGrade: "Grade",
+        enterProductCode: "Code Produit",
+        enterQty: "Quantité (pc)",
+        enterLocation: "Localisation",
+        enterState: "État",
+        colProductCode: "Code Produit",
+        save: "Enregistrer",
+        stockAdded: "Stock ajouté avec succès",
+        stockUpdated: "Stock mis à jour avec succès",
+        stockDeleted: "Stock supprimé avec succès",
+    }
+};
+
+// --- Components ---
+
+// Simple Code 39 Barcode Generator (SVG)
+const Barcode = ({ value }) => {
+    const code39 = {
+        '0': '101001101101', '1': '110100101011', '2': '101100101011', '3': '110110010101',
+        '4': '101001101011', '5': '110100110101', '6': '101100110101', '7': '101001011011',
+        '8': '110100101101', '9': '101100101101', '-': '100101011011', '*': '100101101101'
+    };
+
+    const encoded = `*${value}*`.split('').map(c => code39[c] || '101010101').join('0');
+    
+    console.log('filteredData for DataGrid (avant render):', filteredData);
+    return (
+        <svg viewBox={`0 0 ${encoded.length} 100`} className="w-full h-full" preserveAspectRatio="none">
+            {encoded.split('').map((bit, i) => (
+                bit === '1' && <rect key={i} x={i} y="0" width="1" height="100" fill="black" />
+            ))}
+        </svg>
+    );
+};
+
+// Fonction pour générer un code-barres SVG en Code128
+const generateBarcodeSVG = (text) => {
+    // Code128 simple mapping (version simplifiée)
+    const width = 2; // Largeur de chaque barre
+    const height = 50; // Hauteur du code-barres
+    const patterns = {
+        '0': '11011001100', '1': '11001101100', '2': '11001100110', '3': '10010011000',
+        '4': '10010001100', '5': '10001001100', '6': '10011001000', '7': '10011000100',
+        '8': '10001100100', '9': '11001001000', 'A': '11001000100', 'B': '11000100100',
+        'C': '10110011100', 'D': '10011011100', 'E': '10011001110', 'F': '10111001000',
+        '-': '10111000100', 'START': '11010010000', 'STOP': '11000111010'
+    };
+    
+    // Convertir le texte en pattern de barres
+    let pattern = patterns['START'];
+    for (let char of text) {
+        if (patterns[char]) {
+            pattern += patterns[char];
+        }
+    }
+    pattern += patterns['STOP'];
+    
+    // Générer le SVG
+    let x = 0;
+    let bars = '';
+    for (let bit of pattern) {
+        if (bit === '1') {
+            bars += `<rect x="${x}" y="0" width="${width}" height="${height}" fill="black"/>`;
+        }
+        x += width;
+    }
+    
+    const totalWidth = x;
+    return `
+        <svg width="${totalWidth}" height="${height + 25}" style="display: block; margin: 0 auto;">
+            ${bars}
+            <text x="${totalWidth/2}" y="${height + 18}" text-anchor="middle" font-family="monospace" font-size="14">${text}</text>
+        </svg>
+    `;
+};
+
+const SubcontractLabelModal = ({ job, t, onClose }) => {
+    return (
+        <div className="fixed inset-0 z-[100] bg-black/50 flex items-center justify-center p-4 print:p-0 print:bg-white print:static">
+            <div className="bg-white p-8 rounded-xl shadow-2xl max-w-lg w-full print:shadow-none print:w-full">
+                <div className="flex justify-between items-start mb-6 print:hidden">
+                    <h3 className="text-xl font-bold text-gray-800">{t.printLabel}</h3>
+                    <button onClick={onClose} className="text-gray-400 hover:text-red-500">
+                        <i className="fa-solid fa-times text-xl"></i>
+                    </button>
+                </div>
+
+                {/* Status Badge */}
+                <div className="border-4 border-black p-4 mb-4 text-center print:border-black">
+                    <h1 className="text-4xl font-black uppercase mb-2">
+                        {job.station === 'subcontractor' ? "SOUS-TRAITANCE" : (t[job.process] || job.process).toUpperCase()}
+                    </h1>
+                    {job.station === 'subcontractor' && (
+                        <p className="text-xl font-bold">{t[job.process] || job.process}</p>
+                    )}
+                </div>
+
+                {/* Order Details */}
+                <div className="grid grid-cols-2 gap-4 mb-6 text-sm">
+                    <div>
+                        <span className="block font-bold uppercase text-xs">{t.colClient}</span>
+                        <span className="text-lg font-bold">{job.client}</span>
+                    </div>
+                    <div className="text-right">
+                        <span className="block font-bold uppercase text-xs">{t.labelDate}</span>
+                        <span className="text-lg font-bold">{job.date || "ASAP"}</span>
+                    </div>
+                     <div>
+                        <span className="block font-bold uppercase text-xs">{t.labelWood}</span>
+                        <span className="text-lg">{job.wood}</span>
+                    </div>
+                    <div className="text-right">
+                        <span className="block font-bold uppercase text-xs">{t.colQty}</span>
+                        <span className="text-lg font-bold">{job.qty} PC</span>
+                    </div>
+                </div>
+
+                {/* Barcode Area */}
+                <div className="mt-8 pt-4 border-t-2 border-dashed border-gray-300">
+                    <div className="text-center mb-2">
+                        <span className="font-bold text-xs uppercase tracking-widest">{t.colBatchId}</span>
+                        <div className="text-2xl font-black font-mono mt-1">{job.id}</div>
+                    </div>
+                    <div className="h-24 w-full px-8">
+                        <Barcode value={job.id.toString()} />
+                    </div>
+                </div>
+
+                {/* Footer instructions */}
+                <div className="mt-6 text-center text-xs text-gray-500 print:hidden">
+                    <p>Click Print to print this label for the subcontractor package.</p>
+                </div>
+
+                {/* Actions */}
+                <div className="mt-6 flex gap-4 print:hidden">
+                    <button 
+                        onClick={() => window.print()}
+                        className="flex-1 py-3 bg-gray-800 text-white font-bold rounded-lg hover:bg-black transition"
+                    >
+                        <i className="fa-solid fa-print mr-2"></i>
+                        Print Label
+                    </button>
+                </div>
+            </div>
+             <style>{`
+                @media print {
+                    @page { size: 4in 6in; margin: 0; }
+                    body { margin: 0; }
+                    body * { visibility: hidden; }
+                    .absolute.inset-0.z-50, .fixed.inset-0.z-\\[100\\] { 
+                        visibility: visible !important; 
+                        position: absolute !important; 
+                        left: 0 !important; 
+                        top: 0 !important; 
+                        width: 4in !important; 
+                        height: 6in !important; 
+                        display: flex !important; 
+                        align-items: flex-start !important; 
+                        justify-content: center !important; 
+                        background: white !important;
+                        padding: 0 !important;
+                    }
+                    .fixed.inset-0.z-\\[100\\] > div { 
+                        visibility: visible !important; 
+                        width: 3.8in !important; 
+                        height: 5.8in !important; 
+                        box-shadow: none !important; 
+                        padding: 0.1in !important;
+                        margin: 0.1in !important;
+                        border-radius: 0 !important;
+                    }
+                    .fixed.inset-0.z-\\[100\\] * { visibility: visible !important; }
+                    
+                    h1 { font-size: 1.8rem !important; }
+                    .text-lg { font-size: 0.8rem !important; }
+                    .text-2xl { font-size: 1.2rem !important; }
+                    .text-4xl { font-size: 2rem !important; }
+                }
+            `}</style>
+        </div>
+    );
+};
+
+const ProductionLabelModal = ({ job, t, onClose }) => {
+    return (
+        <div className="fixed inset-0 z-[100] bg-black/50 flex items-center justify-center p-4 print:p-0 print:bg-white print:static">
+            <div className="bg-white p-8 rounded-xl shadow-2xl max-w-lg w-full print:shadow-none print:w-full">
+                <div className="flex justify-between items-start mb-6 print:hidden">
+                    <h3 className="text-xl font-bold text-gray-800">Étiquette de Production</h3>
+                    <button onClick={onClose} className="text-gray-400 hover:text-red-500">
+                        <i className="fa-solid fa-times text-xl"></i>
+                    </button>
+                </div>
+
+                {/* Status Badge */}
+                <div className="border-4 border-black p-4 mb-4 text-center print:border-black">
+                    <h1 className="text-4xl font-black uppercase mb-2">TERMINÉ</h1>
+                    <p className="text-xl font-bold">{t[job.process] || job.process}</p>
+                </div>
+
+                {/* Order Details */}
+                <div className="grid grid-cols-2 gap-4 mb-6 text-sm">
+                    <div>
+                        <span className="block font-bold uppercase text-xs">Client</span>
+                        <span className="text-lg font-bold">{job.client}</span>
+                    </div>
+                    <div className="text-right">
+                        <span className="block font-bold uppercase text-xs">{t.labelDate}</span>
+                        <span className="text-lg font-bold">{job.date || "ASAP"}</span>
+                    </div>
+                    <div>
+                        <span className="block font-bold uppercase text-xs">{t.labelWood}</span>
+                        <span className="text-lg">{job.wood}</span>
+                    </div>
+                    <div className="text-right">
+                        <span className="block font-bold uppercase text-xs">Total Produit</span>
+                        <span className="text-lg font-bold">{job.producedQty} / {job.qty}</span>
+                    </div>
+                </div>
+
+                {/* Specific Recipe Details */}
+                {(job.stainColor || job.paintColor) && (
+                    <div className="mb-6 p-3 bg-gray-100 border border-gray-300 rounded text-center print:bg-white print:border-black">
+                        <span className="block font-bold uppercase text-xs mb-1">
+                            {job.stainColor ? t.labelStain : t.labelPaint}
+                        </span>
+                        <span className="text-2xl font-black">{job.stainColor || job.paintColor}</span>
+                    </div>
+                )}
+
+                {/* Barcode Area */}
+                <div className="mt-8 pt-4 border-t-2 border-dashed border-gray-300">
+                    <div className="text-center mb-2">
+                        <span className="font-bold text-xs uppercase tracking-widest">{t.labelTxn}</span>
+                        <div className="text-2xl font-black font-mono mt-1">{job.txn || job.id}</div>
+                    </div>
+
+                    <div className="h-24 w-full px-8">
+                        <Barcode value={job.txn || job.id.toString()} />
+                    </div>
+                </div>
+
+                <div className="mt-6 flex gap-4 print:hidden">
+                    <button 
+                        onClick={() => window.print()}
+                        className="flex-1 py-3 bg-gray-800 text-white font-bold rounded-lg hover:bg-black transition"
+                    >
+                        <i className="fa-solid fa-print mr-2"></i>
+                        Imprimer
+                    </button>
+                    <button 
+                        onClick={onClose}
+                        className="px-6 py-3 bg-gray-100 text-gray-600 font-bold rounded-lg hover:bg-gray-200 transition"
+                    >
+                        Fermer
+                    </button>
+                </div>
+            </div>
+             <style>{`
+                @media print {
+                    @page { size: 4in 6in; margin: 0; }
+                    body { margin: 0; }
+                    body * { visibility: hidden; }
+                    .absolute.inset-0.z-50, .fixed.inset-0.z-\\[100\\] { 
+                        visibility: visible !important; 
+                        position: absolute !important; 
+                        left: 0 !important; 
+                        top: 0 !important; 
+                        width: 4in !important; 
+                        height: 6in !important; 
+                        display: flex !important; 
+                        align-items: flex-start !important; 
+                        justify-content: center !important; 
+                        background: white !important;
+                        padding: 0 !important;
+                    }
+                    .fixed.inset-0.z-\\[100\\] > div { 
+                        visibility: visible !important; 
+                        width: 3.8in !important; 
+                        height: 5.8in !important; 
+                        box-shadow: none !important; 
+                        padding: 0.1in !important;
+                        margin: 0.1in !important;
+                        border-radius: 0 !important;
+                    }
+                    .fixed.inset-0.z-\\[100\\] * { visibility: visible !important; }
+                }
+            `}</style>
+        </div>
+    );
+};
+
+const SubcontractPOModal = ({ job, t, onClose, onConfirm, productionData, woodTreatments, updateJobStatus }) => {
+    const today = new Date().toLocaleDateString();
+    
+    // Vérification de sécurité
+    if (!job) return null;
+    
+    // Générer le numéro de bon d'achat dès l'ouverture du modal
+    const [poNumber] = useState(() => job.poNumber || 'PO-' + Date.now().toString().slice(-8));
+    
+    // State for editable fields
+    const [vendor, setVendor] = useState({
+        name: "SOUS-TRAITANT GÉNÉRAL",
+        attention: "Département de production",
+        address: "123 Rue Industriel, QC"
+    });
+
+    const [destination, setDestination] = useState({
+        name: "SURFAGEST PRODUCTION", 
+        address: "123 Rue de l'Industrie, Saint-Georges, QC G5Y 5C3",
+        contact: "Réception Marchandise"
+    });
+
+    const [notes, setNotes] = useState(
+        "Veuillez svp inclure ce bon de commande avec la facture.\nRespecter les standards de qualité Surfagest.\nEmballage sécuritaire requis pour le transport de retour."
+    );
+
+    // Mock list of vendors
+    const vendors = [
+        { name: "SOUS-TRAITANT GÉNÉRAL", attention: "Production", address: "123 Rue Industriel, QC", email: "production@soustraitant.com" },
+        { name: "ATELIER BOIS PRO", attention: "Jean-Pierre", address: "456 Av du Bois, QC", email: "jp@atelierboispro.com" },
+        { name: "PEINTURE EXPERT INC", attention: "Service commande", address: "789 Boul. Couleur, QC", email: "commandes@peintureexpert.com" }
+    ];
+
+    // Mock list of destinations
+    const destinations = [
+        { name: "SURFAGEST PRODUCTION", address: "123 Rue de l'Industrie, Saint-Georges, QC G5Y 5C3", contact: "Réception Marchandise" },
+        { name: job?.client || "Client", address: "Adresse Client (Sur dossier)", contact: "Expédition Directe" }
+    ];
+
+    return (
+        <div className="fixed inset-0 z-[100] bg-black/50 flex items-center justify-center p-4 print:p-0 print:bg-white print:static">
+            <div className="bg-white p-8 rounded-xl shadow-2xl max-w-4xl w-full print:shadow-none print:w-full print:max-w-none h-[90vh] overflow-y-auto print:h-auto print:overflow-visible relative">
+                <div className="flex justify-between items-start mb-6 print:hidden">
+                    <h3 className="text-xl font-bold text-gray-800">Bon de Commande</h3>
+                    <button onClick={onClose} className="text-gray-400 hover:text-red-500">
+                        <i className="fa-solid fa-times text-xl"></i>
+                    </button>
+                </div>
+                
+                <div id="purchase-order" className="p-8 border border-gray-200 print:border-none">
+                    {/* Header */}
+                    <div className="flex justify-between items-start border-b-2 border-gray-800 pb-6 mb-8">
+                        <div>
+                             <h1 className="text-lg font-bold">Surfagest</h1>
+                             <div className="text-sm text-gray-600">
+                                <p>123 Rue de l'Industrie</p>
+                                <p>Saint-Georges, QC G5Y 5C3</p>
+                                <p>Tél: (418) 555-0123</p>
+                             </div>
+                        </div>
+                        <div className="text-right">
+                            <h1 className="text-4xl font-black text-gray-800 uppercase mb-2">Bon de Commande</h1>
+                            <p className="text-xl font-bold text-gray-600">#{job.txn || job.id}</p>
+                            <p className="text-lg font-bold text-blue-600 mt-1">PO: {poNumber}</p>
+                            <p className="text-gray-500 mt-2">Date: {today}</p>
+                            {/* Code-barres du numéro d'achat (PO) */}
+                            <div className="mt-4" dangerouslySetInnerHTML={{ __html: generateBarcodeSVG(poNumber.toString()) }} />
+                        </div>
+                    </div>
+
+                    {/* Vendor / Ship To */}
+                     <div className="flex justify-between gap-12 mb-8">
+                        <div className="w-1/2">
+                            <h3 className="font-bold uppercase text-gray-500 text-xs tracking-wider mb-2">Fournisseur (Sous-traitant)</h3>
+                            <select 
+                                className="w-full mb-2 p-2 border rounded text-sm print:hidden"
+                                value={vendor.name}
+                                onChange={(e) => {
+                                    const v = vendors.find(v => v.name === e.target.value);
+                                    if(v) setVendor(v);
+                                }}
+                            >
+                                {vendors.map(v => <option key={v.name} value={v.name}>{v.name}</option>)}
+                            </select>
+
+                            <div className="p-4 bg-gray-50 rounded border border-gray-200 h-32">
+                                <p className="font-bold text-lg">{vendor.name}</p>
+                                <p className="text-gray-600">{vendor.address}</p>
+                                <p className="text-gray-500 text-sm mt-1">Attn: {vendor.attention}</p>
+                            </div>
+                        </div>
+                         <div className="w-1/2">
+                            <h3 className="font-bold uppercase text-gray-500 text-xs tracking-wider mb-2">Destination / Client</h3>
+                             <select 
+                                className="w-full mb-2 p-2 border rounded text-sm print:hidden"
+                                value={destination.name}
+                                onChange={(e) => {
+                                    const d = destinations.find(d => d.name === e.target.value);
+                                    if(d) setDestination(d);
+                                }}
+                            >
+                                {destinations.map(d => <option key={d.name} value={d.name}>{d.name}</option>)}
+                            </select>
+
+                            <div className="p-4 bg-gray-50 rounded border border-gray-200 h-32">
+                                <p className="font-bold text-lg">{destination.name}</p>
+                                <p className="text-gray-600">{destination.address}</p>
+                                <p className="text-gray-500 text-sm mt-1">Attn: {destination.contact}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Table */}
+                    <table className="w-full mb-8">
+                        <thead>
+                            <tr className="bg-gray-800 text-white">
+                                <th className="p-3 text-left">Description</th>
+                                <th className="p-3 text-left">Procédé</th>
+                                <th className="p-3 text-right">Quantité</th>
+                                <th className="p-3 text-right">Date Requise</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr className="border-b">
+                                <td className="p-3">
+                                    <p className="font-bold">Lot de production #{job.id}</p>
+                                    <p className="text-sm text-gray-600">Référence Transaction: {job.txn}</p>
+                                    <p className="text-sm text-gray-600">Client: {job.client}</p>
+                                    <p className="text-sm text-gray-600">Produit: {job.wood}</p>
+                                    {(job.stainColor || job.paintColor) && (
+                                        <p className="text-sm font-bold mt-1">
+                                            Spécification: {job.stainColor || job.paintColor}
+                                        </p>
+                                    )}
+                                </td>
+                                <td className="p-3">
+                                    {t[job.process] || job.process || 'N/A'}
+                                </td>
+                                <td className="p-3 text-right font-bold">{job.qty} PC</td>
+                                <td className="p-3 text-right">{job.date || "ASAP"}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    {/* Notes */}
+                    <div className="mb-12">
+                         <h3 className="font-bold uppercase text-gray-500 text-xs tracking-wider mb-2">Notes & Instructions</h3>
+                         <textarea
+                            className="w-full p-4 border border-gray-200 rounded min-h-[100px] text-sm text-gray-600 print:border-none print:resize-none"
+                            value={notes}
+                            onChange={(e) => setNotes(e.target.value)}
+                            placeholder="Entrez les notes et instructions..."
+                         />
+                    </div>
+
+                    {/* Signature */}
+                    <div className="flex justify-end mt-12 pt-12">
+                        <div className="w-1/3 text-center border-t border-gray-400 pt-2">
+                             <p className="font-bold text-gray-800">Autorisé par</p>
+                             <p className="text-sm text-gray-500">Surfagest Production</p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Actions */}
+                <div className="mt-6 grid grid-cols-4 gap-4 print:hidden">
+                     <button 
+                        onClick={onClose}
+                        className="py-3 bg-gray-200 text-gray-800 font-bold rounded-lg hover:bg-gray-300 transition"
+                    >
+                        <i className="fa-solid fa-times mr-2"></i>
+                        Annuler
+                    </button>
+                    
+                    <button 
+                        onClick={() => {
+                            if (onConfirm) {
+                                // Utiliser le numéro de bon de commande déjà généré
+                                onConfirm(vendor, poNumber);
+                            }
+                        }}
+                        className="col-span-1 py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition"
+                    >
+                        <i className="fa-solid fa-check mr-2"></i>
+                        Confirmer
+                    </button>
+                    
+                    <button 
+                        onClick={() => {
+                            const emailSubject = `Bon de Commande #${job.txn || job.id} - Surfagest`;
+                            const emailBody = `Bonjour,\n\nVeuillez trouver ci-joint le bon de commande pour:\n\nProduction: #${job.id}\nClient: ${job.client}\nProduit: ${job.wood}\nQuantité: ${job.qty} PC\nProcédé: ${t[job.process] || job.process}\n\nCordialement,\nSurfagest Production`;
+                            const mailtoLink = `mailto:${vendor.email || ''}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
+                            window.location.href = mailtoLink;
+                        }}
+                        className="col-span-1 py-3 bg-purple-600 text-white font-bold rounded-lg hover:bg-purple-700 transition"
+                    >
+                        <i className="fa-solid fa-envelope mr-2"></i>
+                        Envoyer Email
+                    </button>
+                    
+                    <button 
+                        onClick={() => {
+                            const oldTitle = document.title;
+                            document.title = `BonCommande_${job.id}.pdf`;
+                            window.print();
+                            setTimeout(() => document.title = oldTitle, 1000);
+                        }}
+                        className="col-span-1 py-3 bg-[#51aff7] text-white font-bold rounded-lg hover:bg-blue-600 transition"
+                    >
+                        <i className="fa-solid fa-print mr-2"></i>
+                        Imprimer / PDF
+                    </button>
+                </div>
+            </div>
+             <style>{`
+                @media print {
+                    @page { size: auto; margin: 0; }
+                    body * { visibility: hidden; }
+                    .absolute.inset-0.z-50, .fixed.inset-0.z-\\[100\\] { 
+                        visibility: visible !important;
+                        position: absolute !important;
+                        left: 0 !important;
+                        top: 0 !important;
+                        width: 100% !important;
+                        height: 100% !important;
+                        background: white !important;
+                    }
+                    .fixed.inset-0.z-\\[100\\] > div {
+                        visibility: visible !important;
+                        width: 100% !important;
+                        max-width: 100% !important;
+                        padding: 0.5in !important;
+                        box-shadow: none !important;
+                        border: none !important;
+                    }
+                    .fixed.inset-0.z-\\[100\\] * { visibility: visible !important; }
+                    .print\\:hidden { display: none !important; }
+                }
+            `}</style>
+        </div>
+    );
+};
+
+// Employee Efficiency View
+const EmployeeEfficiencyView = ({ t, productionData }) => {
+    const [employees, setEmployees] = useState(() => {
+        const saved = localStorage.getItem('employees');
+        if (saved) return JSON.parse(saved);
+        return [];
+    });
+    const [editingTime, setEditingTime] = useState({});
+
+    useEffect(() => {
+        localStorage.setItem('employees', JSON.stringify(employees));
+    }, [employees]);
+
+    const handleHoursBlur = (employeeId, timeString) => {
+        // Si vide, on met à 0
+        if (!timeString || timeString.trim() === '') {
+            setEmployees(prev => prev.map(emp => 
+                emp.id === employeeId ? { ...emp, totalClockedHours: 0 } : emp
+            ));
+            setEditingTime(prev => ({ ...prev, [employeeId]: undefined }));
+            return;
+        }
+        
+        let hours = 0;
+        let minutes = 0;
+        
+        // Gérer format décimal (ex: 5.45 = 5h45)
+        if (timeString.includes('.')) {
+            const parts = timeString.split('.');
+            hours = parseInt(parts[0]) || 0;
+            minutes = parseInt(parts[1]) || 0;
+        }
+        // Gérer format HH:MM
+        else if (timeString.includes(':')) {
+            const parts = timeString.split(':');
+            if (parts.length !== 2) {
+                alert('Format invalide. Utilisez HH:MM (ex: 08:30) ou H.MM (ex: 5.45)');
+                setEditingTime(prev => ({ ...prev, [employeeId]: undefined }));
+                return;
+            }
+            hours = parseInt(parts[0]) || 0;
+            minutes = parseInt(parts[1]) || 0;
+        }
+        // Si seulement des chiffres, considérer comme des heures
+        else {
+            hours = parseInt(timeString) || 0;
+        }
+        
+        // Arrondir les minutes par tranches de 5 À LA HAUSSE
+        if (minutes > 0) {
+            minutes = Math.ceil(minutes / 5) * 5;
+        }
+        if (minutes >= 60) {
+            hours += Math.floor(minutes / 60);
+            minutes = minutes % 60;
+        }
+        
+        // Convertir en heures décimales
+        const totalHours = hours + (minutes / 60);
+        
+        setEmployees(prev => prev.map(emp => 
+            emp.id === employeeId ? { ...emp, totalClockedHours: totalHours } : emp
+        ));
+        
+        setEditingTime(prev => ({ ...prev, [employeeId]: undefined }));
+    };
+
+    const formatHoursToHHMM = (decimalHours) => {
+        if (!decimalHours || decimalHours === 0) return '';
+        const hours = Math.floor(decimalHours);
+        const minutes = Math.round((decimalHours - hours) * 60);
+        return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+    };
+
+    const calculateProductionTime = (employee) => {
+        // Calculer le temps passé sur les postes basé sur les logs de production
+        let totalMinutes = 0;
+        productionData.forEach(job => {
+            if (job.logs && Array.isArray(job.logs)) {
+                let lastActionTime = null;
+                let isWorking = false;
+                
+                job.logs.forEach(log => {
+                    // Vérifier si ce log appartient à cet employé
+                    if (log.user === employee.name) {
+                        if (log.action === 'START' || log.action === 'RESUME') {
+                            lastActionTime = log.timestamp;
+                            isWorking = true;
+                        } else if ((log.action === 'PAUSE' || log.action === 'COMPLETE') && lastActionTime && isWorking) {
+                            // Calculer le temps entre START/RESUME et PAUSE/COMPLETE
+                            const duration = (log.timestamp - lastActionTime) / (1000 * 60); // Convertir ms en minutes
+                            totalMinutes += duration;
+                            isWorking = false;
+                        }
+                    }
+                });
+            }
+        });
+        return totalMinutes / 60; // Convertir minutes en heures
+    };
+
+    return (
+        <div className="p-8">
+            <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold">Efficacité des Employés</h2>
+                <button
+                    onClick={() => {
+                        const name = prompt("Nom de l'employé:");
+                        if (!name) return;
+                        const nip = prompt("NIP (4 chiffres):");
+                        if (!nip || nip.length !== 4) {
+                            alert("Le NIP doit contenir exactement 4 chiffres");
+                            return;
+                        }
+                        
+                        // Vérifier si le NIP existe déjà
+                        if (employees.find(e => e.nip === nip)) {
+                            alert("Ce NIP existe déjà");
+                            return;
+                        }
+                        
+                        const maxId = Math.max(...employees.map(e => e.id), 0);
+                        const newEmployee = {
+                            id: maxId + 1,
+                            name: name,
+                            nip: nip,
+                            totalClockedHours: 0
+                        };
+                        setEmployees(prev => [...prev, newEmployee]);
+                    }}
+                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-bold"
+                >
+                    <i className="fa fa-plus mr-2"></i>
+                    Ajouter un employé
+                </button>
+            </div>
+            
+            <div className="bg-white rounded-lg shadow overflow-hidden">
+                <table className="w-full">
+                    <thead className="bg-gray-800 text-white">
+                        <tr>
+                            <th className="p-4 text-left">Employé</th>
+                            <th className="p-4 text-center">Heures Pointées</th>
+                            <th className="p-4 text-center">Heures Production</th>
+                            <th className="p-4 text-center">Efficacité</th>
+                            <th className="p-4 text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {employees.map(emp => {
+                            const productionHours = calculateProductionTime(emp);
+                            const efficiency = emp.totalClockedHours > 0 
+                                ? ((productionHours / emp.totalClockedHours) * 100).toFixed(1)
+                                : 0;
+                            
+                            return (
+                                <tr key={emp.id} className="border-b hover:bg-gray-50">
+                                    <td className="p-4 font-semibold">{emp.name}</td>
+                                    <td className="p-4 text-center">
+                                        <input
+                                            type="text"
+                                            placeholder="HH:MM"
+                                            value={editingTime[emp.id] !== undefined ? editingTime[emp.id] : formatHoursToHHMM(emp.totalClockedHours)}
+                                            onChange={(e) => setEditingTime(prev => ({ ...prev, [emp.id]: e.target.value }))}
+                                            onBlur={(e) => handleHoursBlur(emp.id, e.target.value)}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') {
+                                                    e.target.blur();
+                                                    handleHoursBlur(emp.id, e.target.value);
+                                                }
+                                            }}
+                                            className="w-24 px-3 py-2 border border-gray-300 rounded text-center font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        />
+                                        <span className="ml-2 text-gray-600 text-xs">(5 min)</span>
+                                    </td>
+                                    <td className="p-4 text-center font-mono text-gray-700">
+                                        {productionHours.toFixed(2)} h
+                                    </td>
+                                    <td className="p-4 text-center">
+                                        <span className={`px-3 py-1 rounded-full text-sm font-bold ${
+                                            efficiency >= 80 ? 'bg-green-100 text-green-800' :
+                                            efficiency >= 60 ? 'bg-yellow-100 text-yellow-800' :
+                                            'bg-red-100 text-red-800'
+                                        }`}>
+                                            {efficiency}%
+                                        </span>
+                                    </td>
+                                    <td className="p-4 text-center">
+                                        <button
+                                            onClick={() => {
+                                                const newName = prompt("Nouveau nom:", emp.name);
+                                                if (newName && newName !== emp.name) {
+                                                    setEmployees(prev => prev.map(e => 
+                                                        e.id === emp.id ? { ...e, name: newName } : e
+                                                    ));
+                                                }
+                                            }}
+                                            className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition mr-2"
+                                            title="Modifier"
+                                        >
+                                            <i className="fa fa-edit"></i>
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                if (confirm(`Supprimer ${emp.name} ?`)) {
+                                                    setEmployees(prev => prev.filter(e => e.id !== emp.id));
+                                                }
+                                            }}
+                                            className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 transition"
+                                            title="Supprimer"
+                                        >
+                                            <i className="fa fa-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            );
+                        })}
+                    </tbody>
+                </table>
+            </div>
+
+            <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-6">
+                <h3 className="text-lg font-bold text-blue-900 mb-2">
+                    <i className="fa fa-info-circle mr-2"></i>
+                    Comment fonctionne le calcul d'efficacité ?
+                </h3>
+                <p className="text-blue-800">
+                    <strong>Heures Pointées :</strong> Entrer le temps au format HH:MM (ex: 08:30) ou H.MM (ex: 5.45). Les minutes sont arrondies par tranches de 5 min.<br/>
+                    <strong>Heures Production :</strong> Temps actif passé sur les postes de travail (calculé automatiquement).<br/>
+                    <strong>Efficacité :</strong> (Heures Production / Heures Pointées) × 100
+                </p>
+            </div>
+        </div>
+    );
+};
+
+// Sidebar, Header, StatCard implementation (Simplified for size, assuming user has copy)
+const Sidebar = ({ activeTab, setActiveTab, t }) => (
+    <aside className="w-64 bg-gray-900 text-white h-screen fixed left-0 top-0 p-4">
+        <h1 className="text-xl font-bold mb-8">Dashboard</h1>
+        {['dashboard', 'production', 'inventory', 'dataEntry', 'employeeEfficiency', 'settings'].map(id => (
+            <button key={id} onClick={() => setActiveTab(id)} className={`block w-full text-left p-3 rounded mb-2 ${activeTab === id ? 'bg-blue-600' : 'hover:bg-gray-800'}`}>
+                {t[id]}
+            </button>
+        ))}
+    </aside>
+);
+
+const Header = ({ t, lang, setLang }) => (
+    <header className="h-16 bg-white shadow flex items-center justify-between px-8 fixed left-64 right-0 top-0 z-10">
+        <h2 className="font-bold text-xl">{t.headerTitle}</h2>
+    </header>
+);
+
+const StatCard = ({ title, value, t }) => (
+    <div className="bg-white p-6 rounded shadow">
+        <h3 className="text-gray-500 text-sm">{title}</h3>
+        <p className="text-2xl font-bold">{value}</p>
+    </div>
+);
+
+
+const DashboardView = ({ t, productionData, customProcesses = [], woodTreatments = [] }) => {
+    // Process Colors Configuration
+    const processColors = {
+        'procBeckage': 'bg-blue-500',
+        'procSanding1': 'bg-yellow-400', 
+        'procSanding2': 'bg-orange-500', 
+        'procMoulding': 'bg-purple-500', 
+        'procStaining': 'bg-red-500', 
+        'procBrushing': 'bg-amber-700',
+        'procPolishing': 'bg-teal-400',
+        'procOiling': 'bg-lime-500',
+        'procPainting': 'bg-green-500' 
+    };
+
+    const allProcessKeys = [
+        ...Object.keys(processColors),
+        ...customProcesses.map(p => p.id),
+        ...woodTreatments.map(p => p.id)
+    ];
+
+    const getProcColor = (id) => processColors[id] || 'bg-indigo-500';
+
+    // Live Clock State
+    const [currentTime, setCurrentTime] = useState(new Date());
+    useEffect(() => {
+        const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+        return () => clearInterval(timer);
+    }, []);
+
+    // Date Logic Shared across stats
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+    const prevDate = new Date();
+    prevDate.setMonth(currentMonth - 1);
+    const prevMonth = prevDate.getMonth();
+    const prevYear = prevDate.getFullYear();
+
+    // Calculate Monthly Stats for Comparison Chart
+    const getMonthlyStats = () => {
+        const currentStats = {};
+        const prevStats = {};
+        
+        allProcessKeys.forEach(k => { currentStats[k] = 0; prevStats[k] = 0; });
+
+        productionData.forEach(item => {
+            const proc = item.process;
+            if (!proc || !allProcessKeys.includes(proc)) return;
+
+            let loggedQty = 0;
+            // Strategy 1: Accumulate from Logs
+            if (item.logs && Array.isArray(item.logs)) {
+                item.logs.forEach(log => {
+                    if (log.timestamp && log.qty != null) {
+                        const q = parseInt(log.qty);
+                        if (!isNaN(q)) {
+                            loggedQty += q;
+                            const d = new Date(log.timestamp);
+                            if (d.getMonth() === currentMonth && d.getFullYear() === currentYear) currentStats[proc] += q;
+                            else if (d.getMonth() === prevMonth && d.getFullYear() === prevYear) prevStats[proc] += q;
+                        }
+                    }
+                });
+            }
+
+            // Strategy 2: Handle Legacy/Unlogged Quantity
+            const totalProduced = parseInt(item.producedQty || 0);
+            const remainder = totalProduced - loggedQty;
+
+            if (remainder > 0) {
+                let dateObj = new Date(); 
+                if (item.assignedAt) {
+                     const parts = item.assignedAt.split(/[\s/:]+/); 
+                     if (parts.length >= 3) {
+                         const p0 = parseInt(parts[0]);
+                         if (p0 > 12) dateObj = new Date(parts[2], parts[1] - 1, parts[0]); 
+                         else dateObj = new Date(parts[2], parts[0] - 1, parts[1]); 
+                     }
+                }
+
+                if (dateObj.getMonth() === currentMonth && dateObj.getFullYear() === currentYear) currentStats[proc] += remainder;
+                else if (dateObj.getMonth() === prevMonth && dateObj.getFullYear() === prevYear) prevStats[proc] += remainder;
+            }
+        });
+
+        return { currentStats, prevStats };
+    };
+
+    const { currentStats, prevStats } = getMonthlyStats();
+
+    // Calculate Totals for Top Cards
+    const totalQtyCurrentMonth = Object.values(currentStats).reduce((a, b) => a + b, 0);
+    const totalQtyPrevMonth = Object.values(prevStats).reduce((a, b) => a + b, 0);
+    const prodDiff = totalQtyCurrentMonth - totalQtyPrevMonth;
+
+    const efficiencyPct = totalQtyPrevMonth > 0 
+        ? ((totalQtyCurrentMonth - totalQtyPrevMonth) / totalQtyPrevMonth * 100)
+        : (totalQtyCurrentMonth > 0 ? 100 : 0);
+    const efficiencyLabel = (efficiencyPct >= 0 ? "+" : "") + efficiencyPct.toFixed(1) + "%";
+    
+    const maxMonthlyVal = Math.max(...Object.values(currentStats), ...Object.values(prevStats), 10);
+
+    const errorsCurrentMonth = productionData.filter(item => {
+        if (!item.issueTimestamp) return false;
+        const d = new Date(item.issueTimestamp);
+        return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+    }).length;
+
+    const errorsPrevMonth = productionData.filter(item => {
+        if (!item.issueTimestamp) return false;
+        const d = new Date(item.issueTimestamp);
+        return d.getMonth() === prevMonth && d.getFullYear() === prevYear;
+    }).length;
+
+    const errorsDiff = errorsCurrentMonth - errorsPrevMonth;
+    const errorsChange = errorsPrevMonth > 0 
+        ? ((errorsDiff / errorsPrevMonth) * 100).toFixed(1) + "%" 
+        : (errorsCurrentMonth > 0 ? "+100%" : "0%");
+    const errorsChangeLabel = errorsDiff >= 0 ? "+" + errorsDiff : errorsDiff.toString();
+
+    // Calcul du revenu basé sur la production (1.60$ par PC)
+    const pricePerPC = 1.60;
+    const revenueCurrentMonth = totalQtyCurrentMonth * pricePerPC;
+    const revenuePrevMonth = totalQtyPrevMonth * pricePerPC;
+    const revenueDiff = revenueCurrentMonth - revenuePrevMonth;
+    const revenueChange = revenuePrevMonth > 0 
+        ? ((revenueDiff / revenuePrevMonth) * 100).toFixed(1) + "%" 
+        : (revenueCurrentMonth > 0 ? "+100%" : "0%");
+    const revenueLabel = revenueCurrentMonth >= 1000 
+        ? "$" + (revenueCurrentMonth / 1000).toFixed(1) + "k"
+        : "$" + revenueCurrentMonth.toFixed(0);
+    const revenueChangeLabel = (revenueDiff >= 0 ? "+" : "") + revenueChange;
+
+    const allAlerts = productionData
+        .filter(item => item.issueDescription)
+        .sort((a, b) => (b.issueTimestamp || 0) - (a.issueTimestamp || 0));
+        
+    const recentAlertsDisplay = allAlerts.map(alert => ({
+        title: `Problème Lot #${alert.id}`,
+        desc: alert.issueDescription,
+        time: alert.issueTimestamp ? new Date(alert.issueTimestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) + ' ' + new Date(alert.issueTimestamp).toLocaleDateString() : "À l'instant",
+        color: (!alert.issueResolved) ? "text-red-500" : "text-green-500",
+        icon: (!alert.issueResolved) ? "fa-circle-exclamation" : "fa-circle-check",
+        resolved: alert.issueResolved
+    }));
+
+    return (
+    <div className="space-y-6">
+        {/* Dashboard Header Bar */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+             <div>
+                <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                    <i className="fa-solid fa-chart-line text-[#51aff7]"></i>
+                    {t.dashboard}
+                </h2>
+                <p className="text-sm text-gray-400 font-medium mt-1">Vue d'ensemble de la production</p>
+             </div>
+             
+             <div className="flex items-center gap-3 bg-gray-50 p-2 rounded-lg border border-gray-200 mt-4 md:mt-0 shadow-inner">
+                <div className="flex items-center gap-2 text-gray-600 font-bold px-2 text-sm border-r border-gray-300">
+                    <i className="fa-regular fa-calendar text-[#51aff7]"></i>
+                    <span className="capitalize">{currentTime.toLocaleDateString(undefined, {weekday: 'long', day: 'numeric', month: 'long'})}</span>
+                </div>
+                <div className="flex items-center gap-2 text-gray-600 font-mono font-bold px-2 text-sm">
+                    <i className="fa-regular fa-clock text-[#51aff7]"></i>
+                    {currentTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                </div>
+            </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <StatCard t={t} title={t.totalProduction} value={totalQtyCurrentMonth.toString() + " PC"} change={(prodDiff >= 0 ? "+" : "") + prodDiff + " PC"} icon="fa-box" colorClass="bg-[#51aff7]/10 text-[#51aff7]" />
+            <StatCard t={t} title={t.efficiency} value={efficiencyLabel} change="" icon="fa-tachometer-alt" colorClass={efficiencyPct >= 0 ? "bg-green-100 text-green-600" : "bg-red-100 text-red-600"} />
+            <StatCard t={t} title={t.activeErrors} value={errorsCurrentMonth.toString()} change={errorsChangeLabel} icon="fa-exclamation-triangle" colorClass={errorsCurrentMonth > 0 ? "bg-red-100 text-red-600" : "bg-gray-100 text-gray-400"} />
+            <StatCard t={t} title={t.revenue} value={revenueLabel} change={revenueChangeLabel} icon="fa-dollar-sign" colorClass="bg-purple-100 text-purple-600" />
+        </div>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <h3 className="font-bold text-gray-800 mb-4">{t.productionTrend}</h3>
+                <div className="flex gap-4 mb-4 text-xs font-medium flex-wrap">
+                     <div className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-blue-500"></span><span className="text-gray-600 font-bold">{t.currentMonth || "Ce mois"}</span></div>
+                     <div className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-gray-300"></span><span className="text-gray-600 font-bold">{t.prevMonth || "Mois passé"}</span></div>
+                </div>
+
+                <div className="h-64 bg-gray-50 rounded p-4 flex items-end justify-around gap-2 overflow-x-auto">
+                    {allProcessKeys.map(procKey => {
+                        const curVal = currentStats[procKey] || 0;
+                        const prevVal = prevStats[procKey] || 0;
+                        const curHeight = maxMonthlyVal > 0 ? (curVal / maxMonthlyVal) * 100 : 0;
+                        const prevHeight = maxMonthlyVal > 0 ? (prevVal / maxMonthlyVal) * 100 : 0;
+
+                        return (
+                             <div key={procKey} className="flex-1 flex flex-col items-center gap-2 group min-w-[60px] h-full">
+                                <div className="flex items-end justify-center w-full gap-1 flex-1 relative">
+                                    <div className="w-1/3 bg-gray-300 rounded-t transition-all duration-1000 relative group-hover:bg-gray-400" style={{height: `${prevHeight}%`}}></div>
+                                    <div className={`w-1/3 ${getProcColor(procKey)} rounded-t transition-all duration-1000 relative hover:brightness-110`} style={{height: `${curHeight}%`}}>
+                                        <span className="absolute -top-5 left-1/2 -translate-x-1/2 text-xs text-gray-800 font-bold">{curVal}</span>
+                                    </div>
+                                </div>
+                                <span className="text-[10px] uppercase font-bold text-gray-500 truncate w-full text-center" title={t[procKey] || procKey}>
+                                    {t[procKey] ? (t[procKey].length > 10 ? t[procKey].substring(0,8)+'...' : t[procKey]) : procKey}
+                                </span>
+                             </div>
+                        );
+                    })}
+                </div>
+            </div>
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <h3 className="font-bold text-gray-800 mb-4">{t.recentAlerts}</h3>
+                <div className="space-y-4">
+                    {recentAlertsDisplay.map((alert, i) => (
+                        <div key={i} className={`flex gap-4 items-start p-3 rounded-lg transition ${!alert.resolved ? 'bg-red-50 border-l-4 border-red-500' : 'hover:bg-gray-50'}`}>
+                            <i className={`fa-solid ${alert.icon} ${alert.color} mt-1`}></i>
+                            <div>
+                                <h4 className={`text-sm font-bold ${!alert.resolved ? 'text-red-800' : 'text-gray-800'}`}>{alert.title}</h4>
+                                <p className={`text-xs ${!alert.resolved ? 'text-red-600' : 'text-gray-500'}`}>{alert.desc}</p>
+                                <span className="text-[10px] text-gray-400">{alert.time}</span>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    </div>
+    );
+};
+
+
+const processOrder = [
+    { id: 'procBeckage', label: 'Beckage' },
+    { id: 'procSanding1', label: 'Sablage (1)' },
+    { id: 'procSanding2', label: 'Sablage (2)' },
+    { id: 'procMoulding', label: "Moulurage" },
+    { id: 'procStaining', label: 'Teinture' },
+    { id: 'procBrushing', label: 'Brossage' },
+    { id: 'procPolishing', label: 'Polissage' },
+    { id: 'procOiling', label: 'Huilage' },
+    { id: 'procPainting', label: 'Peinture' },
+];
+
+const stationDefinitions = [
+    { id: 'station1', labelKey: 'station1', icon: 'fa-scissors' },
+    { id: 'station2', labelKey: 'station2', icon: 'fa-layer-group' },
+    { id: 'station3', labelKey: 'station3', icon: 'fa-shapes' },
+    { id: 'station4', labelKey: 'station4', icon: 'fa-paint-roller' },
+    { id: 'station5', labelKey: 'station5', icon: 'fa-wrench' },
+];
+
+// --- Production View with DevExtreme ---
+const ProductionView = ({ t, productionData, assignStation, updateJobStatus, deleteBatch, customProcesses = [], isRawWood = false, woodTreatments = [], stationConfig = {}, inventory = [], deductFromInventory = () => {} }) => {
+    const [printingJob, setPrintingJob] = useState(null);
+    const [printingPO, setPrintingPO] = useState(null);
+    const [activeStatuses, setActiveStatuses] = useState(['planning', 'running', 'paused', 'error', 'completed']);
+    const [filterProcess, setFilterProcess] = useState('all');
+    const [showAddStock, setShowAddStock] = useState(false);
+    const [newStock, setNewStock] = useState({ client: 'Prod. Inventaire', isInventoryProd: true, wood: '', grade: '', qty: '', processes: [], date: '', location: '', state: '' });
+    const [selectedStocks, setSelectedStocks] = useState([]);  // Liste des stocks sélectionnés
+    // Liste des produits/essences uniques déjà présents
+    const existingWoods = Array.from(new Set(productionData.map(item => item.wood).filter(Boolean)));
+    const [isCustomWood, setIsCustomWood] = useState(false);
+    const [stockSearch, setStockSearch] = useState('');
+    const [showSuggestions, setShowSuggestions] = useState(false);
+    const [refreshTick, setRefreshTick] = useState(0);
+    
+    // Charger l'ordre des processus depuis localStorage
+    const processOrder = React.useMemo(() => {
+        const saved = localStorage.getItem('processOrder');
+        return saved ? JSON.parse(saved) : [];
+    }, []);
+
+    // Liste de base des processus standards
+    const standardProcesses = [
+        { id: 'procBeckage', label: t.procBeckage },
+        { id: 'procMoulding', label: t.procMoulding },
+        { id: 'procSanding1', label: t.procSanding1 },
+        { id: 'procSanding2', label: t.procSanding2 },
+        { id: 'procStaining', label: t.procStaining },
+        { id: 'procBrushing', label: t.procBrushing },
+        { id: 'procPolishing', label: t.procPolishing },
+        { id: 'procOiling', label: t.procOiling },
+        { id: 'procPainting', label: t.procPainting },
+        ...customProcesses
+    ];
+
+    // Trier les processus selon l'ordre sauvegardé
+    const sortedProcesses = processOrder.length > 0
+        ? processOrder.map(id => standardProcesses.find(p => p.id === id)).filter(Boolean)
+        : standardProcesses;
+
+    // Combine standard and custom processes for dropdown
+    const allProcesses = isRawWood ? woodTreatments : sortedProcesses;
+
+    // Assurer l'exposition des fonctions globales pour les cellTemplates DevExtreme
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            window.deleteBatch = deleteBatch;
+            window.updateJobStatus = updateJobStatus;
+            window.stationConfig = stationConfig;
+        }
+    }, [deleteBatch, updateJobStatus, stationConfig]);
+
+    // Alerts
+    const alerts = productionData.filter(item => item.hasIssue || (item.status === 'error' && item.issueDescription));
+
+    // Listen to global data update events to force a local refresh cycle
+    useEffect(() => {
+        const handler = () => {
+            setRefreshTick((v) => v + 1);
+            try {
+                if (gridInstanceRef && gridInstanceRef.current && typeof gridInstanceRef.current.refresh === 'function') {
+                    gridInstanceRef.current.refresh();
+                }
+            } catch (_) {}
+        };
+        try { window.addEventListener('productionDataUpdated', handler); } catch (_) {}
+        return () => { try { window.removeEventListener('productionDataUpdated', handler); } catch (_) {} };
+    }, []);
+
+    // Filter Logic
+        const filteredData = productionData.filter(item => {
+           let visualStatus = 'planning';
+           if (item.status === 'completed' || (item.progress === 100)) visualStatus = 'completed';
+           else if (item.status === 'running' || (item.steps && item.steps.length > 1 && item.stepIndex > 0)) visualStatus = 'running';
+           else if (item.status === 'paused') visualStatus = 'paused';
+           else if (item.status === 'error' && !item.issueResolved) visualStatus = 'error';
+
+           if (!activeStatuses.includes(visualStatus)) return false;
+           if (filterProcess !== 'all' && item.process !== filterProcess) return false;
+
+           // Correction : Toujours afficher la ligne de test (id:1)
+           if (item.id === 1) return true;
+
+           // Strict Separation Logic
+           const isWoodTreat = woodTreatments.some(wt => wt.id === item.process);
+
+           if (isRawWood) {
+               // If this is Raw Wood View, ONLY show wood treatments
+               if(!isWoodTreat) return false;
+           } else {
+               // If this is Standard Production View, HIDE wood treatments
+               if(isWoodTreat) return false;
+           }
+
+           return true;
+        }).sort((a, b) => {
+            // Trier: les productions terminées à la fin
+            const aCompleted = a.status === 'completed' ? 1 : 0;
+            const bCompleted = b.status === 'completed' ? 1 : 0;
+            return aCompleted - bCompleted;
+        });
+
+    
+    const gridContainerRef = useRef(null);
+    const gridInstanceRef = useRef(null);
+
+
+    // Initial Grid Setup
+    useEffect(() => {
+        if (!gridContainerRef.current) return;
+
+        // Helper to render React components in DevExtreme cells
+        const renderInCell = (container, component) => {
+             // Clear any existing content
+             container.innerHTML = '';
+             // Create a dedicated root element
+             const rootSpan = document.createElement('div');
+             rootSpan.style.height = "100%";
+             container.appendChild(rootSpan);
+             
+             try {
+                 const root = ReactDOM.createRoot(rootSpan);
+                 root.render(component);
+                 // Store root for potential cleanup (though grid disposes containers)
+                 container._reactRoot = root;
+             } catch (e) {
+                 console.error("React Render Error:", e);
+                 container.innerText = "Error";
+             }
+        };
+
+        // Fixer les valeurs pour éviter les bugs de closure DevExtreme
+        const WT = Array.isArray(woodTreatments) ? woodTreatments.slice() : [];
+        const TT = { ...t };
+        // Pour affichage du label process (Assignation Automatique)
+        const allProc = isRawWood ? WT : [...processOrder, ...customProcesses];
+        const columns = [
+            {
+                caption: t.colStockNo || 'No. Stock',
+                dataField: 'stockNo',
+                allowSorting: true
+            },
+            {
+                caption: 'Trans/Prod',
+                dataField: 'txn',
+                allowSorting: true
+            },
+            {
+                dataField: 'client',
+                caption: t.colClient,
+                allowSorting: true,
+                // Removed template to force data show
+            },
+            {
+                dataField: 'wood',
+                caption: t.colProduct,
+                // Removed template to force data show
+            },
+            {
+                dataField: 'qty',
+                caption: 'Quantité',
+                dataType: 'number',
+                width: 120
+            },
+            {
+                dataField: 'unit',
+                caption: 'Unité',
+                width: 80,
+                allowEditing: false,
+                calculateCellValue: (rowData) => {
+                    // Toujours afficher "PC" pour l'inventaire
+                    return 'PC';
+                }
+            },
+            {
+                dataField: 'date',
+                caption: t.labelDate,
+                dataType: 'date',
+                width: 120
+            },
+            {
+                dataField: 'process',
+                caption: t.colProcess,
+                width: 250,
+                allowEditing: false,
+                cellTemplate: (container, options) => {
+                    const item = options.data;
+                    // Helper to get real DOM element
+                    const getDomContainer = (c) => {
+                        if (c instanceof Element) return c;
+                        if (c && c.get && typeof c.get === 'function') return c.get(0);
+                        if (Array.isArray(c) && c[0] instanceof Element) return c[0];
+                        return null;
+                    };
+                    const domContainer = getDomContainer(container);
+                    if (!domContainer) return;
+                    domContainer.innerHTML = '';
+                    
+                    // Si le job est terminé, afficher "Terminé"
+                    if (item.status === 'completed') {
+                        const completedDiv = document.createElement('div');
+                        completedDiv.className = 'text-sm font-bold text-green-700 bg-green-100 px-3 py-2 rounded text-center';
+                        completedDiv.textContent = 'Terminé';
+                        domContainer.appendChild(completedDiv);
+                        return;
+                    }
+                    
+                    // Check if this item has multiple processes (steps array)
+                    const hasMultipleSteps = item.steps && Array.isArray(item.steps) && item.steps.length > 1;
+                    const currentStepIndex = (item.stepIndex || 0) + 1; // Convert to 1-based
+                    const totalSteps = hasMultipleSteps ? item.steps.length : 1;
+                    
+                    // If multiple steps, show indicator before select
+                    if (hasMultipleSteps) {
+                        const stepIndicator = document.createElement('div');
+                        stepIndicator.className = 'text-xs font-bold text-blue-600 mb-1';
+                        stepIndicator.textContent = `${currentStepIndex} de ${totalSteps}`;
+                        domContainer.appendChild(stepIndicator);
+                    }
+                    
+                    // Select
+                    const select = document.createElement('select');
+                    select.className = 'text-xs border rounded p-1 w-full';
+                    
+                    // Si la ligne a des steps définis, filtrer pour n'afficher que ces processus
+                    let processes = allProcesses;
+                    if (item.steps && Array.isArray(item.steps) && item.steps.length > 0) {
+                        processes = allProcesses.filter(proc => item.steps.includes(proc.id));
+                    }
+                    
+                    // Option vide
+                    const optEmpty = document.createElement('option');
+                    optEmpty.value = '';
+                    optEmpty.textContent = '-- Procédé --';
+                    optEmpty.disabled = true;
+                    select.appendChild(optEmpty);
+                    processes.forEach(proc => {
+                        const opt = document.createElement('option');
+                        opt.value = proc.id;
+                        opt.textContent = t[proc.id] || proc.label;
+                        if (item.process === proc.id) opt.selected = true;
+                        select.appendChild(opt);
+                    });
+                    select.value = item.process || '';
+                    select.onchange = (e) => {
+                        // Update process for this row using current handler
+                        try {
+                            updateJobStatus(item.id, item.status, item.producedQty, null, null, { process: e.target.value });
+                        } catch (err) {
+                            try { console.warn('updateJobStatus failed:', err); } catch (_) {}
+                        }
+                    };
+                    domContainer.appendChild(select);
+                }
+            },
+            {
+                dataField: 'progress',
+                caption: "% d'avancement",
+                width: 120,
+                calculateCellValue: (rowData) => {
+                    const qtyPC = parseFloat(rowData.qty) || 0; // Quantité demandée en PC
+                    if (qtyPC === 0) return "0%";
+                    
+                    const producedPL = parseFloat(rowData.producedQty) || 0; // Quantité produite en PL
+                    const width = parseFloat(rowData.width) || 0;
+                    
+                    // Convertir PL en PC pour la comparaison: PC = PL * (width/12)
+                    const producedPC = width > 0 ? producedPL * (width / 12) : producedPL;
+                    
+                    const percent = Math.round((producedPC / qtyPC) * 100);
+                    return percent + "%";
+                }
+            },
+            {
+                dataField: 'stationStatus',
+                caption: 'État Poste',
+                width: 120,
+                allowEditing: false,
+                calculateCellValue: (rowData) => {
+                    if (!rowData.station || rowData.station === '') return 'Non assigné';
+                    if (rowData.status === 'planning') return 'Libre';
+                    if (rowData.status === 'running') return 'En production';
+                    if (rowData.status === 'paused') return 'Pause';
+                    if (rowData.status === 'error') return 'Alerte';
+                    if (rowData.status === 'completed') return 'Terminé';
+                    return 'Libre';
+                },
+                cellTemplate: (container, options) => {
+                    const item = options.data;
+                    const getDomContainer = (c) => {
+                        if (c instanceof Element) return c;
+                        if (c && c.get && typeof c.get === 'function') return c.get(0);
+                        if (Array.isArray(c) && c[0] instanceof Element) return c[0];
+                        return null;
+                    };
+                    const domContainer = getDomContainer(container);
+                    if (!domContainer) return;
+                    domContainer.innerHTML = '';
+                    
+                    let statusText = 'Non assigné';
+                    let className = 'bg-gray-100 text-gray-700';
+                    
+                    if (!item.station || item.station === '') {
+                        statusText = 'Non assigné';
+                        className = 'bg-gray-100 text-gray-700';
+                    } else if (item.status === 'planning') {
+                        statusText = 'Libre';
+                        className = 'bg-blue-100 text-blue-700';
+                    } else if (item.status === 'running') {
+                        statusText = 'En production';
+                        className = 'bg-green-100 text-green-700';
+                    } else if (item.status === 'paused') {
+                        statusText = 'Pause';
+                        className = 'bg-yellow-100 text-yellow-700';
+                    } else if (item.status === 'error') {
+                        statusText = 'Alerte';
+                        className = 'bg-red-100 text-red-700';
+                    } else if (item.status === 'completed') {
+                        statusText = 'Terminé';
+                        className = 'bg-green-200 text-green-800';
+                    }
+                    
+                    const span = document.createElement('span');
+                    span.className = `px-2 py-1 rounded text-xs font-bold ${className}`;
+                    span.textContent = statusText;
+                    domContainer.appendChild(span);
+                }
+            },
+            {
+                dataField: 'station',
+                caption: t.colStation,
+                width: 350,
+                allowEditing: false,
+                cellTemplate: (container, options) => {
+                    const item = options.data;
+                    // Helper to get real DOM element
+                    const getDomContainer = (c) => {
+                        if (c instanceof Element) return c;
+                        if (c && c.get && typeof c.get === 'function') return c.get(0);
+                        if (Array.isArray(c) && c[0] instanceof Element) return c[0];
+                        return null;
+                    };
+                    const domContainer = getDomContainer(container);
+                    if (!domContainer) return;
+                    domContainer.innerHTML = '';
+                    
+                    // Layout
+                    const div = document.createElement('div');
+                    div.className = 'flex flex-row gap-2 items-center';
+                    div.style.width = '100%';
+                    
+                    // Affichage ALERTE en rouge si présente
+                    if (item && item.issueDescription && !item.issueResolved) {
+                        const alertSpan = document.createElement('span');
+                        alertSpan.style.color = '#dc2626';
+                        alertSpan.style.fontWeight = 'bold';
+                        alertSpan.style.fontSize = '14px';
+                        alertSpan.style.marginRight = '8px';
+                        alertSpan.style.padding = '2px 8px';
+                        alertSpan.style.backgroundColor = '#fee2e2';
+                        alertSpan.style.borderRadius = '4px';
+                        alertSpan.style.border = '1px solid #dc2626';
+                        alertSpan.textContent = 'ALERTE';
+                        div.appendChild(alertSpan);
+                    }
+                    
+                    // Select
+                    const select = document.createElement('select');
+                    select.className = 'text-xs border rounded p-1';
+                    select.style.minWidth = '120px';
+                    // Désactiver le changement de poste si la production a débuté
+                    if (item.status !== 'planning') {
+                        select.disabled = true;
+                        select.style.opacity = '0.6';
+                        select.style.cursor = 'not-allowed';
+                    }
+                    // Get allowed stations for this process from stationConfig
+                    let allowedStations = [
+                        { value: '', label: 'POSTE...', disabled: true },
+                        { value: 'station1', label: t.station1 },
+                        { value: 'station2', label: t.station2 },
+                        { value: 'station3', label: t.station3 },
+                        { value: 'station4', label: t.station4 },
+                        { value: 'station5', label: t.station5 },
+                        { value: 'subcontractor', label: t.subcontractor }
+                    ];
+                    if (typeof window !== 'undefined' && window.stationConfig) {
+                        const config = window.stationConfig;
+                        const procId = item.process;
+                        const configuredStation = config[procId];
+                        if (configuredStation) {
+                            allowedStations = allowedStations.filter(st => st.value === '' || st.value === configuredStation || st.value === 'subcontractor');
+                        }
+                    }
+                    allowedStations.forEach(st => {
+                        const opt = document.createElement('option');
+                        opt.value = st.value;
+                        opt.textContent = st.label;
+                        if (st.disabled) opt.disabled = true;
+                        if (item.station === st.value) opt.selected = true;
+                        select.appendChild(opt);
+                    });
+                    
+                    // Gestionnaire de changement de station
+                    select.addEventListener('change', (e) => {
+                        const newStation = e.target.value;
+                        if (newStation === 'subcontractor') {
+                            // Ouvrir modal de sélection de sous-traitant
+                            if (typeof window !== 'undefined' && window.openSubcontractModal) {
+                                window.openSubcontractModal(item);
+                            }
+                        } else {
+                            // Assignation normale
+                            if (typeof window !== 'undefined' && window.assignStation) {
+                                window.assignStation(item.id, newStation);
+                            }
+                        }
+                    });
+                    
+                    div.appendChild(select);
+                    
+                    // Afficher le numéro PO et bouton pour visualiser le bon de commande si sous-traitant
+                    if (item.station === 'subcontractor' && item.poNumber) {
+                        const poInfo = document.createElement('div');
+                        poInfo.className = 'flex items-center gap-2 mt-1';
+                        
+                        const poText = document.createElement('span');
+                        poText.className = 'text-xs text-blue-600 font-bold';
+                        poText.textContent = item.poNumber;
+                        poInfo.appendChild(poText);
+                        
+                        const btnViewPO = document.createElement('button');
+                        btnViewPO.className = 'text-xs text-blue-600 hover:text-blue-800 underline';
+                        btnViewPO.innerHTML = '<i class="fa fa-eye"></i> Voir';
+                        btnViewPO.title = 'Voir le bon de commande';
+                        btnViewPO.onclick = (e) => {
+                            e.stopPropagation();
+                            if (typeof window !== 'undefined' && window.openSubcontractModal) {
+                                window.openSubcontractModal(item);
+                            }
+                        };
+                        poInfo.appendChild(btnViewPO);
+                        
+                        div.appendChild(poInfo);
+                    }
+                    
+                    // Ajout bouton pour résoudre l'alerte si présente
+                    if (item && item.issueDescription && !item.issueResolved) {
+                        const btnResolve = document.createElement('button');
+                        btnResolve.className = 'ml-2 text-green-600 hover:text-white hover:bg-green-600 border border-green-200 rounded px-2 py-1 text-xs font-bold transition';
+                        btnResolve.innerHTML = '<i class="fa fa-check"></i>';
+                        btnResolve.title = 'Marquer comme résolu';
+                        btnResolve.onclick = (e) => {
+                            e.stopPropagation();
+                            
+                            // Demander une description de la résolution
+                            DevExpress.ui.dialog.custom({
+                                title: "Résoudre l'alerte",
+                                messageHtml: `<div style="margin: 20px 0;">
+                                    <p style="margin-bottom: 12px;"><strong>Problème signalé:</strong></p>
+                                    <p style="margin-bottom: 16px; padding: 8px; background: #fee; border-left: 3px solid #f00;">${item.issueDescription}</p>
+                                    <label style="display: block; margin-bottom: 8px; font-weight: bold;">Description de la résolution:</label>
+                                    <textarea id="resolutionDescription" rows="4" 
+                                              style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; resize: vertical;"
+                                              placeholder="Décrivez comment le problème a été résolu..."></textarea>
+                                </div>`,
+                                buttons: [
+                                    {
+                                        text: "Annuler",
+                                        onClick: () => false
+                                    },
+                                    {
+                                        text: "Résoudre",
+                                        onClick: () => {
+                                            const resolution = document.getElementById('resolutionDescription').value.trim();
+                                            if (!resolution) {
+                                                alert("Veuillez entrer une description de la résolution.");
+                                                return false;
+                                            }
+                                            
+                                            try {
+                                                if (typeof updateJobStatus === 'function') {
+                                                    // Ajouter la résolution à la description existante
+                                                    const updatedDescription = `${item.issueDescription}\n\n[RÉSOLUTION] ${resolution}`;
+                                                    // Remettre le statut à "running" quand l'alerte est résolue
+                                                    const newStatus = item.status === 'error' ? 'running' : item.status;
+                                                    updateJobStatus(item.id, newStatus, item.producedQty, null, null, { 
+                                                        issueResolved: true,
+                                                        issueDescription: updatedDescription,
+                                                        resolutionTimestamp: Date.now()
+                                                    });
+                                                    DevExpress.ui.notify("Alerte résolue avec succès", "success", 2000);
+                                                }
+                                            } catch (err) {
+                                                console.warn('Failed to resolve issue:', err);
+                                            }
+                                            return true;
+                                        }
+                                    }
+                                ]
+                            }).show();
+                        };
+                        div.appendChild(btnResolve);
+                    }
+                    
+                    // Bouton étiquette d'inventaire si terminé
+                    if (item.status === 'completed') {
+                        const btnLabel = document.createElement('button');
+                        btnLabel.className = 'ml-2 text-green-600 hover:text-white hover:bg-green-600 border border-green-200 rounded px-2 py-1 text-xs font-bold transition';
+                        btnLabel.innerHTML = '<i class="fa fa-tag"></i> Étiquette';
+                        btnLabel.title = 'Imprimer étiquette d\'inventaire';
+                        btnLabel.onclick = (e) => {
+                            e.stopPropagation();
+                            // Demander la localisation avant d'imprimer
+                            DevExpress.ui.dialog.custom({
+                                title: "Localisation d'entreposage",
+                                messageHtml: `<div style="margin: 20px 0;">
+                                    <label style="display: block; margin-bottom: 8px; font-weight: bold;">Entrez la localisation :</label>
+                                    <input type="text" id="storageLocationPrint" placeholder="Ex: A-12, B-5, C-23..."
+                                           style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 16px;" />
+                                </div>`,
+                                buttons: [
+                                    {
+                                        text: "Annuler",
+                                        onClick: () => false
+                                    },
+                                    {
+                                        text: "Imprimer",
+                                        onClick: () => {
+                                            const location = document.getElementById('storageLocationPrint').value.trim();
+                                            if (typeof window.generateProductionTagFromTable === 'function') {
+                                                window.generateProductionTagFromTable(item, location);
+                                            }
+                                            return true;
+                                        }
+                                    }
+                                ]
+                            }).show();
+                        };
+                        div.appendChild(btnLabel);
+                    }
+                    
+                    // Ajout bouton corbeille à droite
+                    if (item.status === 'planning') {
+                        const btn = document.createElement('button');
+                        btn.className = 'ml-2 text-red-600 hover:text-white hover:bg-red-600 border border-red-200 rounded px-2 py-1 text-xs font-bold transition';
+                        btn.innerHTML = '<i class="fa fa-trash"></i>';
+                        btn.title = 'Supprimer la ligne';
+                        btn.onclick = (e) => {
+                            e.stopPropagation();
+                            try { console.log('Delete click (assignation):', { id: item.id }); } catch (_) {}
+                            if (confirm('Voulez-vous vraiment supprimer cette ligne ?')) {
+                                // Persister via handler React
+                                try { deleteBatch(item.id); } catch (err) { try { console.warn('deleteBatch failed:', err); } catch (_) {} }
+                                // Suppression immédiate du dataSource pour feedback visuel
+                                try {
+                                    if (gridInstanceRef && gridInstanceRef.current) {
+                                        const currentDS = gridInstanceRef.current.option('dataSource') || [];
+                                        const newDS = (Array.isArray(currentDS) ? currentDS : []).filter(r => Number(r.id) !== Number(item.id));
+                                        gridInstanceRef.current.option('dataSource', newDS);
+                                        const dsObj = gridInstanceRef.current.getDataSource && gridInstanceRef.current.getDataSource();
+                                        if (dsObj && dsObj.reload) dsObj.reload();
+                                        gridInstanceRef.current.repaint();
+                                    }
+                                } catch (_) {}
+                            }
+                        };
+                        div.appendChild(btn);
+                    }
+                    domContainer.appendChild(div);
+                }
+            },
+            {
+                caption: 'Notes',
+                width: 80,
+                alignment: 'center',
+                allowEditing: false,
+                allowSorting: false,
+                cellTemplate: (container, options) => {
+                    const item = options.data;
+                    const getDomContainer = (c) => {
+                        if (c instanceof Element) return c;
+                        if (c && c.get && typeof c.get === 'function') return c.get(0);
+                        if (Array.isArray(c) && c[0] instanceof Element) return c[0];
+                        return null;
+                    };
+                    const domContainer = getDomContainer(container);
+                    if (!domContainer) return;
+                    domContainer.innerHTML = '';
+                    
+                    // Afficher l'icône seulement si la production est terminée et qu'il y a des notes
+                    if (item.status === 'completed' && item.notes && item.notes.trim() !== '') {
+                        const btn = document.createElement('button');
+                        btn.className = 'text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-full p-2 transition';
+                        btn.innerHTML = '<i class="fa-solid fa-file-lines text-lg"></i>';
+                        btn.title = 'Voir les notes de production';
+                        btn.onclick = (e) => {
+                            e.stopPropagation();
+                            // Afficher une modal avec les notes
+                            DevExpress.ui.dialog.custom({
+                                title: 'Notes de Production - #' + item.id,
+                                messageHtml: '<div style="margin: 20px 0;">' +
+                                    '<div style="background-color: #f9fafb; padding: 16px; border-radius: 8px; border: 1px solid #e5e7eb;">' +
+                                    '<p style="margin-bottom: 8px;"><strong>Client:</strong> ' + (item.client || 'N/A') + '</p>' +
+                                    '<p style="margin-bottom: 8px;"><strong>Produit:</strong> ' + (item.wood || 'N/A') + '</p>' +
+                                    '<p style="margin-bottom: 12px;"><strong>Procédé:</strong> ' + (t[item.process] || item.process || 'N/A') + '</p>' +
+                                    '<hr style="margin: 12px 0; border-top: 1px solid #d1d5db;" />' +
+                                    '<div style="max-height: 400px; overflow-y: auto; white-space: pre-wrap; font-family: monospace; font-size: 12px; line-height: 1.6;">' + 
+                                    (item.notes || 'Aucune note disponible') + 
+                                    '</div>' +
+                                    '</div>' +
+                                    '</div>',
+                                buttons: [
+                                    {
+                                        text: 'Fermer',
+                                        onClick: () => true
+                                    },
+                                    {
+                                        text: 'Copier',
+                                        onClick: () => {
+                                            if (navigator.clipboard && navigator.clipboard.writeText) {
+                                                navigator.clipboard.writeText(item.notes).then(() => {
+                                                    DevExpress.ui.notify('Notes copiées dans le presse-papier', 'success', 2000);
+                                                }).catch(err => {
+                                                    console.error('Erreur copie:', err);
+                                                });
+                                            }
+                                            return false; // Keep dialog open
+                                        }
+                                    }
+                                ]
+                            }).show();
+                        };
+                        domContainer.appendChild(btn);
+                    }
+                }
+            }
+        ];
+
+        // Create unique copy of array to ensure DevExtreme detects change
+        const ds = [...filteredData];
+        console.log('filteredData for DataGrid:', ds);
+
+        gridInstanceRef.current = new DevExpress.ui.dxDataGrid(gridContainerRef.current, {
+            dataSource: ds,
+            keyExpr: "id", // Critical: Allows DevExtreme to track rows correctly
+            columns: columns,
+            showBorders: true,
+            columnAutoWidth: true,
+            rowAlternationEnabled: true,
+            filterRow: { visible: true },
+            searchPanel: { visible: true },
+            paging: { pageSize: 15 },
+            pager: { showPageSizeSelector: true, allowedPageSizes: [15, 30, 50], showInfo: true },
+            editing: {
+                mode: 'cell',
+                allowUpdating: true
+            },
+            onRowUpdating: (e) => {
+                // Mettre à jour les données dans productionData
+                const updatedData = productionData.map(item => 
+                    item.id === e.key ? { ...item, ...e.newData } : item
+                );
+                setProductionData(updatedData);
+                
+                // Sauvegarder dans localStorage
+                try {
+                    localStorage.setItem('productionData', JSON.stringify(updatedData));
+                } catch (err) {
+                    console.error('Erreur lors de la sauvegarde:', err);
+                }
+            },
+            onRowPrepared: (e) => {
+                try {
+                    if (e && e.rowType === 'data' && e.data && e.rowElement) {
+                        if (e.data.issueDescription && !e.data.issueResolved) {
+                            e.rowElement.style.backgroundColor = '#fee2e2';
+                            e.rowElement.style.borderLeft = '4px solid #dc2626';
+                        }
+                    }
+                } catch (err) {
+                    console.error('Row preparation error:', err);
+                }
+            },
+            onCellPrepared: (e) => {
+                try {
+                    if (e && e.rowType === 'data' && e.data && e.cellElement && e.data.issueDescription && !e.data.issueResolved) {
+                        e.cellElement.style.fontWeight = 'bold';
+                    }
+                } catch (err) {
+                    console.error('Cell preparation error:', err);
+                }
+            }
+        });
+
+        return () => {
+             // Cleanup prevent memory leaks
+            if (gridInstanceRef.current) {
+                gridInstanceRef.current.dispose();
+                gridInstanceRef.current = null;
+            }
+        };
+    }, [isRawWood, woodTreatments, t, refreshTick]); 
+
+    // Update data when filteredData changes
+    useEffect(() => {
+        if (gridInstanceRef.current) {
+             // Clone to force update detection
+             const ds = [...filteredData];
+             gridInstanceRef.current.option("dataSource", ds);
+             // Use reload() to ensure data is fetched for the view
+             if(gridInstanceRef.current.getDataSource()) {
+                 gridInstanceRef.current.getDataSource().reload();
+             }
+             gridInstanceRef.current.repaint();
+             try {
+                 if (typeof gridInstanceRef.current.refresh === 'function') {
+                     gridInstanceRef.current.refresh();
+                 }
+             } catch (_) {}
+        }
+    }, [filteredData, activeStatuses, filterProcess, refreshTick]); // Add dependencies to ensure update runs
+
+    const toggleStatus = (status) => {
+        if (activeStatuses.includes(status)) {
+             setActiveStatuses(activeStatuses.filter(s => s !== status));
+        } else {
+            setActiveStatuses([...activeStatuses, status]);
+        }
+    };
+
+    return (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden p-4">
+            {/* Modal/Formulaire d'ajout de stock */}
+            {showAddStock && (
+                <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white p-6 rounded-xl shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                        <h3 className="font-bold text-xl mb-4 sticky top-0 bg-white pb-2 border-b">Ajouter un produit à transformer</h3>
+                        <div className="space-y-3 mt-4">
+                            {/* Champ No Prod (auto-généré si vide) */}
+                            <input
+                                className="w-full border p-3 rounded text-base"
+                                placeholder="No Prod"
+                                value={newStock.txn || ''}
+                                onChange={e => setNewStock({ ...newStock, txn: e.target.value })}
+                                onFocus={() => {
+                                    if (!newStock.txn) {
+                                        // Générer un numéro de production auto-incrémenté formaté PROD-0001
+                                        let nextNum = 1;
+                                        try {
+                                            const data = JSON.parse(localStorage.getItem('productionData')) || [];
+                                            const prodNums = data
+                                                .map(item => (item.txn || '').match(/^PROD-(\d{4,})$/))
+                                                .filter(Boolean)
+                                                .map(match => parseInt(match[1], 10));
+                                            if (prodNums.length > 0) {
+                                                nextNum = Math.max(...prodNums) + 1;
+                                            }
+                                        } catch (e) {}
+                                        const autoTxn = `PROD-${nextNum.toString().padStart(4, '0')}`;
+                                        setNewStock(ns => ({ ...ns, txn: autoTxn }));
+                                    }
+                                }}
+                            />
+                            {/* Champ No. stock avec loupe */}
+                            <div className="relative">
+                                <input
+                                    className="w-full border p-3 rounded pr-10 text-base"
+                                    placeholder="No. stock"
+                                    value={newStock.stockNo || ''}
+                                    onChange={e => {
+                                        const stockNo = e.target.value;
+                                        setNewStock({ ...newStock, stockNo });
+                                        setStockSearch(stockNo);
+                                        // Si correspondance exacte, remplir les champs
+                                        const found = inventory.find(s => s.stockNo === stockNo);
+                                        if (found) {
+                                            setNewStock({
+                                                ...newStock,
+                                                stockNo: found.stockNo,
+                                                wood: found.wood,
+                                                grade: found.grade || '',
+                                                qty: found.qty,
+                                                location: found.location,
+                                                state: found.state || ''
+                                            });
+                                            setShowSuggestions(false);
+                                        }
+                                    }}
+                                    autoComplete="off"
+                                />
+                                <span
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 cursor-pointer"
+                                    title="Rechercher le stock"
+                                    onClick={() => setShowSuggestions(s => !s)}
+                                >
+                                    <i className="fa fa-search"></i>
+                                </span>
+                                {/* Suggestions d'inventaire */}
+                                {showSuggestions && (
+                                    <div className="absolute left-0 right-0 bg-white border rounded shadow z-10 max-h-60 overflow-y-auto mt-1">
+                                        {inventory.filter(s => s.stockNo.toLowerCase().includes((newStock.stockNo || '').toLowerCase())).length === 0 && (
+                                            <div className="p-3 text-gray-400 text-base">Aucun stock trouvé</div>
+                                        )}
+                                        {inventory.filter(s => s.stockNo.toLowerCase().includes((newStock.stockNo || '').toLowerCase())).map(s => (
+                                            <div
+                                                key={s.stockNo}
+                                                className="p-3 hover:bg-blue-50 cursor-pointer flex flex-col"
+                                                onClick={() => {
+                                                    setNewStock({
+                                                        ...newStock,
+                                                        stockNo: s.stockNo,
+                                                        wood: s.wood,
+                                                        grade: s.grade || '',
+                                                        qty: s.qty,
+                                                        location: s.location,
+                                                        state: s.state || ''
+                                                    });
+                                                    setShowSuggestions(false);
+                                                }}
+                                            >
+                                                <span className="font-bold text-base">{s.stockNo}</span>
+                                                <span className="text-sm text-gray-600">{s.wood}{s.grade ? ' (' + s.grade + ')' : ''} — {s.qty} PC — Loc: {s.location}</span>
+                                                {s.state && (
+                                                    <span className="text-sm font-semibold text-blue-600 mt-1">
+                                                        <i className="fa fa-tag mr-1"></i>État: {s.state}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                            {/* Champ Quantité modifiable */}
+                            <div>
+                                <label className="block text-base mb-1 font-medium">Quantité à transformer</label>
+                                <input 
+                                    className="w-full border p-3 rounded text-base" 
+                                    placeholder="Quantité" 
+                                    type="number" 
+                                    value={newStock.qty} 
+                                    onChange={e => setNewStock({ ...newStock, qty: e.target.value })} 
+                                />
+                            </div>
+                            {/* Bouton pour ajouter le stock à la liste */}
+                            <button 
+                                className="w-full py-2 bg-green-500 text-white rounded font-bold hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                                disabled={!newStock.stockNo || !newStock.wood || !newStock.qty || newStock.qty <= 0}
+                                onClick={() => {
+                                    if (newStock.stockNo && newStock.wood && newStock.qty && newStock.qty > 0) {
+                                        const stockToAdd = {
+                                            stockNo: newStock.stockNo,
+                                            wood: newStock.wood,
+                                            grade: newStock.grade || '',
+                                            qty: Number(newStock.qty),
+                                            location: newStock.location,
+                                            state: newStock.state
+                                        };
+                                        setSelectedStocks([...selectedStocks, stockToAdd]);
+                                        // Réinitialiser le formulaire
+                                        setNewStock({ 
+                                            client: 'Prod. Inventaire', 
+                                            isInventoryProd: true, 
+                                            wood: '', 
+                                            grade: '',
+                                            qty: '', 
+                                            stockNo: '',
+                                            processes: newStock.processes, // Garder les processus sélectionnés
+                                            date: newStock.date,
+                                            txn: newStock.txn,
+                                            location: '',
+                                            state: '' 
+                                        });
+                                    }
+                                }}
+                            >
+                                <i className="fa fa-plus mr-2"></i>Ajouter ce stock à la sélection
+                            </button>
+                            
+                            {/* Liste des stocks sélectionnés */}
+                            {selectedStocks.length > 0 && (
+                                <div className="border-2 border-green-200 bg-green-50 p-3 rounded">
+                                    <label className="block text-base font-semibold mb-2">Stocks sélectionnés ({selectedStocks.length})</label>
+                                    <div className="space-y-2 max-h-60 overflow-y-auto">
+                                        {selectedStocks.map((stock, index) => (
+                                            <div key={index} className="flex items-center justify-between gap-2 bg-white p-2 rounded border">
+                                                <div className="flex-1">
+                                                    <span className="font-bold text-sm block">{stock.stockNo}</span>
+                                                    <span className="text-xs text-gray-600">{stock.wood}{stock.grade ? ' (' + stock.grade + ')' : ''} — {stock.qty} PC</span>
+                                                    {stock.state && <span className="text-xs text-blue-600 ml-2">({stock.state})</span>}
+                                                </div>
+                                                <button
+                                                    onClick={() => setSelectedStocks(selectedStocks.filter((_, i) => i !== index))}
+                                                    className="text-red-500 hover:text-red-700 p-1"
+                                                    title="Retirer"
+                                                >
+                                                    <i className="fa fa-times"></i>
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                            
+                            {/* Total des stocks sélectionnés */}
+                            {selectedStocks.length > 0 && (
+                                <div>
+                                    <label className="block text-base mb-1 font-medium">Quantité totale sélectionnée</label>
+                                    <input 
+                                        className="w-full border p-3 rounded text-base bg-gray-100" 
+                                        type="number" 
+                                        value={selectedStocks.reduce((sum, stock) => sum + Number(stock.qty || 0), 0)} 
+                                        readOnly 
+                                    />
+                                </div>
+                            )}
+                            
+                            {/* Localisations des stocks sélectionnés */}
+                            {selectedStocks.length > 0 && (
+                                <div>
+                                    <label className="block text-base mb-1 font-medium">Localisation(s)</label>
+                                    <input 
+                                        className="w-full border p-3 rounded text-base bg-gray-100" 
+                                        value={selectedStocks.map(stock => stock.location).filter(loc => loc).join(', ')} 
+                                        readOnly 
+                                    />
+                                </div>
+                            )}
+                            
+                            {/* Sélection multiple de traitements */}
+                            <div className="border p-3 rounded">
+                                <label className="block text-base font-semibold mb-2">Traitement(s)</label>
+                                <div className="space-y-2 max-h-40 overflow-y-auto">
+                                    {allProcesses.map(p => (
+                                        <label key={p.id} className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded">
+                                            <input
+                                                type="checkbox"
+                                                checked={newStock.processes.includes(p.id)}
+                                                onChange={e => {
+                                                    if (e.target.checked) {
+                                                        setNewStock({ ...newStock, processes: [...newStock.processes, p.id] });
+                                                    } else {
+                                                        setNewStock({ ...newStock, processes: newStock.processes.filter(id => id !== p.id) });
+                                                    }
+                                                }}
+                                            />
+                                            <span className="text-base">{t[p.id] || p.label}</span>
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+                            <input className="w-full border p-3 rounded text-base" type="date" value={newStock.date} onChange={e => setNewStock({ ...newStock, date: e.target.value })} />
+                        </div>
+                        <div className="flex justify-end gap-3 mt-5">
+                            <button className="px-6 py-3 bg-gray-200 rounded text-base font-medium hover:bg-gray-300" onClick={() => {
+                                setShowAddStock(false);
+                                setSelectedStocks([]);
+                                setNewStock({ client: 'Prod. Inventaire', isInventoryProd: true, wood: '', grade: '', qty: '', processes: [], date: '', location: '', state: '', txn: '', stockNo: '' });
+                            }}>Annuler</button>
+                            <button 
+                                className="px-6 py-3 bg-[#51aff7] text-white rounded text-base font-medium hover:bg-blue-600 disabled:opacity-50"
+                                disabled={selectedStocks.length === 0 && !newStock.stockNo}
+                                onClick={() => {
+                                    // Ajouter le stock en cours s'il n'est pas vide
+                                    const stocksToProcess = [...selectedStocks];
+                                    if (newStock.stockNo && newStock.wood && newStock.qty) {
+                                        stocksToProcess.push({
+                                            stockNo: newStock.stockNo,
+                                            wood: newStock.wood,
+                                            grade: newStock.grade || '',
+                                            qty: Number(newStock.qty),
+                                            location: newStock.location,
+                                            state: newStock.state
+                                        });
+                                    }
+                                    
+                                    if (stocksToProcess.length === 0) return;
+                                    
+                                    // Grouper les stocks par produit (wood)
+                                    const groupedByProduct = stocksToProcess.reduce((acc, stock) => {
+                                        const key = stock.wood;
+                                        if (!acc[key]) {
+                                            acc[key] = [];
+                                        }
+                                        acc[key].push(stock);
+                                        return acc;
+                                    }, {});
+                                    
+                                    // Créer une ligne de production par produit
+                                    Object.entries(groupedByProduct).forEach(([woodType, stocks], groupIndex) => {
+                                        let txn = newStock.txn;
+                                        if (!txn || groupIndex > 0) {
+                                            // Générer un numéro de production auto-incrémenté formaté PROD-0001
+                                            let nextNum = 1;
+                                            try {
+                                                const data = JSON.parse(localStorage.getItem('productionData')) || [];
+                                                const prodNums = data
+                                                    .map(item => (item.txn || '').match(/^PROD-(\d{4,})$/))
+                                                    .filter(Boolean)
+                                                    .map(match => parseInt(match[1], 10));
+                                                if (prodNums.length > 0) {
+                                                    nextNum = Math.max(...prodNums) + 1 + groupIndex;
+                                                }
+                                            } catch (e) {}
+                                            txn = `PROD-${nextNum.toString().padStart(4, '0')}`;
+                                        }
+                                        
+                                        // Calculer la quantité totale pour ce produit
+                                        const totalQty = stocks.reduce((sum, s) => sum + Number(s.qty), 0);
+                                        
+                                        // Créer la liste des numéros de stock
+                                        const stockNumbers = stocks.map(s => s.stockNo).join(', ');
+                                        
+                                        // Récupérer le grade du premier stock (ils ont tous le même wood donc probablement le même grade)
+                                        const grade = stocks[0]?.grade || '';
+                                        
+                                        const batch = {
+                                            client: 'Prod. Inventaire',
+                                            txn,
+                                            wood: woodType,
+                                            grade: grade,
+                                            qty: totalQty,
+                                            process: newStock.processes.length > 0 ? newStock.processes[0] : '',
+                                            date: newStock.date || '',
+                                            stockNo: stockNumbers, // Liste des numéros de stock
+                                            stockDetails: stocks, // Détails complets des stocks
+                                            status: 'planning',
+                                            progress: 0
+                                        };
+                                        
+                                        // Si plusieurs procédés sont sélectionnés, les ajouter dans steps
+                                        if (newStock.processes.length > 1) {
+                                            batch.steps = newStock.processes;
+                                            batch.stepIndex = 0;
+                                        } else if (newStock.processes.length === 1) {
+                                            batch.steps = newStock.processes;
+                                        }
+                                        
+                                        if (typeof window !== 'undefined' && window.addBatch) {
+                                            window.addBatch(batch);
+                                        }
+                                        
+                                        // Déduire la quantité de l'inventaire pour chaque stock
+                                        stocks.forEach(stock => {
+                                            if (stock.stockNo && stock.qty) {
+                                                deductFromInventory(stock.stockNo, Number(stock.qty));
+                                            }
+                                        });
+                                    });
+                                    
+                                    setShowAddStock(false);
+                                    setSelectedStocks([]);
+                                    setNewStock({ client: 'Prod. Inventaire', isInventoryProd: true, wood: '', qty: '', processes: [], date: '', location: '', state: '', txn: '', stockNo: '' });
+                                }}
+                            >
+                                Créer les productions
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            <div className="flex justify-between items-center mb-4">
+                <div className="flex items-center gap-4">
+                    <h2 className="font-bold text-lg">{isRawWood ? t.rawWood.toUpperCase() : t.activeLines}</h2>
+                    {!isRawWood && (
+                        <select 
+                            value={filterProcess}
+                            onChange={(e) => setFilterProcess(e.target.value)}
+                            className="text-sm border border-gray-300 rounded-lg p-2 bg-gray-50 focus:ring-2 focus:ring-[#51aff7] outline-none"
+                        >
+                            <option value="all">-- {t.allProcesses || "Tous les procédés"} --</option>
+                            {allProcesses.map(p => (
+                                <option key={p.id} value={p.id}>{t[p.id] || p.label}</option>
+                            ))}
+                        </select>
+                    )}
+                    {/* Bouton Ajouter un stock */}
+                    {!isRawWood && (
+                        <button className="ml-4 px-4 py-2 bg-[#51aff7] text-white rounded shadow hover:bg-blue-600 transition" onClick={() => setShowAddStock(true)}>
+                            <i className="fa-solid fa-plus mr-2"></i> Ajouter un produit à transformer
+                        </button>
+                    )}
+                </div>
+                <div className="flex gap-2">
+                    {['planning', 'running', 'paused', 'error', 'completed'].map(status => (
+                        <button key={status} onClick={() => toggleStatus(status)} className={`px-3 py-1 text-xs rounded ${activeStatuses.includes(status) ? 'bg-black text-white' : 'bg-gray-100'}`}>
+                            {t['status' + status.charAt(0).toUpperCase() + status.slice(1)] || status}
+                        </button>
+                    ))}
+                </div>
+            </div>
+            {/* Boutons des postes de travail */}
+            <div className="flex gap-3 mb-4">
+                {stationDefinitions.map(station => (
+                    <button 
+                        key={station.id}
+                        className="px-4 py-2 bg-green-600 text-white rounded shadow hover:bg-green-700 transition flex items-center gap-2"
+                        onClick={() => {
+                            // Ouvrir le poste dans un nouvel onglet avec le mode poste
+                            const url = new URL(window.location.href);
+                            url.searchParams.set('mode', station.id);
+                            window.open(url.toString(), '_blank');
+                        }}
+                    >
+                        <i className={`fa-solid ${station.icon}`}></i>
+                        {t[station.labelKey] || station.id}
+                    </button>
+                ))}
+            </div>
+            {/* DevExtreme Grid Container */}
+            <div ref={gridContainerRef}></div>
+        </div>
+    );
+};
+
+
+const DataEntryView = ({ t, addBatch, setActiveTab, customProcesses = [], woodTreatments = [], processParameters = {} }) => {
+    const [formData, setFormData] = useState({
+        client: '',
+        txn: '',
+        qty: '',
+        wood: '',
+        grade: '',
+        date: '',
+        stainColor: '',
+        paintColor: ''
+    });
+
+    const [rawFormData, setRawFormData] = useState({
+        orderNo: '',
+        supplier: '',
+        species: '',
+        qtyPMP: '',
+        process: ''
+    });
+
+    const [steps, setSteps] = useState([]);
+
+    const toggleStep = (procId) => {
+        if (steps.includes(procId)) {
+            setSteps(steps.filter(s => s !== procId));
+        } else {
+            const newSteps = [...steps, procId];
+            newSteps.sort((a,b) => {
+                const idxA = processOrder.findIndex(p => p.id === a);
+                const idxB = processOrder.findIndex(p => p.id === b);
+                return idxA - idxB;
+            });
+            setSteps(newSteps);
+        }
+    };
+
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleRawChange = (e) => {
+        const { name, value } = e.target;
+        setRawFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        if(!formData.client || !formData.qty || steps.length === 0) {
+            alert("Veuillez remplir tous les champs obligatoires et sélectionner au moins un procédé.");
+            return;
+        }
+
+        // Vérifier les paramètres obligatoires pour chaque procédé sélectionné
+        for (const step of steps) {
+            const params = processParameters[step] || [];
+            for (const param of params) {
+                if (param.required && !formData[param.name]) {
+                    alert(`Le paramètre "${param.label}" est obligatoire pour le procédé sélectionné.`);
+                    return;
+                }
+            }
+        }
+
+        const newBatch = {
+            ...formData,
+            steps: steps,
+            process: steps[0],
+            stepIndex: 0,
+            status: 'planning', // Explicitly set status
+            progress: 0 
+        };
+
+        addBatch(newBatch);
+        
+        // Use timeout to ensure state propagation before switch
+        setTimeout(() => setActiveTab('production'), 50);
+        
+        setFormData({ client: '', txn: '', qty: '', wood: '', grade: '', date: '', stainColor: '', paintColor: '' });
+        setSteps([]);
+    };
+
+    const handleRawSubmit = (e) => {
+        e.preventDefault();
+        
+        // DEBUG: Verify Data Capture
+        console.log("Submitting Raw Wood:", rawFormData);
+
+        if(!rawFormData.orderNo) {
+            alert("Order Number is required.");
+            return;
+        }
+
+        if(!rawFormData.process) {
+            alert("Veuillez sélectionner une étape de traitement.");
+            return;
+        }
+
+        const newRawBatch = {
+            client: rawFormData.supplier,
+            txn: rawFormData.orderNo,
+            qty: rawFormData.qtyPMP ? parseInt(rawFormData.qtyPMP) : 0, 
+            qtyPMP: rawFormData.qtyPMP,
+            wood: rawFormData.species,
+            species: rawFormData.species,
+            process: rawFormData.process,
+            status: 'planning',
+            station: null, 
+            progress: 0,
+            date: new Date().toLocaleDateString()
+        };
+        
+        // Alert to User (Temporary Debug)
+        // alert("Saving: " + JSON.stringify(newRawBatch));
+
+        addBatch(newRawBatch);
+
+        // Use timeout to allow state update
+        setTimeout(() => setActiveTab('rawWood'), 50);
+
+        setRawFormData({ orderNo: '', supplier: '', species: '', qtyPMP: '', process: '' });
+    };
+
+    const inputClass = "w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#51aff7] focus:border-transparent transition";
+    const labelClass = "block text-sm font-medium text-gray-700 mb-1";
+
+    return (
+        <div className="max-w-4xl mx-auto space-y-8">
+            <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100">
+            <h2 className="text-2xl font-bold text-gray-800 mb-6">{t.enterDataTitle}</h2>
+            
+            <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label className={labelClass}>{t.labelClient}</label>
+                        <input name="client" type="text" value={formData.client} onChange={handleChange} className={inputClass} placeholder="Ex: Acme Corp" required />
+                    </div>
+                    <div>
+                        <label className={labelClass}>{t.labelTxn}</label>
+                        <input name="txn" type="text" value={formData.txn} onChange={handleChange} className={inputClass} placeholder="Ex: TXN-123456" />
+                    </div>
+                    <div>
+                        <label className={labelClass}>{t.labelQty}</label>
+                        <input name="qty" type="number" value={formData.qty} onChange={handleChange} className={inputClass} placeholder="100" required />
+                    </div>
+                    <div>
+                        <label className={labelClass}>{t.labelWood}</label>
+                        <input name="wood" type="text" value={formData.wood} onChange={handleChange} className={inputClass} placeholder="Ex: All, Maple..." />
+                    </div>
+                    <div>
+                        <label className={labelClass}>Grade</label>
+                        <input name="grade" type="text" value={formData.grade} onChange={handleChange} className={inputClass} placeholder="Ex: Select, Authentic, Naturel..." />
+                    </div>
+
+                    <div className="md:col-span-2">
+                        <label className={labelClass}>{t.labelProcess} (Sélection Multiple - Ordre Automatique)</label>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                            {[...processOrder, ...customProcesses].map(proc => (
+                                <button
+                                    key={proc.id}
+                                    type="button"
+                                    onClick={() => toggleStep(proc.id)}
+                                    className={`px-4 py-3 rounded-lg text-sm font-bold border transition text-left relative overflow-hidden ${
+                                        steps.includes(proc.id) 
+                                        ? 'bg-[#51aff7] text-white border-[#51aff7] shadow-lg shadow-blue-500/30' 
+                                        : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'
+                                    }`}
+                                >
+                                    <div className="flex justify-between items-center">
+                                        <span>{t[proc.id] || proc.label}</span>
+                                        {steps.includes(proc.id) && (
+                                            <span className="bg-white/20 px-2 rounded-full text-xs">
+                                                {steps.indexOf(proc.id) + 1}
+                                            </span>
+                                        )}
+                                    </div>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className={labelClass}>{t.labelDate}</label>
+                        <input name="date" type="date" value={formData.date} onChange={handleChange} className={inputClass} />
+                    </div>
+
+                    {steps.includes('procStaining') && (
+                        <div>
+                            <label className={labelClass}>{t.labelStain}</label>
+                            <input name="stainColor" type="text" value={formData.stainColor} onChange={handleChange} className={inputClass} placeholder="Ex: Golden Oak" />
+                        </div>
+                    )}
+                    {steps.includes('procPainting') && (
+                        <div>
+                            <label className={labelClass}>{t.labelPaint}</label>
+                            <input name="paintColor" type="text" value={formData.paintColor} onChange={handleChange} className={inputClass} placeholder="Ex: RAL 9010" />
+                        </div>
+                    )}
+                </div>
+
+                <div className="pt-4 flex justify-end">
+                    <button type="submit" className="px-6 py-3 bg-[#51aff7] text-white font-bold rounded-lg shadow hover:bg-blue-600 transition transform hover:-translate-y-1">
+                        <i className="fa-solid fa-plus-circle mr-2"></i>
+                        {t.btnAddData}
+                    </button>
+                </div>
+            </form>
+            </div>
+        </div>
+    );
+};
+
+const InventoryView = ({ t, inventory, setInventory }) => {
+    useEffect(() => {
+        const gridContainer = document.getElementById('inventoryGrid');
+        if (!gridContainer) return;
+
+        const dataGrid = new DevExpress.ui.dxDataGrid(gridContainer, {
+            dataSource: inventory,
+            keyExpr: 'stockNo',
+            showBorders: true,
+            filterRow: { visible: true },
+            searchPanel: { visible: true, width: 240, placeholder: 'Rechercher...' },
+            headerFilter: { visible: true },
+            editing: {
+                mode: 'row',
+                allowUpdating: true,
+                allowDeleting: true,
+                allowAdding: true,
+                useIcons: true,
+                texts: {
+                    confirmDeleteMessage: 'Êtes-vous sûr de vouloir supprimer ce stock?',
+                    saveRowChanges: t.save,
+                    cancelRowChanges: t.cancel,
+                    deleteRow: t.deleteStock,
+                    editRow: t.editStock,
+                    addRow: t.addStock
+                }
+            },
+            paging: { pageSize: 20 },
+            pager: {
+                visible: true,
+                showPageSizeSelector: true,
+                allowedPageSizes: [10, 20, 50, 100],
+                showInfo: true
+            },
+            export: {
+                enabled: true,
+                fileName: 'inventaire'
+            },
+            columns: [
+                { 
+                    dataField: 'stockNo', 
+                    caption: t.colStockNo, 
+                    width: 120,
+                    validationRules: [{ type: 'required', message: 'Champ obligatoire' }]
+                },
+                { 
+                    dataField: 'productCode', 
+                    caption: t.colProductCode, 
+                    width: 150
+                },
+                { 
+                    dataField: 'wood', 
+                    caption: t.colProduct, 
+                    width: 150,
+                    validationRules: [{ type: 'required', message: 'Champ obligatoire' }]
+                },
+                { 
+                    dataField: 'grade', 
+                    caption: t.colGrade, 
+                    width: 120,
+                    lookup: {
+                        dataSource: ['Select', 'Noueux', 'Grade B'],
+                        allowClearing: true
+                    }
+                },
+                { 
+                    dataField: 'qty', 
+                    caption: t.colQty, 
+                    width: 150, 
+                    dataType: 'number', 
+                    format: '#,##0',
+                    validationRules: [{ type: 'required', message: 'Champ obligatoire' }]
+                },
+                { 
+                    dataField: 'location', 
+                    caption: t.colLocation, 
+                    width: 120
+                },
+                { 
+                    dataField: 'state', 
+                    caption: t.colState, 
+                    width: 200
+                }
+            ],
+            onRowInserted: (e) => {
+                const newItem = {
+                    ...e.data,
+                    dateAdded: new Date().toISOString()
+                };
+                setInventory(prev => {
+                    const updated = [...prev, newItem];
+                    localStorage.setItem('inventory', JSON.stringify(updated));
+                    return updated;
+                });
+                DevExpress.ui.notify(t.stockAdded, 'success', 2000);
+            },
+            onRowUpdated: (e) => {
+                setInventory(prev => {
+                    const updated = prev.map(item => 
+                        item.stockNo === e.key ? { ...item, ...e.data } : item
+                    );
+                    localStorage.setItem('inventory', JSON.stringify(updated));
+                    return updated;
+                });
+                DevExpress.ui.notify(t.stockUpdated, 'success', 2000);
+            },
+            onRowRemoved: (e) => {
+                setInventory(prev => {
+                    const updated = prev.filter(item => item.stockNo !== e.key);
+                    localStorage.setItem('inventory', JSON.stringify(updated));
+                    return updated;
+                });
+                DevExpress.ui.notify(t.stockDeleted, 'success', 2000);
+            },
+            summary: {
+                totalItems: [
+                    {
+                        column: 'qty',
+                        summaryType: 'sum',
+                        valueFormat: '#,##0',
+                        displayFormat: 'Total: {0} pc'
+                    }
+                ]
+            }
+        });
+
+        return () => {
+            try {
+                dataGrid.dispose();
+            } catch (e) {}
+        };
+    }, [inventory, t]);
+
+    return (
+        <div>
+            <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold text-gray-800">{t.inventoryTitle}</h2>
+            </div>
+
+            <div className="bg-white rounded-lg shadow-lg p-6">
+                <div id="inventoryGrid"></div>
+            </div>
+        </div>
+    );
+};
+
+const SettingsView = ({ t, appMode, setAppMode, stationConfig, setStationConfig, customProcesses = [], setCustomProcesses, woodTreatments = [], setWoodTreatments, inventoryStates = [], setInventoryStates, processCodes = {}, setProcessCodes, processParameters = {}, setProcessParameters }) => {
+    const [newProcessName, setNewProcessName] = useState('');
+    const [newWoodTreatmentName, setNewWoodTreatmentName] = useState('');
+    const [newInventoryStateName, setNewInventoryStateName] = useState('');
+    const [selectedProcessForParams, setSelectedProcessForParams] = useState('');
+    const [newParamName, setNewParamName] = useState('');
+    const [newParamLabel, setNewParamLabel] = useState('');
+
+    // Hidden standard processes state
+    const [hiddenProcesses, setHiddenProcesses] = useState(() => {
+        const saved = localStorage.getItem('hiddenProcesses');
+        return saved ? JSON.parse(saved) : [];
+    });
+
+    // Process order state
+    const [processOrder, setProcessOrder] = useState(() => {
+        const saved = localStorage.getItem('processOrder');
+        return saved ? JSON.parse(saved) : [];
+    });
+
+    useEffect(() => {
+        localStorage.setItem('hiddenProcesses', JSON.stringify(hiddenProcesses));
+    }, [hiddenProcesses]);
+
+    useEffect(() => {
+        localStorage.setItem('processOrder', JSON.stringify(processOrder));
+    }, [processOrder]);
+
+    const handleConfigChange = (process, station) => {
+        setStationConfig(prev => ({
+            ...prev,
+            [process]: station
+        }));
+    };
+
+    const handleCodeChange = (processId, code) => {
+        // Limiter à 3 caractères alphanumériques
+        const sanitized = code.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 3);
+        setProcessCodes(prev => ({
+            ...prev,
+            [processId]: sanitized
+        }));
+    };
+
+    const handleAddProcess = () => {
+        if (!newProcessName.trim()) return;
+        const newId = `procCustom_${Date.now()}`;
+        const newProcess = { id: newId, label: newProcessName, order: customProcesses.length };
+        setCustomProcesses([...customProcesses, newProcess]);
+        setNewProcessName('');
+    };
+
+    const moveProcessUp = (index) => {
+        if (index <= 0) return;
+        const newOrder = [...processOrder];
+        [newOrder[index - 1], newOrder[index]] = [newOrder[index], newOrder[index - 1]];
+        setProcessOrder(newOrder);
+    };
+
+    const moveProcessDown = (index) => {
+        if (index >= processes.length - 1) return;
+        const newOrder = [...processOrder];
+        [newOrder[index], newOrder[index + 1]] = [newOrder[index + 1], newOrder[index]];
+        setProcessOrder(newOrder);
+    };
+
+    const handleAddWoodTreatment = () => {
+        if (!newWoodTreatmentName.trim()) return;
+        const newId = `woodTreat_${Date.now()}`;
+        const newTreatment = { id: newId, label: newWoodTreatmentName };
+        setWoodTreatments([...woodTreatments, newTreatment]);
+        setNewWoodTreatmentName('');
+    };
+    
+    // Restore hidden processes if created again via custom or specifically requested
+    const restoreProcess = (id) => {
+        setHiddenProcesses(hiddenProcesses.filter(h => h !== id));
+    };
+
+    const allProcessesList = [
+        { id: 'procBeckage', label: t.procBeckage },
+        { id: 'procMoulding', label: t.procMoulding },
+        { id: 'procSanding1', label: t.procSanding1 },
+        { id: 'procSanding2', label: t.procSanding2 },
+        { id: 'procStaining', label: t.procStaining },
+        { id: 'procBrushing', label: t.procBrushing },
+        { id: 'procPolishing', label: t.procPolishing },
+        { id: 'procOiling', label: t.procOiling },
+        { id: 'procPainting', label: t.procPainting },
+        ...customProcesses
+    ].filter(p => !hiddenProcesses.includes(p.id));
+
+    // Sync processOrder with current processes
+    React.useEffect(() => {
+        const currentIds = allProcessesList.map(p => p.id);
+        const savedIds = processOrder.filter(id => currentIds.includes(id));
+        const newIds = currentIds.filter(id => !processOrder.includes(id));
+        if (savedIds.length !== currentIds.length || newIds.length > 0) {
+            setProcessOrder([...savedIds, ...newIds]);
+        }
+    }, [allProcessesList.length, customProcesses.length]);
+
+    // Sort processes by saved order
+    const processes = processOrder.length > 0 
+        ? processOrder.map(id => allProcessesList.find(p => p.id === id)).filter(Boolean)
+        : allProcessesList;
+
+    const stations = [
+        { id: '', label: '-- None --' },
+        ...stationDefinitions.map(s => ({ id: s.id, label: t[s.labelKey] })),
+        { id: 'subcontractor', label: t.subcontractor },
+    ];
+
+    // -- Exclusive Assignment Logic --
+    const standardProcessIds = [
+        'procBeckage', 'procMoulding', 'procSanding1', 'procSanding2',
+        'procStaining', 'procBrushing', 'procPolishing', 'procOiling', 'procPainting',
+        ...customProcesses.map(p => p.id)
+    ];
+    const rawProcessIds = woodTreatments.map(wt => wt.id);
+
+    const stationsAssignedToStandard = new Set();
+    const stationsAssignedToRaw = new Set();
+
+    Object.entries(stationConfig).forEach(([procId, stationId]) => {
+        if (!stationId || stationId === 'subcontractor') return;
+        
+        if (standardProcessIds.includes(procId)) {
+            stationsAssignedToStandard.add(stationId);
+        } else if (rawProcessIds.includes(procId)) {
+            stationsAssignedToRaw.add(stationId);
+        }
+    });
+
+    const isStationAllowed = (stationId, targetGroup) => {
+        if (!stationId || stationId === 'subcontractor') return true;
+        
+        if (targetGroup === 'standard') {
+            return !stationsAssignedToRaw.has(stationId);
+        } else { // raw
+            return !stationsAssignedToStandard.has(stationId);
+        }
+    };
+
+    return (
+    <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100 max-w-2xl mx-auto">
+        <h2 className="text-2xl font-bold text-gray-800 mb-6">{t.settings}</h2>
+        
+        <div className="space-y-8">
+            <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{t.settingsMode}</label>
+                <p className="text-sm text-gray-500 mb-4">Select the operational role for this terminal.</p>
+                <div className="space-y-3">
+                    {[
+                        { id: 'admin', label: t.modeAdmin, icon: 'fa-user-tie' },
+                        ...stationDefinitions.map(s => {
+                            const assigned = Object.keys(stationConfig || {})
+                                .filter(k => stationConfig[k] === s.id)
+                                .map(k => t[k])
+                                .filter(Boolean); // Ensure valid translations only
+                            
+                            const label = assigned.length > 0 
+                                ? `${t[s.labelKey]} (${assigned.join(', ')})` 
+                                : t[s.labelKey];
+
+                            return { id: s.id, label, icon: s.icon };
+                        })
+                    ].map(mode => (
+                        <button
+                            key={mode.id}
+                            onClick={() => {
+                                if (mode.id === 'admin') {
+                                    setAppMode('admin');
+                                } else {
+                                    window.open(`?mode=${mode.id}`, '_blank');
+                                }
+                            }}
+                            className={`w-full flex items-center p-4 rounded-lg border transition-all ${
+                                appMode === mode.id 
+                                ? 'border-[#51aff7] bg-[#51aff7]/10 text-[#51aff7] shadow-sm' 
+                                : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                            }`}
+                        >
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center mr-4 ${
+                                appMode === mode.id ? 'bg-[#51aff7] text-white' : 'bg-gray-100 text-gray-500'
+                            }`}>
+                                <i className={`fa-solid ${mode.icon}`}></i>
+                            </div>
+                            <span className="font-bold">{mode.label}</span>
+                            {appMode === mode.id && <i className="fa-solid fa-check ml-auto"></i>}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            <div className="pt-8 border-t border-gray-100">
+                <h3 className="text-lg font-bold text-gray-800 mb-2">{t.autoAssign}</h3>
+                <p className="text-sm text-gray-500 mb-6">{t.configDesc}</p>
+                
+                <div className="bg-gray-50 rounded-xl p-6 space-y-4">
+                    {processes.map((proc, index) => {
+                        const isCustom = customProcesses.some(cp => cp.id === proc.id);
+                        return (
+                            <div key={proc.id} className="grid grid-cols-12 gap-2 items-center">
+                                <div className="col-span-1 flex flex-col gap-1">
+                                    <button
+                                        onClick={() => moveProcessUp(index)}
+                                        disabled={index === 0}
+                                        className="text-gray-500 hover:text-blue-600 disabled:opacity-30 disabled:cursor-not-allowed"
+                                        title="Monter"
+                                    >
+                                        <i className="fa-solid fa-chevron-up"></i>
+                                    </button>
+                                    <button
+                                        onClick={() => moveProcessDown(index)}
+                                        disabled={index === processes.length - 1}
+                                        className="text-gray-500 hover:text-blue-600 disabled:opacity-30 disabled:cursor-not-allowed"
+                                        title="Descendre"
+                                    >
+                                        <i className="fa-solid fa-chevron-down"></i>
+                                    </button>
+                                </div>
+                                <div className="col-span-1 text-center">
+                                    <span className="inline-block w-8 h-8 rounded-full bg-blue-100 text-blue-700 font-bold flex items-center justify-center text-sm">{index + 1}</span>
+                                </div>
+                                <span className="col-span-3 font-medium text-gray-700">{proc.label}</span>
+                                <input
+                                    type="text"
+                                    value={processCodes[proc.id] || ''}
+                                    onChange={(e) => handleCodeChange(proc.id, e.target.value)}
+                                    placeholder="ABC"
+                                    maxLength="3"
+                                    className="col-span-1 p-2 border border-gray-300 rounded-lg text-sm text-center font-mono font-bold bg-white focus:ring-2 focus:ring-[#51aff7] focus:outline-none uppercase"
+                                />
+                                <div className="col-span-6 flex items-center gap-2">
+                                    <select 
+                                        value={stationConfig[proc.id] || ''}
+                                        onChange={(e) => handleConfigChange(proc.id, e.target.value)}
+                                        className="p-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-[#51aff7] focus:outline-none flex-1"
+                                    >
+                                        {stations.filter(st => isStationAllowed(st.id, 'standard')).map(st => (
+                                            <option key={st.id} value={st.id}>{st.label}</option>
+                                        ))}
+                                    </select>
+                                    <button 
+                                        onClick={() => {
+                                            if (isCustom) {
+                                                setCustomProcesses(customProcesses.filter(p => p.id !== proc.id));
+                                            } else {
+                                                // Disable standard process by hiding it
+                                                setHiddenProcesses([...hiddenProcesses, proc.id]);
+                                                handleConfigChange(proc.id, '');
+                                            }
+                                        }}
+                                        className="text-red-500 hover:text-red-700 p-2"
+                                        title={isCustom ? "Supprimer le procédé" : "Masquer l'assignation"}
+                                    >
+                                        <i className="fa-solid fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        );
+                    })}
+
+                    {/* Add Custom Process */}
+                    <div className="pt-4 mt-4 border-t border-gray-200 grid grid-cols-2 gap-4 items-center">
+                         <input 
+                            type="text"
+                            value={newProcessName}
+                            onChange={(e) => setNewProcessName(e.target.value)}
+                            placeholder="Nouveau Procédé (ex: Coupe)"
+                            className="p-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-[#51aff7] focus:outline-none"
+                         />
+                         <button 
+                            onClick={handleAddProcess}
+                            disabled={!newProcessName.trim()}
+                            className="px-4 py-2 bg-gray-200 text-gray-700 font-bold rounded-lg hover:bg-gray-300 disabled:opacity-50"
+                         >
+                            <i className="fa-solid fa-plus mr-2"></i> Ajouter
+                         </button>
+                    </div>
+                </div>
+                <div className="mt-4 flex justify-end">
+                     <button className="text-sm text-[#51aff7] font-bold hover:text-blue-700">
+                        <i className="fa-solid fa-save mr-2"></i>
+                        {t.saveConfig}
+                     </button>
+                </div>
+            </div>
+
+            {/* États d'inventaire */}
+            <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">États d'inventaire</label>
+                <p className="text-sm text-gray-500 mb-4">Configurez les états possibles pour les produits en inventaire.</p>
+                <div className="space-y-2">
+                    {inventoryStates.map((state, index) => (
+                        <div key={index} className="flex items-center gap-2 bg-gray-50 p-3 rounded-lg">
+                            <i className="fa-solid fa-tag text-gray-400"></i>
+                            <span className="flex-1 font-medium">{state}</span>
+                            <button
+                                onClick={() => {
+                                    setInventoryStates(inventoryStates.filter((_, i) => i !== index));
+                                }}
+                                className="text-red-500 hover:text-red-700 p-2"
+                                title="Supprimer l'état"
+                            >
+                                <i className="fa-solid fa-trash"></i>
+                            </button>
+                        </div>
+                    ))}
+
+                    {/* Ajouter un nouvel état */}
+                    <div className="pt-4 mt-4 border-t border-gray-200 grid grid-cols-2 gap-4 items-center">
+                        <input
+                            type="text"
+                            value={newInventoryStateName}
+                            onChange={(e) => setNewInventoryStateName(e.target.value)}
+                            placeholder="Nouvel état (ex: Brut non transformé sec)"
+                            className="p-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-[#51aff7] focus:outline-none"
+                        />
+                        <button
+                            onClick={() => {
+                                if (newInventoryStateName.trim()) {
+                                    setInventoryStates([...inventoryStates, newInventoryStateName.trim()]);
+                                    setNewInventoryStateName('');
+                                }
+                            }}
+                            disabled={!newInventoryStateName.trim()}
+                            className="px-4 py-2 bg-gray-200 text-gray-700 font-bold rounded-lg hover:bg-gray-300 disabled:opacity-50"
+                        >
+                            <i className="fa-solid fa-plus mr-2"></i> Ajouter
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            {/* Paramètres des procédés */}
+            <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Paramètres des procédés</label>
+                <p className="text-sm text-gray-500 mb-4">Configurez les paramètres spécifiques pour chaque procédé (ex: couleur de teinture, couleur de peinture). Cochez la case pour rendre un paramètre obligatoire.</p>
+                
+                {/* Sélecteur de procédé */}
+                <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Sélectionner un procédé</label>
+                    <select
+                        value={selectedProcessForParams}
+                        onChange={(e) => setSelectedProcessForParams(e.target.value)}
+                        className="w-full p-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-[#51aff7] focus:outline-none"
+                    >
+                        <option value="">-- Sélectionner un procédé --</option>
+                        {processes.map(proc => (
+                            <option key={proc.id} value={proc.id}>{proc.label}</option>
+                        ))}
+                    </select>
+                </div>
+
+                {/* Afficher les paramètres du procédé sélectionné */}
+                {selectedProcessForParams && (
+                    <div className="space-y-3 bg-gray-50 p-4 rounded-lg border border-gray-200">
+                        <h4 className="font-semibold text-gray-800 mb-3">
+                            Paramètres pour: {processes.find(p => p.id === selectedProcessForParams)?.label}
+                        </h4>
+                        
+                        {/* Liste des paramètres existants */}
+                        {(processParameters[selectedProcessForParams] || []).map((param, index) => (
+                            <div key={index} className="flex items-center gap-3 bg-white p-3 rounded-lg border border-gray-200">
+                                <div className="flex items-center gap-2 flex-1">
+                                    <input
+                                        type="checkbox"
+                                        checked={param.required || false}
+                                        onChange={(e) => {
+                                            const updated = { ...processParameters };
+                                            if (!updated[selectedProcessForParams]) {
+                                                updated[selectedProcessForParams] = [];
+                                            }
+                                            updated[selectedProcessForParams] = updated[selectedProcessForParams].map((p, i) => 
+                                                i === index ? { ...p, required: e.target.checked } : p
+                                            );
+                                            setProcessParameters(updated);
+                                        }}
+                                        className="w-5 h-5 text-[#51aff7] border-gray-300 rounded focus:ring-2 focus:ring-[#51aff7]"
+                                    />
+                                    <i className="fa-solid fa-sliders text-gray-400"></i>
+                                    <div className="flex-1">
+                                        <span className="font-medium text-gray-700">{param.label}</span>
+                                        <span className="text-xs text-gray-500 ml-2">({param.name})</span>
+                                        {param.required && (
+                                            <span className="ml-2 text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded font-bold">
+                                                OBLIGATOIRE
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        const updated = { ...processParameters };
+                                        updated[selectedProcessForParams] = updated[selectedProcessForParams].filter((_, i) => i !== index);
+                                        if (updated[selectedProcessForParams].length === 0) {
+                                            delete updated[selectedProcessForParams];
+                                        }
+                                        setProcessParameters(updated);
+                                    }}
+                                    className="text-red-500 hover:text-red-700 p-2"
+                                    title="Supprimer le paramètre"
+                                >
+                                    <i className="fa-solid fa-trash"></i>
+                                </button>
+                            </div>
+                        ))}
+
+                        {/* Ajouter un nouveau paramètre */}
+                        <div className="pt-4 mt-4 border-t border-gray-200">
+                            <div className="grid grid-cols-3 gap-3 items-end">
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-700 mb-1">Nom du paramètre</label>
+                                    <input
+                                        type="text"
+                                        value={newParamName}
+                                        onChange={(e) => setNewParamName(e.target.value)}
+                                        placeholder="Ex: stainColor"
+                                        className="w-full p-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-[#51aff7] focus:outline-none"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-700 mb-1">Libellé affiché</label>
+                                    <input
+                                        type="text"
+                                        value={newParamLabel}
+                                        onChange={(e) => setNewParamLabel(e.target.value)}
+                                        placeholder="Ex: Couleur Teinture"
+                                        className="w-full p-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-[#51aff7] focus:outline-none"
+                                    />
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        if (newParamName.trim() && newParamLabel.trim()) {
+                                            const updated = { ...processParameters };
+                                            if (!updated[selectedProcessForParams]) {
+                                                updated[selectedProcessForParams] = [];
+                                            }
+                                            updated[selectedProcessForParams].push({
+                                                name: newParamName.trim(),
+                                                label: newParamLabel.trim(),
+                                                required: false
+                                            });
+                                            setProcessParameters(updated);
+                                            setNewParamName('');
+                                            setNewParamLabel('');
+                                        }
+                                    }}
+                                    disabled={!newParamName.trim() || !newParamLabel.trim()}
+                                    className="px-4 py-2 bg-gray-200 text-gray-700 font-bold rounded-lg hover:bg-gray-300 disabled:opacity-50"
+                                >
+                                    <i className="fa-solid fa-plus mr-2"></i> Ajouter
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
+    </div>
+    );
+};
+
+// Fonction pour générer automatiquement les notes de suivi basées sur les logs
+const generateNotesFromLogs = (logs, existingNotes = '') => {
+    if (!logs || logs.length === 0) return existingNotes;
+    
+    const noteLines = existingNotes ? [existingNotes, '\n--- HISTORIQUE DES ACTIONS ---'] : ['--- HISTORIQUE DES ACTIONS ---'];
+    
+    logs.forEach((log, index) => {
+        const timestamp = new Date(log.timestamp).toLocaleString('fr-CA', { 
+            year: 'numeric', month: '2-digit', day: '2-digit', 
+            hour: '2-digit', minute: '2-digit' 
+        });
+        
+        let actionText = '';
+        switch (log.action) {
+            case 'START':
+                actionText = `[${timestamp}] ${log.user} - DÉMARRAGE de la production`;
+                break;
+            case 'PAUSE':
+                actionText = `[${timestamp}] ${log.user} - PAUSE (${log.qty || 0} PL produits)`;
+                break;
+            case 'RESUME':
+                actionText = `[${timestamp}] ${log.user} - REPRISE de la production`;
+                break;
+            case 'COMPLETE':
+                actionText = `[${timestamp}] ${log.user} - TERMINÉ (${log.qty || 0} PL produits)`;
+                break;
+            case 'PALLET_CLOSED':
+                actionText = `[${timestamp}] ${log.user} - PALETTE FERMÉE (${log.qty || 0} PL)`;
+                break;
+            case 'WOOD_RECLASSIFIED':
+                actionText = `[${timestamp}] ${log.user} - RECLASSEMENT: ${log.qty || 0} PL → ${log.newGrade || 'N/A'}`;
+                break;
+            case 'STOCK_USED':
+                actionText = `[${timestamp}] ${log.user} - STOCK UTILISÉ: ${log.description || ''} (${log.qty || 0} PC)`;
+                break;
+            case 'ISSUE_REPORTED':
+                actionText = `[${timestamp}] ${log.user} - PROBLÈME SIGNALÉ: ${log.description || ''}`;
+                break;
+            default:
+                if (log.action) {
+                    actionText = `[${timestamp}] ${log.user} - ${log.action}`;
+                }
+        }
+        
+        if (actionText) {
+            noteLines.push(actionText);
+        }
+    });
+    
+    return noteLines.join('\n');
+};
+
+const WorkerStationView = ({ t, stationId, productionData, updateJobStatus, stationConfig, inventory, deductFromInventory, addToInventory, adjustInventory, generateProductionTag, generatePalletLabel, generateProductCode }) => {
+    // Refs for DevExtreme widgets
+    const formRef = useRef(null);
+    const queueListRef = useRef(null);
+    const historyGridRef = useRef(null);
+
+    // Instances Refs
+    const historyGridInstance = useRef(null);
+    const formInstance = useRef(null);
+
+    // Handlers Ref for Stale Closures
+    const handlersRef = useRef(null);
+    const activeJobRef = useRef(null);
+
+    const [currentTime, setCurrentTime] = useState(new Date());
+    const [elapsed, setElapsed] = useState(0);
+    const [jobParams, setJobParams] = useState({
+        productCode: '', pqtUsed: '', humidity: '', coverage: '', thickness: '', width: '', sandThickness: '', jobNotes: ''
+    });
+
+    // Auth & Modal State
+    const [authRequired, setAuthRequired] = useState(false);
+    const [pin, setPin] = useState('');
+    const [loginError, setLoginError] = useState('');
+    const [pendingAction, setPendingAction] = useState(null);
+
+    // Filtres pour la file d'attente
+    const [queueFilters, setQueueFilters] = useState({
+        date: '',
+        txn: '',
+        client: '',
+        wood: '',
+        qty: ''
+    });
+
+    const employees = React.useMemo(() => {
+        const saved = localStorage.getItem('employees');
+        if (saved) {
+            const empList = JSON.parse(saved);
+            // Convertir le tableau en objet { nip: name }
+            const empObj = {};
+            empList.forEach(emp => {
+                empObj[emp.nip] = emp.name;
+            });
+            return empObj;
+        }
+        return {}; // Aucun employé par défaut
+    }, []);
+
+    // --- Data Preparation (Memoized) ---
+    const queue = React.useMemo(() => {
+        let filtered = productionData.filter(item => {
+            if (item.status === 'completed') return false;
+            if (item.station === stationId) return true;
+            const assignedStation = stationConfig[item.process];
+            if (!item.station && assignedStation === stationId) return true;
+            return false;
+        }).sort((a,b) => a.id - b.id);
+
+        // Appliquer les filtres
+        if (queueFilters.date) {
+            filtered = filtered.filter(item => 
+                (item.date || '').toLowerCase().includes(queueFilters.date.toLowerCase())
+            );
+        }
+        if (queueFilters.txn) {
+            filtered = filtered.filter(item => 
+                (item.txn || '').toLowerCase().includes(queueFilters.txn.toLowerCase())
+            );
+        }
+        if (queueFilters.client) {
+            filtered = filtered.filter(item => 
+                (item.client || '').toLowerCase().includes(queueFilters.client.toLowerCase())
+            );
+        }
+        if (queueFilters.wood) {
+            filtered = filtered.filter(item => 
+                (item.wood || '').toLowerCase().includes(queueFilters.wood.toLowerCase()) ||
+                (item.grade || '').toLowerCase().includes(queueFilters.wood.toLowerCase())
+            );
+        }
+        if (queueFilters.qty) {
+            filtered = filtered.filter(item => 
+                (item.qty || '').toString().includes(queueFilters.qty)
+            );
+        }
+
+        return filtered;
+    }, [productionData, stationId, stationConfig, queueFilters]);
+
+    const activeJob = React.useMemo(() => {
+        return queue.find(item => item.status === 'running' || item.status === 'paused');
+    }, [queue]);
+
+    // Keep activeJobRef updated for async ops
+    useEffect(() => { activeJobRef.current = activeJob; }, [activeJob]);
+    
+    // --- Timer Logic ---
+    useEffect(() => {
+        const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+        return () => clearInterval(timer);
+    }, []);
+
+    useEffect(() => {
+        if (!activeJob) {
+            setElapsed(0);
+            return;
+        }
+
+        const calculateTime = () => {
+            const logs = activeJob.logs || [];
+            let total = 0;
+            let lastStartTime = null;
+            
+            // Sort logs chronologically
+            const sortedLogs = [...logs].sort((a,b) => a.timestamp - b.timestamp);
+            
+            for (const log of sortedLogs) {
+                const action = log.action ? log.action.toUpperCase() : '';
+                if (action === 'START' || action === 'RESUME') {
+                    lastStartTime = log.timestamp;
+                } else if ((action === 'PAUSE' || action === 'COMPLETE') && lastStartTime) {
+                    total += (log.timestamp - lastStartTime);
+                    lastStartTime = null;
+                }
+            }
+            
+            if (activeJob.status === 'running' && lastStartTime) {
+                total += (Date.now() - lastStartTime);
+            }
+            
+            return Math.floor(total / 1000);
+        };
+
+        // Initial set
+        setElapsed(calculateTime());
+        
+        let interval;
+        if (activeJob.status === 'running') {
+            interval = setInterval(() => {
+                setElapsed(calculateTime());
+            }, 1000);
+        }
+
+        return () => { if(interval) clearInterval(interval); };
+    }, [activeJob?.id, activeJob?.status, activeJob?.logs]); 
+    // Dependency on specific props avoids deep obj comparison issues
+
+    // --- Sync Job Params ---
+    useEffect(() => {
+        if (activeJob) {
+            const newParams = {
+                productCode: activeJob.productCode || '',
+                pqtUsed: activeJob.pqtUsed || '',
+                humidity: activeJob.humidity || '',
+                coverage: activeJob.coverage || '',
+                thickness: activeJob.thickness || '',
+                width: activeJob.width || '',
+                sandThickness: activeJob.sandThickness || '',
+                jobNotes: activeJob.notes || ''
+            };
+            setJobParams(newParams);
+            if(formInstance.current) {
+                formInstance.current.option("formData", newParams);
+            }
+        }
+    }, [activeJob?.id, activeJob?.width]); // Sync when ID or width changes
+
+    // --- Debounced Auto-Save for Job Params ---
+    useEffect(() => {
+        if (!activeJob) return;
+        
+        const saveTimer = setTimeout(() => {
+            const currentJob = activeJobRef.current;
+            if (!currentJob) return;
+
+            // Detect changes to avoid unnecessary writes
+            const hasChanges = 
+                (currentJob.productCode || '') !== jobParams.productCode ||
+                (currentJob.pqtUsed || '') !== jobParams.pqtUsed ||
+                (currentJob.humidity || '') !== jobParams.humidity ||
+                (currentJob.coverage || '') !== jobParams.coverage ||
+                (currentJob.thickness || '') !== jobParams.thickness ||
+                (currentJob.width || '') !== jobParams.width ||
+                (currentJob.sandThickness || '') !== jobParams.sandThickness ||
+                (currentJob.notes || '') !== jobParams.jobNotes;
+
+            if (hasChanges) {
+                const { updateJobStatus } = handlersRef.current;
+                updateJobStatus(
+                    currentJob.id,
+                    currentJob.status,
+                    currentJob.producedQty,
+                    jobParams.jobNotes,
+                    null, // No log entry for field edits
+                    { ...jobParams } // Updated fields
+                );
+            }
+        }, 800); // 800ms debounce
+
+        return () => clearTimeout(saveTimer);
+    }, [jobParams]);
+
+    // --- Auth Logic (Restored) ---
+    const handlePinInput = (num) => {
+        if (pin.length < 4) setPin(prev => prev + num);
+    };
+
+    useEffect(() => {
+        if (pin.length === 4) {
+            const authUser = employees[pin];
+            if (authUser) {
+                setLoginError('');
+                setTimeout(() => {
+                    setAuthRequired(false);
+                    setPin('');
+                    if (pendingAction) {
+                        pendingAction(authUser);
+                        setPendingAction(null);
+                    }
+                }, 100);
+            } else {
+                setLoginError('NIP Invalide');
+                const timer = setTimeout(() => {
+                     setPin('');
+                     setLoginError('');
+                }, 500);
+                return () => clearTimeout(timer);
+            }
+        }
+    }, [pin, pendingAction]);
+
+    const requireAuth = (callback) => {
+        setPendingAction(() => callback);
+        setAuthRequired(true);
+    };
+
+    // Fonction pour démarrer un job avec validation de largeur
+    const handleStartJob = (jobData) => {
+        const width = parseFloat(jobData.width) || 0;
+        
+        if (width === 0) {
+            DevExpress.ui.dialog.custom({
+                title: "Largeur requise",
+                messageHtml: `<div style="margin: 20px 0;">
+                    <p style="margin-bottom: 12px; color: #dc2626; font-weight: bold;">Veuillez confirmer la largeur du produit avant de démarrer.</p>
+                    <p style="margin-bottom: 12px; color: #666;">Client: <strong>${jobData.client || 'N/A'}</strong></p>
+                    <p style="margin-bottom: 12px; color: #666;">Produit: <strong>${jobData.wood || 'N/A'}</strong></p>
+                    <label style="display: block; margin-bottom: 8px; font-weight: bold;">Largeur (pouces):</label>
+                    <input type="number" id="widthInputStart" value="" min="0" step="0.01"
+                           style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 16px;" 
+                           placeholder="Entrez la largeur en pouces" />
+                </div>`,
+                buttons: [
+                    {
+                        text: "Annuler",
+                        onClick: () => false
+                    },
+                    {
+                        text: "Démarrer",
+                        onClick: () => {
+                            const inputVal = document.getElementById('widthInputStart').value;
+                            const widthValue = parseFloat(inputVal) || 0;
+                            
+                            if (widthValue <= 0) {
+                                alert("Veuillez entrer une largeur valide.");
+                                return false;
+                            }
+                            
+                            // Démarrer le job avec la largeur
+                            requireAuth((u) => {
+                                const startLog = { user: u, action: 'START', qty: 0, timestamp: Date.now() };
+                                const updatedNotes = generateNotesFromLogs([startLog], jobData.notes || '');
+                                updateJobStatus(jobData.id, 'running', 0, updatedNotes, startLog, { 
+                                    station: stationId, width: widthValue, logs: [startLog] 
+                                });
+                            });
+                            
+                            return true;
+                        }
+                    }
+                ]
+            }).show();
+        } else {
+            // Largeur déjà présente, démarrer normalement
+            requireAuth((u) => {
+                const startLog = { user: u, action: 'START', qty: 0, timestamp: Date.now() };
+                const updatedNotes = generateNotesFromLogs([startLog], jobData.notes || '');
+                updateJobStatus(jobData.id, 'running', 0, updatedNotes, startLog, { 
+                    station: stationId, logs: [startLog] 
+                });
+            });
+        }
+    };
+
+    // Update handlers ref
+    handlersRef.current = { requireAuth, updateJobStatus, stationId, handleStartJob };
+
+    const handleUndoLastQuantity = () => {
+        if (!activeJob || !activeJob.logs || activeJob.logs.length === 0) {
+            alert("Aucune action à annuler.");
+            return;
+        }
+        
+        // Trouver la dernière action avec une quantité (PAUSE ou COMPLETE)
+        const logsWithQty = [...activeJob.logs].reverse().filter(log => 
+            log.qty != null && log.qty > 0 && (log.action === 'PAUSE' || log.action === 'COMPLETE')
+        );
+        
+        if (logsWithQty.length === 0) {
+            alert("Aucune quantité à annuler.");
+            return;
+        }
+        
+        const lastQtyLog = logsWithQty[0];
+        const qtyToRemove = parseFloat(lastQtyLog.qty) || 0;
+        
+        if (!confirm(`Annuler la dernière quantité ajoutée?\n\nAction: ${lastQtyLog.action}\nQuantité: ${qtyToRemove}\nUtilisateur: ${lastQtyLog.user}\nDate: ${new Date(lastQtyLog.timestamp).toLocaleString()}`)) {
+            return;
+        }
+        
+        // Retirer la quantité du total
+        const newProducedQty = Math.max(0, (activeJob.producedQty || 0) - qtyToRemove);
+        
+        // Retirer le log de la liste
+        const newLogs = activeJob.logs.filter(log => log.timestamp !== lastQtyLog.timestamp);
+        
+        // Ajouter un log d'annulation
+        const undoLog = {
+            user: 'User',
+            action: 'UNDO',
+            qty: -qtyToRemove,
+            timestamp: Date.now()
+        };
+        
+        // Mettre à jour le job
+        updateJobStatus(activeJob.id, activeJob.status, newProducedQty, activeJob.notes, undoLog, { logs: newLogs });
+    };
+
+    const handleActionClick = (action) => {
+        if (!activeJob) return;
+        
+        if (action === 'complete') {
+            // Prompt for quantity before completing
+            const currentQty = activeJob.producedQty || 0;
+            const width = parseFloat(activeJob.width) || 0;
+            
+            // Calculer la quantité planifiée incluant l'inventaire ajouté
+            const baseQty = parseFloat(activeJob.qty) || 0;
+            const logs = activeJob.logs || [];
+            const stockUsedFromLogs = logs
+                .filter(log => log.action === 'STOCK_USED')
+                .reduce((sum, log) => sum + (parseFloat(log.qty) || 0), 0);
+            const totalPlannedPC = baseQty + stockUsedFromLogs;
+            const plannedPL = width > 0 ? totalPlannedPC / (width / 12) : totalPlannedPC;
+            const remainingQty = Math.max(0, plannedPL - currentQty);
+            
+            DevExpress.ui.dialog.custom({
+                title: "Terminer le travail",
+                messageHtml: '<div style="margin: 20px 0;">' +
+                    '<p style="margin-bottom: 12px; color: #666;">Quantité déjà produite: <strong>' + currentQty.toFixed(2) + ' PL</strong></p>' +
+                    '<p style="margin-bottom: 16px; color: #666;">Quantité restante: <strong>' + remainingQty.toFixed(2) + ' PL</strong></p>' +
+                    
+                    '<!-- Option Fermer Palette -->' +
+                    '<div style="margin-bottom: 16px; padding: 12px; background-color: #f9fafb; border-radius: 6px; border: 2px solid #e5e7eb;">' +
+                        '<label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin-bottom: 8px;">' +
+                            '<input type="checkbox" id="closePalletCheckComplete" style="width: 18px; height: 18px; cursor: pointer;" />' +
+                            '<span style="font-weight: bold; color: #1f2937; font-size: 15px;">Fermer une palette</span>' +
+                        '</label>' +
+                        '<div id="palletSectionComplete" style="display: none; margin-left: 26px; margin-top: 12px;">' +
+                            '<p style="font-size: 13px; color: #059669; margin-bottom: 12px; font-style: italic;">' +
+                                '<i class="fa-solid fa-info-circle"></i> La quantité de la palette sera ajoutée à la quantité produite totale' +
+                            '</p>' +
+                            '<label style="display: block; margin-bottom: 6px; font-size: 14px; font-weight: bold; color: #4b5563;">Quantité de la palette (PL):</label>' +
+                            '<input type="number" id="palletQtyInputComplete" value="' + remainingQty.toFixed(2) + '" min="0" step="0.01"' +
+                                   'style="width: 100%; padding: 8px; border: 2px solid #3b82f6; border-radius: 4px; font-size: 16px;" />' +
+                        '</div>' +
+                    '</div>' +
+                    
+                    '<!-- Option Reclasser Bois -->' +
+                    '<div style="padding: 12px; background-color: #f9fafb; border-radius: 6px; border: 2px solid #e5e7eb;">' +
+                        '<label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin-bottom: 8px;">' +
+                            '<input type="checkbox" id="reclassifyCheckComplete" style="width: 18px; height: 18px; cursor: pointer;" />' +
+                            '<span style="font-weight: bold; color: #1f2937; font-size: 15px;">Reclasser le bois</span>' +
+                        '</label>' +
+                        '<div id="reclassifySectionComplete" style="display: none; margin-left: 26px; margin-top: 12px;">' +
+                            '<label style="display: block; margin-bottom: 6px; font-size: 14px; font-weight: bold; color: #4b5563;">Nouveau classement:</label>' +
+                            '<select id="gradeSelectComplete" style="width: 100%; padding: 8px; border: 2px solid #3b82f6; border-radius: 4px; font-size: 14px; margin-bottom: 12px;">' +
+                                '<option value="">-- Sélectionner --</option>' +
+                                '<option value="Select">Select</option>' +
+                                '<option value="Noueux">Noueux</option>' +
+                                '<option value="Grade B">Grade B</option>' +
+                            '</select>' +
+                            '<label style="display: block; margin-bottom: 6px; font-size: 14px; font-weight: bold; color: #4b5563;">Quantité à reclasser (PL):</label>' +
+                            '<input type="number" id="reclassifyQtyInputComplete" value="0" min="0" step="0.01"' +
+                                   'style="width: 100%; padding: 8px; border: 2px solid #3b82f6; border-radius: 4px; font-size: 16px;" />' +
+                        '</div>' +
+                    '</div>' +
+                    
+                '</div>',
+                buttons: [
+                    {
+                        text: "Annuler",
+                        onClick: () => false
+                    },
+                    {
+                        text: "Confirmer",
+                        onClick: () => {
+                            const closePallet = document.getElementById('closePalletCheckComplete').checked;
+                            const palletQty = parseFloat(document.getElementById('palletQtyInputComplete').value) || 0;
+                            
+                            const reclassify = document.getElementById('reclassifyCheckComplete').checked;
+                            const newGrade = document.getElementById('gradeSelectComplete').value;
+                            const reclassifyQty = parseFloat(document.getElementById('reclassifyQtyInputComplete').value) || 0;
+                            
+                            // Validation
+                            if (closePallet && palletQty <= 0) {
+                                alert("Veuillez entrer une quantité valide pour la palette à fermer.");
+                                return false;
+                            }
+                            
+                            if (reclassify && (!newGrade || reclassifyQty <= 0)) {
+                                alert("Veuillez sélectionner un classement et entrer une quantité valide pour le reclassement.");
+                                return false;
+                            }
+                            
+                            // La quantité de la palette fermée s'ajoute à la quantité produite
+                            const palletQtyToAdd = closePallet ? palletQty : 0;
+                            const totalQty = currentQty + palletQtyToAdd;
+                            
+                            // Calculer la quantité planifiée actuelle incluant inventaire
+                            const width = parseFloat(activeJob.width) || 0;
+                            const baseQty = parseFloat(activeJob.qty) || 0;
+                            const logs = activeJob.logs || [];
+                            const stockUsedFromLogs = logs
+                                .filter(log => log.action === 'STOCK_USED')
+                                .reduce((sum, log) => sum + (parseFloat(log.qty) || 0), 0);
+                            const totalInventoryPC = baseQty + stockUsedFromLogs;
+                            
+                            // Convertir la quantité produite en PC
+                            const producedPC = width > 0 ? totalQty * (width / 12) : totalQty;
+                            
+                            // Vérifier si on dépasse l'inventaire utilisé
+                            if (producedPC > totalInventoryPC) {
+                                alert('Impossible de terminer: La quantité produite (' + producedPC.toFixed(2) + ' PC) dépasse la quantité d\'inventaire utilisé (' + totalInventoryPC.toFixed(2) + ' PC).\n\nVeuillez ajouter plus de stock inventaire avant de continuer.');
+                                return false;
+                            }
+                            
+                            // Ajuster qty dans le tableau si la production dépasse la quantité d'origine
+                            let newQty = baseQty;
+                            if (producedPC > baseQty) {
+                                newQty = producedPC;
+                            }
+                            
+                            const totalPlannedPC = totalInventoryPC;
+                            const plannedPL = width > 0 ? totalPlannedPC / (width / 12) : totalPlannedPC;
+                            
+                            // Demander l'authentification de l'employé
+                            requireAuth((userName) => {
+                                const completeLog = {
+                                    user: userName, action: 'COMPLETE', qty: palletQtyToAdd, timestamp: Date.now()
+                                };
+                                
+                                const extraLogs = [];
+                                
+                                // Ajouter le log de fermeture de palette si activé
+                                if (closePallet) {
+                                    extraLogs.push({
+                                        user: userName,
+                                        action: 'PALLET_CLOSED',
+                                        qty: palletQty,
+                                        timestamp: Date.now()
+                                    });
+                                }
+                                
+                                // Ajouter le log de reclassement si activé
+                                if (reclassify) {
+                                    extraLogs.push({
+                                        user: userName,
+                                        action: 'WOOD_RECLASSIFIED',
+                                        qty: reclassifyQty,
+                                        newGrade: newGrade,
+                                        timestamp: Date.now()
+                                    });
+                                }
+                                
+                                // Générer les notes avec tous les logs
+                                const allLogs = [...(activeJob.logs || []), completeLog, ...extraLogs];
+                                const updatedNotes = generateNotesFromLogs(allLogs, jobParams.jobNotes);
+                                
+                                updateJobStatus(activeJob.id, 'completed', totalQty, updatedNotes, null, { ...jobParams, qty: newQty, logs: allLogs });
+                                
+                                // Demander si on veut générer un tag avec localisation
+                                setTimeout(() => {
+                                    DevExpress.ui.dialog.custom({
+                                        title: "Production terminée",
+                                        messageHtml: `<div style="margin: 20px 0;">
+                                            <p style="margin-bottom: 12px; font-weight: bold;">Voulez-vous imprimer une étiquette 4x6 ?</p>
+                                        </div>`,
+                                        buttons: [
+                                            {
+                                                text: "Non, ne pas imprimer",
+                                                onClick: () => true
+                                            },
+                                            {
+                                                text: "Oui, imprimer",
+                                                onClick: () => {
+                                                    // Demander la localisation d'entreposage
+                                                    DevExpress.ui.dialog.custom({
+                                                        title: "Localisation d'entreposage",
+                                                        messageHtml: `<div style="margin: 20px 0;">
+                                                            <label style="display: block; margin-bottom: 8px; font-weight: bold;">Entrez la localisation :</label>
+                                                            <input type="text" id="storageLocation" placeholder="Ex: A-12, B-5, C-23..."
+                                                                   style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 16px;" />
+                                                        </div>`,
+                                                        buttons: [
+                                                            {
+                                                                text: "Annuler",
+                                                                onClick: () => false
+                                                            },
+                                                            {
+                                                                text: "Imprimer",
+                                                                onClick: () => {
+                                                                    const location = document.getElementById('storageLocation').value.trim();
+                                                                    generateProductionTag(activeJob, location);
+                                                                    return true;
+                                                                }
+                                                            }
+                                                        ]
+                                                    }).show();
+                                                    return true;
+                                                }
+                                            }
+                                        ]
+                                    }).show();
+                                }, 500);
+                            });
+                            
+                            return true;
+                        }
+                    }
+                ]
+            }).show();
+            // Attach event listeners after dialog renders
+            setTimeout(() => {
+                const closePalletCheckComplete = document.getElementById('closePalletCheckComplete');
+                const reclassifyCheckComplete = document.getElementById('reclassifyCheckComplete');
+                if (closePalletCheckComplete) {
+                    closePalletCheckComplete.addEventListener('change', function(e) {
+                        document.getElementById('palletSectionComplete').style.display = e.target.checked ? 'block' : 'none';
+                    });
+                }
+                if (reclassifyCheckComplete) {
+                    reclassifyCheckComplete.addEventListener('change', function(e) {
+                        document.getElementById('reclassifySectionComplete').style.display = e.target.checked ? 'block' : 'none';
+                    });
+                }
+            }, 100);
+        }
+        else if (action === 'pause') {
+            // Demander le NIP d'abord, puis ouvrir la fenêtre d'options
+            const currentQty = activeJob.producedQty || 0;
+            const width = parseFloat(activeJob.width) || 0;
+            
+            // Calculer les quantités accumulées non-imprimées depuis les logs
+            const jobLogs = activeJob.logs || [];
+            const unprintedPalletLogs = jobLogs.filter(log => log.action === 'PALLET_CLOSED' && !log.printed);
+            const unprintedReclassLogs = jobLogs.filter(log => log.action === 'WOOD_RECLASSIFIED' && !log.printed);
+            const accumulatedPalletQty = unprintedPalletLogs.reduce((sum, log) => sum + (parseFloat(log.qty) || 0), 0);
+            const accumulatedReclassQty = unprintedReclassLogs.reduce((sum, log) => sum + (parseFloat(log.qty) || 0), 0);
+            const accumulatedReclassGrade = unprintedReclassLogs.length > 0 ? unprintedReclassLogs[unprintedReclassLogs.length - 1].newGrade : '';
+            
+            requireAuth((userName) => {
+                // Construire le résumé des quantités accumulées
+                let accumulatedHtml = '';
+                if (accumulatedPalletQty > 0 || accumulatedReclassQty > 0) {
+                    accumulatedHtml = '<div style="margin-bottom: 16px; padding: 12px; background-color: #fef3c7; border-radius: 8px; border: 2px solid #f59e0b;">' +
+                        '<p style="font-weight: bold; color: #92400e; margin-bottom: 8px; font-size: 14px;"><i class="fa-solid fa-box-open"></i> Quantités accumulées (non imprimées)</p>';
+                    if (accumulatedPalletQty > 0) {
+                        accumulatedHtml += '<div style="display: flex; justify-content: space-between; padding: 4px 0; font-size: 13px;">' +
+                            '<span>Palettes fermées (' + unprintedPalletLogs.length + ' entrée' + (unprintedPalletLogs.length > 1 ? 's' : '') + '):</span>' +
+                            '<strong style="color: #059669;">' + accumulatedPalletQty.toFixed(2) + ' PL</strong>' +
+                        '</div>';
+                    }
+                    if (accumulatedReclassQty > 0) {
+                        accumulatedHtml += '<div style="display: flex; justify-content: space-between; padding: 4px 0; font-size: 13px;">' +
+                            '<span>Reclassement en ' + accumulatedReclassGrade + ' (' + unprintedReclassLogs.length + ' entrée' + (unprintedReclassLogs.length > 1 ? 's' : '') + '):</span>' +
+                            '<strong style="color: #d97706;">' + accumulatedReclassQty.toFixed(2) + ' PL</strong>' +
+                        '</div>';
+                    }
+                    accumulatedHtml += '</div>';
+                }
+                
+                // Après authentification, ouvrir le dialogue d'options
+                DevExpress.ui.dialog.custom({
+                    title: "Mettre en pause",
+                    messageHtml: '<div style="margin: 10px 0; max-height: 60vh; overflow-y: auto; padding-right: 8px;">' +
+                        '<p style="margin-bottom: 10px; color: #374151; font-size: 13px;">Employé: <strong>' + userName + '</strong></p>' +
+                        '<p style="margin-bottom: 16px; color: #666;">Quantité déjà produite: <strong>' + currentQty.toFixed(2) + ' PL</strong></p>' +
+                        
+                        accumulatedHtml +
+                        
+                        '<!-- Option Fermer Palette -->' +
+                        '<div style="margin-bottom: 16px; padding: 12px; background-color: #f9fafb; border-radius: 6px; border: 2px solid #e5e7eb;">' +
+                            '<label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin-bottom: 8px;">' +
+                                '<input type="checkbox" id="closePalletCheck" style="width: 18px; height: 18px; cursor: pointer;" />' +
+                                '<span style="font-weight: bold; color: #1f2937; font-size: 15px;">Fermer une palette</span>' +
+                            '</label>' +
+                            '<div id="palletSection" style="display: none; margin-left: 26px; margin-top: 12px;">' +
+                                '<p style="font-size: 13px; color: #059669; margin-bottom: 12px; font-style: italic;">' +
+                                    '<i class="fa-solid fa-info-circle"></i> La quantité sera ajoutée au total produit' +
+                                    (accumulatedPalletQty > 0 ? ' (accumulé: ' + accumulatedPalletQty.toFixed(2) + ' PL)' : '') +
+                                '</p>' +
+                                '<label style="display: block; margin-bottom: 6px; font-size: 14px; font-weight: bold; color: #4b5563;">Quantité de la palette (PL):</label>' +
+                                '<input type="number" id="palletQtyInput" value="0" min="0" step="0.01"' +
+                                       'style="width: 100%; padding: 8px; border: 2px solid #3b82f6; border-radius: 4px; font-size: 16px; margin-bottom: 12px;" />' +
+                                
+                                '<!-- Option inventaire + étiquette pour palette -->' +
+                                '<div style="margin-top: 8px; padding: 10px; background-color: #eff6ff; border-radius: 6px; border: 1px solid #bfdbfe;">' +
+                                    '<label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin-bottom: 8px;">' +
+                                        '<input type="checkbox" id="palletPrintCheck" style="width: 16px; height: 16px; cursor: pointer;" />' +
+                                        '<span style="font-weight: bold; color: #2563eb; font-size: 13px;"><i class="fa-solid fa-print"></i> Imprimer étiquette et ajouter à l\'inventaire' +
+                                            (accumulatedPalletQty > 0 ? ' (total: accumulé + nouvelle qté)' : '') +
+                                        '</span>' +
+                                    '</label>' +
+                                    '<div id="palletPrintSection" style="display: none; margin-left: 24px; margin-top: 8px;">' +
+                                        (accumulatedPalletQty > 0 ? '<p style="font-size: 12px; color: #2563eb; margin-bottom: 8px; font-weight: bold;">Quantité totale pour l\'étiquette: accumulé (' + accumulatedPalletQty.toFixed(2) + ') + nouvelle qté</p>' : '') +
+                                        '<label style="display: block; margin-bottom: 4px; font-size: 13px; font-weight: bold; color: #4b5563;">Liste de Tally:</label>' +
+                                        '<textarea id="palletTallyInput" rows="3" ' +
+                                            'style="width: 100%; padding: 6px; border: 1px solid #93c5fd; border-radius: 4px; font-size: 13px; font-family: monospace; resize: vertical; margin-bottom: 8px;" ' +
+                                            'placeholder="Ex: 8x4, 10x6, 12x8..."></textarea>' +
+                                        '<label style="display: block; margin-bottom: 4px; font-size: 13px; font-weight: bold; color: #4b5563;">Localisation:</label>' +
+                                        '<input type="text" id="palletLocationInput" placeholder="Ex: A-12, B-5..."' +
+                                               'style="width: 100%; padding: 6px; border: 1px solid #93c5fd; border-radius: 4px; font-size: 13px;" />' +
+                                    '</div>' +
+                                '</div>' +
+                            '</div>' +
+                        '</div>' +
+                        
+                        '<!-- Option Reclasser Bois -->' +
+                        '<div style="padding: 12px; background-color: #f9fafb; border-radius: 6px; border: 2px solid #e5e7eb;">' +
+                            '<label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin-bottom: 8px;">' +
+                                '<input type="checkbox" id="reclassifyCheck" style="width: 18px; height: 18px; cursor: pointer;" />' +
+                                '<span style="font-weight: bold; color: #1f2937; font-size: 15px;">Reclasser le bois</span>' +
+                            '</label>' +
+                            '<div id="reclassifySection" style="display: none; margin-left: 26px; margin-top: 12px;">' +
+                                '<label style="display: block; margin-bottom: 6px; font-size: 14px; font-weight: bold; color: #4b5563;">Nouveau classement:</label>' +
+                                '<select id="gradeSelect" style="width: 100%; padding: 8px; border: 2px solid #3b82f6; border-radius: 4px; font-size: 14px; margin-bottom: 12px;">' +
+                                    '<option value="">-- Sélectionner --</option>' +
+                                    '<option value="Select">Select</option>' +
+                                    '<option value="Noueux">Noueux</option>' +
+                                    '<option value="Grade B">Grade B</option>' +
+                                '</select>' +
+                                '<label style="display: block; margin-bottom: 6px; font-size: 14px; font-weight: bold; color: #4b5563;">Quantité à reclasser (PL):</label>' +
+                                '<input type="number" id="reclassifyQtyInput" value="0" min="0" step="0.01"' +
+                                       'style="width: 100%; padding: 8px; border: 2px solid #3b82f6; border-radius: 4px; font-size: 16px; margin-bottom: 12px;" />' +
+                                
+                                '<!-- Option inventaire + étiquette pour reclassement -->' +
+                                '<div style="margin-top: 8px; padding: 10px; background-color: #fef3c7; border-radius: 6px; border: 1px solid #fcd34d;">' +
+                                    '<label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin-bottom: 8px;">' +
+                                        '<input type="checkbox" id="reclassifyPrintCheck" style="width: 16px; height: 16px; cursor: pointer;" />' +
+                                        '<span style="font-weight: bold; color: #92400e; font-size: 13px;"><i class="fa-solid fa-print"></i> Imprimer étiquette et ajouter à l\'inventaire' +
+                                            (accumulatedReclassQty > 0 ? ' (total: accumulé + nouvelle qté)' : '') +
+                                        '</span>' +
+                                    '</label>' +
+                                    '<div id="reclassifyPrintSection" style="display: none; margin-left: 24px; margin-top: 8px;">' +
+                                        (accumulatedReclassQty > 0 ? '<p style="font-size: 12px; color: #92400e; margin-bottom: 8px; font-weight: bold;">Quantité totale pour l\'étiquette: accumulé (' + accumulatedReclassQty.toFixed(2) + ') + nouvelle qté</p>' : '') +
+                                        '<label style="display: block; margin-bottom: 4px; font-size: 13px; font-weight: bold; color: #4b5563;">Liste de Tally:</label>' +
+                                        '<textarea id="reclassifyTallyInput" rows="3" ' +
+                                            'style="width: 100%; padding: 6px; border: 1px solid #fcd34d; border-radius: 4px; font-size: 13px; font-family: monospace; resize: vertical; margin-bottom: 8px;" ' +
+                                            'placeholder="Ex: 8x4, 10x6, 12x8..."></textarea>' +
+                                        '<label style="display: block; margin-bottom: 4px; font-size: 13px; font-weight: bold; color: #4b5563;">Localisation:</label>' +
+                                        '<input type="text" id="reclassifyLocationInput" placeholder="Ex: A-12, B-5..."' +
+                                               'style="width: 100%; padding: 6px; border: 1px solid #fcd34d; border-radius: 4px; font-size: 13px;" />' +
+                                    '</div>' +
+                                '</div>' +
+                            '</div>' +
+                        '</div>' +
+                        
+                    '</div>',
+                    buttons: [
+                        {
+                            text: "Annuler",
+                            onClick: () => false
+                        },
+                        {
+                            text: "Confirmer",
+                            onClick: () => {
+                                const closePallet = document.getElementById('closePalletCheck').checked;
+                                const palletQty = parseFloat(document.getElementById('palletQtyInput').value) || 0;
+                                
+                                const reclassify = document.getElementById('reclassifyCheck').checked;
+                                const newGrade = document.getElementById('gradeSelect').value;
+                                const reclassifyQty = parseFloat(document.getElementById('reclassifyQtyInput').value) || 0;
+                                
+                                // Lire les options d'impression AVANT de fermer le dialog
+                                const palletPrint = closePallet ? document.getElementById('palletPrintCheck').checked : false;
+                                const palletTally = palletPrint ? (document.getElementById('palletTallyInput').value.trim()) : '';
+                                const palletLoc = palletPrint ? (document.getElementById('palletLocationInput').value.trim() || 'N/A') : '';
+                                
+                                const reclassifyPrint = reclassify ? document.getElementById('reclassifyPrintCheck').checked : false;
+                                const reclassifyTally = reclassifyPrint ? (document.getElementById('reclassifyTallyInput').value.trim()) : '';
+                                const reclassifyLoc = reclassifyPrint ? (document.getElementById('reclassifyLocationInput').value.trim() || 'N/A') : '';
+                                
+                                // Validation
+                                if (closePallet && palletQty <= 0) {
+                                    alert("Veuillez entrer une quantité valide pour la palette à fermer.");
+                                    return false;
+                                }
+                                
+                                if (reclassify && (!newGrade || reclassifyQty <= 0)) {
+                                    alert("Veuillez sélectionner un classement et entrer une quantité valide pour le reclassement.");
+                                    return false;
+                                }
+                                
+                                // Si aucune action sélectionnée, pause simple
+                                if (!closePallet && !reclassify) {
+                                    const pauseLog = {
+                                        user: userName, action: 'PAUSE', qty: 0, timestamp: Date.now()
+                                    };
+                                    const allLogs = [...(activeJob.logs || []), pauseLog];
+                                    const updatedNotes = generateNotesFromLogs(allLogs, jobParams.jobNotes);
+                                    updateJobStatus(activeJob.id, 'paused', currentQty, updatedNotes, pauseLog, { ...jobParams });
+                                    return true;
+                                }
+                                
+                                // La quantité de la palette fermée s'ajoute à la quantité produite
+                                const palletQtyToAdd = closePallet ? palletQty : 0;
+                                const totalQty = currentQty + palletQtyToAdd;
+                                
+                                // Calculer l'inventaire utilisé
+                                const widthVal = parseFloat(activeJob.width) || 0;
+                                const baseQty = parseFloat(activeJob.qty) || 0;
+                                const logs = activeJob.logs || [];
+                                const stockUsedFromLogs = logs
+                                    .filter(log => log.action === 'STOCK_USED')
+                                    .reduce((sum, log) => sum + (parseFloat(log.qty) || 0), 0);
+                                const totalInventoryPC = baseQty + stockUsedFromLogs;
+                                
+                                // Convertir la quantité produite en PC
+                                const producedPC = widthVal > 0 ? totalQty * (widthVal / 12) : totalQty;
+                                
+                                // Vérifier si on dépasse l'inventaire utilisé
+                                if (producedPC > totalInventoryPC) {
+                                    alert('Impossible de mettre en pause: La quantité produite (' + producedPC.toFixed(2) + ' PC) dépasse la quantité d\'inventaire utilisé (' + totalInventoryPC.toFixed(2) + ' PC).\n\nVeuillez ajouter plus de stock inventaire avant de continuer.');
+                                    return false;
+                                }
+                                
+                                // Ajuster qty dans le tableau si la production dépasse la quantité d'origine
+                                let newQty = baseQty;
+                                if (producedPC > baseQty) {
+                                    newQty = producedPC;
+                                }
+                                
+                                // Le log de pause enregistre la quantité de la palette
+                                const pauseLog = {
+                                    user: userName, action: 'PAUSE', qty: palletQtyToAdd, timestamp: Date.now()
+                                };
+                                
+                                const extraLogs = [];
+                                
+                                // Ajouter le log de fermeture de palette si activé (pour traçabilité)
+                                if (closePallet) {
+                                    extraLogs.push({
+                                        user: userName,
+                                        action: 'PALLET_CLOSED',
+                                        qty: palletQty,
+                                        printed: palletPrint, // marquer si imprimé
+                                        timestamp: Date.now()
+                                    });
+                                }
+                                
+                                // Ajouter le log de reclassement si activé (ne change pas la qté produite)
+                                if (reclassify) {
+                                    extraLogs.push({
+                                        user: userName,
+                                        action: 'WOOD_RECLASSIFIED',
+                                        qty: reclassifyQty,
+                                        newGrade: newGrade,
+                                        printed: reclassifyPrint, // marquer si imprimé
+                                        timestamp: Date.now()
+                                    });
+                                }
+                                
+                                // Si impression palette, marquer les anciens logs non-imprimés comme imprimés
+                                let updatedLogs = [...(activeJob.logs || [])];
+                                if (palletPrint) {
+                                    updatedLogs = updatedLogs.map(log => {
+                                        if (log.action === 'PALLET_CLOSED' && !log.printed) {
+                                            return { ...log, printed: true };
+                                        }
+                                        return log;
+                                    });
+                                }
+                                if (reclassifyPrint) {
+                                    updatedLogs = updatedLogs.map(log => {
+                                        if (log.action === 'WOOD_RECLASSIFIED' && !log.printed) {
+                                            return { ...log, printed: true };
+                                        }
+                                        return log;
+                                    });
+                                }
+                                
+                                // Créer les logs complets pour générer les notes
+                                const allLogs = [...updatedLogs, pauseLog, ...extraLogs];
+                                const updatedNotes = generateNotesFromLogs(allLogs, jobParams.jobNotes);
+                                
+                                // Mettre à jour le statut avec le log de pause et la quantité totale produite
+                                // Passer les logs mis à jour (avec printed flags) — allLogs contient déjà pauseLog + extraLogs
+                                updateJobStatus(activeJob.id, 'paused', totalQty, updatedNotes, null, { ...jobParams, qty: newQty, logs: allLogs });
+                                
+                                // Traiter impression étiquette pour palette
+                                if (closePallet && palletQty > 0 && palletPrint) {
+                                    // Quantité totale = accumulé non-imprimé + nouvelle quantité
+                                    const totalPalletQtyForLabel = accumulatedPalletQty + palletQty;
+                                    
+                                    setTimeout(() => {
+                                        const existingStocks = inventory.map(item => item.stockNo);
+                                        let stockNumber = 1;
+                                        let stockNo = '';
+                                        do {
+                                            stockNo = 'STK-' + String(stockNumber).padStart(4, '0');
+                                            stockNumber++;
+                                        } while (existingStocks.includes(stockNo));
+                                        
+                                        const palletGrade = reclassify ? newGrade : (activeJob.grade || 'Standard');
+                                        const palletJobData = { ...activeJob, grade: palletGrade, producedQty: totalPalletQtyForLabel };
+                                        const productCode = generateProductCode(palletJobData);
+                                        
+                                        const widthPC = parseFloat(activeJob.width) || 0;
+                                        const qtyPC = widthPC > 0 ? totalPalletQtyForLabel * (widthPC / 12) : totalPalletQtyForLabel;
+                                        
+                                        if (typeof addToInventory === 'function') {
+                                            addToInventory(stockNo, activeJob.wood || 'N/A', palletGrade, activeJob.client || 'N/A', Math.round(qtyPC), palletLoc, t[activeJob.process] || activeJob.process || 'Fini');
+                                        }
+                                        
+                                        const palletData = {
+                                            id: activeJob.id, txn: activeJob.txn, client: activeJob.client || 'N/A',
+                                            wood: activeJob.wood || 'N/A', grade: palletGrade, producedQty: totalPalletQtyForLabel,
+                                            process: activeJob.process || '', steps: activeJob.steps || [],
+                                            width: activeJob.width || 'N/A', coverage: activeJob.coverage || 'N/A',
+                                            customStockNo: stockNo, tallyList: palletTally, productCode: productCode
+                                        };
+                                        generatePalletLabel(palletData, palletLoc);
+                                        DevExpress.ui.notify('Stock ' + stockNo + ' créé — ' + totalPalletQtyForLabel.toFixed(2) + ' PL transférés à l\'inventaire', 'success', 4000);
+                                    }, 300);
+                                } else if (closePallet && palletQty > 0) {
+                                    DevExpress.ui.notify('Palette fermée: ' + palletQty.toFixed(2) + ' PL ajoutés (total accumulé non-imprimé: ' + (accumulatedPalletQty + palletQty).toFixed(2) + ' PL)', 'success', 4000);
+                                }
+                                
+                                // Traiter impression étiquette pour reclassement
+                                if (reclassify && reclassifyQty > 0 && reclassifyPrint) {
+                                    const totalReclassQtyForLabel = accumulatedReclassQty + reclassifyQty;
+                                    
+                                    setTimeout(() => {
+                                        const existingStocks = inventory.map(item => item.stockNo);
+                                        let stockNumber = 1;
+                                        let stockNo = '';
+                                        do {
+                                            stockNo = 'STK-' + String(stockNumber).padStart(4, '0');
+                                            stockNumber++;
+                                        } while (existingStocks.includes(stockNo));
+                                        
+                                        const reclassJobData = { ...activeJob, grade: newGrade, producedQty: totalReclassQtyForLabel };
+                                        const productCode = generateProductCode(reclassJobData);
+                                        
+                                        const widthPC = parseFloat(activeJob.width) || 0;
+                                        const qtyPC = widthPC > 0 ? totalReclassQtyForLabel * (widthPC / 12) : totalReclassQtyForLabel;
+                                        
+                                        if (typeof addToInventory === 'function') {
+                                            addToInventory(stockNo, activeJob.wood || 'N/A', newGrade, activeJob.client || 'N/A', Math.round(qtyPC), reclassifyLoc, t[activeJob.process] || activeJob.process || 'Reclassé');
+                                        }
+                                        
+                                        const reclassData = {
+                                            id: activeJob.id, txn: activeJob.txn, client: activeJob.client || 'N/A',
+                                            wood: activeJob.wood || 'N/A', grade: newGrade, producedQty: totalReclassQtyForLabel,
+                                            process: activeJob.process || '', steps: activeJob.steps || [],
+                                            width: activeJob.width || 'N/A', coverage: activeJob.coverage || 'N/A',
+                                            customStockNo: stockNo, tallyList: reclassifyTally, productCode: productCode
+                                        };
+                                        generatePalletLabel(reclassData, reclassifyLoc);
+                                        DevExpress.ui.notify('Stock ' + stockNo + ' créé — ' + totalReclassQtyForLabel.toFixed(2) + ' PL reclassés transférés à l\'inventaire', 'success', 4000);
+                                    }, 600);
+                                } else if (reclassify && reclassifyQty > 0) {
+                                    DevExpress.ui.notify('Reclassement: ' + reclassifyQty.toFixed(2) + ' PL en ' + newGrade + ' (total accumulé non-imprimé: ' + (accumulatedReclassQty + reclassifyQty).toFixed(2) + ' PL)', 'info', 4000);
+                                }
+                                
+                                return true;
+                            }
+                        }
+                    ]
+                }).show();
+                // Attach event listeners after dialog renders
+                setTimeout(() => {
+                    const closePalletCheck = document.getElementById('closePalletCheck');
+                    const reclassifyCheck = document.getElementById('reclassifyCheck');
+                    const palletPrintCheck = document.getElementById('palletPrintCheck');
+                    const reclassifyPrintCheck = document.getElementById('reclassifyPrintCheck');
+                    if (closePalletCheck) {
+                        closePalletCheck.addEventListener('change', function(e) {
+                            document.getElementById('palletSection').style.display = e.target.checked ? 'block' : 'none';
+                        });
+                    }
+                    if (reclassifyCheck) {
+                        reclassifyCheck.addEventListener('change', function(e) {
+                            document.getElementById('reclassifySection').style.display = e.target.checked ? 'block' : 'none';
+                        });
+                    }
+                    if (palletPrintCheck) {
+                        palletPrintCheck.addEventListener('change', function(e) {
+                            document.getElementById('palletPrintSection').style.display = e.target.checked ? 'block' : 'none';
+                        });
+                    }
+                    if (reclassifyPrintCheck) {
+                        reclassifyPrintCheck.addEventListener('change', function(e) {
+                            document.getElementById('reclassifyPrintSection').style.display = e.target.checked ? 'block' : 'none';
+                        });
+                    }
+                }, 100);
+            });
+        }
+        else if (action === 'reportIssue') {
+            // Report an issue dialog
+            DevExpress.ui.dialog.custom({
+                title: "Signaler un problème",
+                messageHtml: `<div style="margin: 20px 0;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: bold;">Description du problème:</label>
+                    <textarea id="issueDescription" rows="5" 
+                              style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; resize: vertical;"
+                              placeholder="Décrivez le problème rencontré..."></textarea>
+                </div>`,
+                buttons: [
+                    {
+                        text: "Annuler",
+                        onClick: () => false
+                    },
+                    {
+                        text: "Envoyer",
+                        onClick: () => {
+                            const description = document.getElementById('issueDescription').value;
+                            if (description.trim()) {
+                                // Demander l'authentification de l'employé
+                                requireAuth((userName) => {
+                                    const issueLog = {
+                                        user: userName,
+                                        action: 'ISSUE_REPORTED',
+                                        qty: 0,
+                                        timestamp: Date.now(),
+                                        description: description
+                                    };
+                                    
+                                    // Générer les notes avec tous les logs
+                                    const allLogs = [...(activeJob.logs || []), issueLog];
+                                    const updatedNotes = generateNotesFromLogs(allLogs, jobParams.jobNotes);
+                                    
+                                    // Log the issue in the job's logs without changing status
+                                    updateJobStatus(activeJob.id, activeJob.status, activeJob.producedQty, updatedNotes, issueLog, { issueDescription: description, issueResolved: false, issueTimestamp: Date.now() });
+                                    DevExpress.ui.notify("Problème signalé avec succès", "success", 2000);
+                                });
+                            }
+                            return true;
+                        }
+                    }
+                ]
+            }).show();
+        }
+    };
+
+    // --- List Initialization (Remplacement du DataGrid par dxList) ---
+    useEffect(() => {
+        if (!queueListRef.current) return;
+        // Nettoyage si déjà monté
+        if (queueListRef.current._dxListInstance) {
+            queueListRef.current._dxListInstance.dispose();
+            queueListRef.current._dxListInstance = null;
+        }
+        // Création dxList
+        const list = new DevExpress.ui.dxList(queueListRef.current, {
+            dataSource: queue.filter(j => j.id !== activeJob?.id),
+            height: '100%',
+            itemTemplate: function(data, index, element) {
+                // Construction de l'affichage d'un item de file d'attente
+                const container = document.createElement('div');
+                container.className = 'flex flex-col gap-1 p-2 border-b';
+                // Ligne principale
+                const top = document.createElement('div');
+                top.className = 'flex justify-between items-center';
+                const stockInfo = data.stockNo ? ' <span class="bg-gray-100 px-1 rounded text-gray-600">' + data.stockNo + '</span>' : '';
+                top.innerHTML = '<span class="font-bold text-[#51aff7]">#' + data.id + '</span><span class="text-xs text-gray-500">' + (data.client || '') + stockInfo + '</span>';
+                container.appendChild(top);
+                // Détail produit
+                const prod = document.createElement('div');
+                prod.className = 'text-xs text-gray-700';
+                const gradeText = data.grade ? ' (' + data.grade + ')' : '';
+                prod.textContent = (data.wood || '') + gradeText + ' - ' + (data.qty || '') + ' pc';
+                container.appendChild(prod);
+                // Boutons actions
+                const actions = document.createElement('div');
+                actions.className = 'flex gap-2 mt-1';
+                // Bouton démarrer
+                const btnStart = document.createElement('button');
+                btnStart.className = 'px-2 py-1 bg-green-500 hover:bg-green-600 text-white text-xs rounded flex items-center gap-1';
+                btnStart.innerHTML = '<i class="fa-solid fa-play"></i> Démarrer';
+                btnStart.onclick = (e) => {
+                    e.stopPropagation();
+                    const { handleStartJob } = handlersRef.current;
+                    handleStartJob(data);
+                };
+                actions.appendChild(btnStart);
+                container.appendChild(actions);
+                element.append(container);
+            },
+            onItemClick: function(e) {
+                // Démarrer aussi au clic sur l'item
+                const { handleStartJob } = handlersRef.current;
+                handleStartJob(e.itemData);
+            },
+            noDataText: t.waitingForJob || 'Aucun en attente',
+            showScrollbar: 'always',
+        });
+        queueListRef.current._dxListInstance = list;
+        return () => {
+            if (queueListRef.current._dxListInstance) {
+                queueListRef.current._dxListInstance.dispose();
+                queueListRef.current._dxListInstance = null;
+            }
+        };
+    }, [queue, activeJob?.id, t]);
+
+    // 2. History Grid
+    useEffect(() => {
+        if (!activeJob || !historyGridRef.current) return;
+        
+        // Dispose existing if any (safety)
+        if(historyGridInstance.current) {
+            historyGridInstance.current.dispose();
+            historyGridInstance.current = null;
+        }
+
+        const grid = new DevExpress.ui.dxDataGrid(historyGridRef.current, {
+            dataSource: activeJob.logs || [],
+            columns: [
+                { 
+                    dataField: 'timestamp', 
+                    caption: 'Heure', 
+                    dataType: 'datetime', 
+                    format: 'HH:mm:ss', 
+                    sortOrder: 'desc',
+                    width: 95,
+                    allowEditing: false
+                },
+                { 
+                    dataField: 'user', 
+                    caption: 'Utilisateur',
+                    width: 130,
+                    allowEditing: false
+                },
+                { 
+                    dataField: 'action', 
+                    caption: 'Action',
+                    width: 130,
+                    allowEditing: false,
+                    calculateCellValue: (rowData) => {
+                        const action = rowData.action || '';
+                        const translations = {
+                            'START': 'DÉMARRER',
+                            'PAUSE': 'PAUSE',
+                            'COMPLETE': 'TERMINER',
+                            'RESUME': 'REPRENDRE',
+                            'STOCK_USED': 'STOCK UTILISÉ',
+                            'ISSUE_REPORTED': 'PROBLÈME SIGNALÉ',
+                            'PALLET_CLOSED': 'PALETTE FERMÉE',
+                            'WOOD_RECLASSIFIED': 'BOIS RECLASSÉ'
+                        };
+                        return translations[action] || action;
+                    }
+                },
+                { 
+                    dataField: 'description', 
+                    caption: 'No. Stock / Grade',
+                    width: 150,
+                    allowEditing: false,
+                    calculateCellValue: (rowData) => {
+                        // Si c'est un reclassement, afficher le nouveau grade
+                        if (rowData.action === 'WOOD_RECLASSIFIED' && rowData.newGrade) {
+                            return '\u2192 ' + rowData.newGrade;
+                        }
+                        return rowData.description || '';
+                    }
+                },
+                { 
+                    dataField: 'qty', 
+                    caption: 'Quantité',
+                    width: 100,
+                    dataType: 'number',
+                    format: {
+                        type: 'fixedPoint',
+                        precision: 2
+                    },
+                    allowEditing: true
+                },
+                {
+                    caption: 'Unité',
+                    width: 70,
+                    allowEditing: false,
+                    calculateCellValue: (rowData) => {
+                        const action = rowData.action || '';
+                        if (action === 'PAUSE' || action === 'COMPLETE' || action === 'PALLET_CLOSED' || action === 'WOOD_RECLASSIFIED') {
+                            return 'PL';
+                        } else if (action === 'STOCK_USED') {
+                            return 'PC';
+                        } else {
+                            return '—';
+                        }
+                    }
+                }
+            ],
+            editing: {
+                mode: 'cell',
+                allowUpdating: true,
+                selectTextOnEditStart: true,
+                startEditAction: 'click',
+                useIcons: true
+            },
+            onEditingStart: (e) => {
+                // Permettre l'édition uniquement de la colonne qty
+                if (e.column.dataField !== 'qty') {
+                    e.cancel = true;
+                }
+            },
+            onRowUpdating: (e) => {
+                const oldQty = parseFloat(e.oldData.qty) || 0;
+                const newQty = parseFloat(e.newData.qty) || 0;
+                const difference = newQty - oldQty;
+                
+                // Si c'est un stock utilisé, ajuster l'inventaire
+                if (e.oldData.action === 'STOCK_USED' && e.oldData.description) {
+                    const stockMatch = e.oldData.description.match(/Stock\s+(STK-[\w]+)/i);
+                    if (stockMatch && difference !== 0) {
+                        const stockNo = stockMatch[1];
+                        
+                        // Trouver le stock dans l'inventaire
+                        const stockItem = inventory.find(item => item.stockNo === stockNo);
+                        if (stockItem) {
+                            // Si on augmente la quantité utilisée (différence positive), on déduit plus de l'inventaire
+                            // Si on diminue la quantité utilisée (différence négative), on remet dans l'inventaire
+                            const newInventoryQty = stockItem.qty - difference;
+                            
+                            if (newInventoryQty < 0) {
+                                e.cancel = true;
+                                DevExpress.ui.notify({
+                                    message: `Quantité insuffisante en stock (disponible: ${stockItem.qty} PC)`,
+                                    type: "error",
+                                    displayTime: 3000
+                                });
+                                return;
+                            }
+                            
+                            // Mettre à jour l'inventaire
+                            adjustInventory(stockNo, newInventoryQty);
+                            
+                            DevExpress.ui.notify({
+                                message: `Inventaire ajusté: ${stockNo} - ${newInventoryQty.toFixed(2)} PC`,
+                                type: "success",
+                                displayTime: 2000
+                            });
+                        }
+                    }
+                }
+                
+                // Mettre à jour les logs du job
+                const updatedLogs = (activeJob.logs || []).map(log => 
+                    log.timestamp === e.oldData.timestamp ? { ...log, qty: newQty } : log
+                );
+                
+                updateJobStatus(activeJob.id, activeJob.status, activeJob.producedQty, activeJob.notes, null, { logs: updatedLogs });
+            },
+            showBorders: true,
+            height: 250,
+            columnAutoWidth: false,
+            wordWrapEnabled: false,
+            showColumnHeaders: true,
+            rowAlternationEnabled: true,
+            hoverStateEnabled: true,
+            noDataText: 'Aucune action enregistrée'
+        });
+        historyGridInstance.current = grid;
+        // No dispose on return to prevent clearing while job is active
+        return () => {
+             if(historyGridInstance.current) {
+                 historyGridInstance.current.dispose();
+                 historyGridInstance.current = null;
+             }
+        };
+    }, [!!activeJob]); // Re-mount when activeJob appears/disappears
+
+    // Update History Data
+    useEffect(() => {
+        if (historyGridInstance.current && activeJob) {
+            historyGridInstance.current.option('dataSource', activeJob.logs || []);
+        }
+    }, [activeJob?.logs]);
+
+    // 3. Form (Form is tricky as it binds to inputs)
+    useEffect(() => {
+        if (!activeJob || !formRef.current) return;
+
+        // Dispose previous if any
+        if(formInstance.current) {
+             formInstance.current.dispose();
+             formInstance.current = null;
+        }
+
+        const form = new DevExpress.ui.dxForm(formRef.current, {
+            formData: jobParams,
+            items: [
+                {
+                    itemType: "group",
+                    colCount: 3,
+                    items: [
+                        {
+                            dataField: "productCode",
+                            label: { text: "Code Produit / Stock" },
+                            editorType: "dxTextBox",
+                            editorOptions: {
+                                placeholder: "Rechercher un stock...",
+                                showClearButton: true,
+                                buttons: [{
+                                    name: "search",
+                                    location: "after",
+                                    options: { 
+                                        icon: "search",
+                                        stylingMode: "contained",
+                                        type: "default",
+                                        onClick: () => {
+                                            // Ouvrir une boîte de dialogue de recherche
+                                            const searchValue = formInstance.current.getEditor("productCode").option("value") || "";
+                                            const filteredInventory = inventory.filter(i => 
+                                                i.qty > 0 && (
+                                                    (i.stockNo || "").toLowerCase().includes(searchValue.toLowerCase()) ||
+                                                    (i.wood || "").toLowerCase().includes(searchValue.toLowerCase()) ||
+                                                    (i.grade || "").toLowerCase().includes(searchValue.toLowerCase()) ||
+                                                    (i.location || "").toLowerCase().includes(searchValue.toLowerCase()) ||
+                                                    (i.state || "").toLowerCase().includes(searchValue.toLowerCase())
+                                                )
+                                            );
+                                            
+                                            if (filteredInventory.length === 0) {
+                                                DevExpress.ui.notify({
+                                                    message: "Aucun stock trouvé",
+                                                    type: "warning",
+                                                    displayTime: 2000
+                                                });
+                                                return;
+                                            }
+                                            
+                                            // Stocker la référence de l'inventaire dans window pour y accéder depuis onclick
+                                            window._tempInventory = inventory;
+                                            window._tempActiveJob = activeJob;
+                                            window._tempFormInstance = formInstance;
+                                            window._tempRequireAuth = requireAuth;
+                                            window._tempUpdateJobStatus = updateJobStatus;
+                                            window._tempDeductFromInventory = deductFromInventory;
+                                            
+                                            const itemsHtml = filteredInventory.map(data => {
+                                                const escapedStockNo = data.stockNo.replace(/'/g, "\\'");
+                                                const gradeText = data.grade ? ' (' + data.grade + ')' : '';
+                                                return '<div class="stock-item" onclick="window.selectInventoryStock(\'' + escapedStockNo + '\');" style="cursor: pointer; padding: 12px; border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 8px; transition: background 0.2s;" ' +
+                                                     'onmouseover="this.style.background=\'#f3f4f6\'" onmouseout="this.style.background=\'white\'">' +
+                                                    '<div style="font-weight: bold; color: #1f2937; margin-bottom: 8px; font-size: 14px;">' + data.stockNo + '</div>' +
+                                                    '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px; color: #6b7280;">' +
+                                                        '<div><span style="font-weight: 600;">Essence:</span> ' + (data.wood || 'N/A') + gradeText + '</div>' +
+                                                        '<div><span style="font-weight: 600;">État:</span> ' + (data.state || 'N/A') + '</div>' +
+                                                        '<div><span style="font-weight: 600;">Localisation:</span> ' + (data.location || 'N/A') + '</div>' +
+                                                        '<div><span style="font-weight: 600;">Quantité:</span> <span style="font-weight: bold; color: #059669;">' + data.qty + ' PC</span></div>' +
+                                                    '</div>' +
+                                                '</div>';
+                                            }).join('');
+                                            
+                                            // Créer la fonction globale pour sélectionner un stock
+                                            window.selectInventoryStock = function(stockNo) {
+                                                const selectedStock = window._tempInventory.find(s => s.stockNo === stockNo);
+                                                if (!selectedStock) return;
+                                                
+                                                const activeJob = window._tempActiveJob;
+                                                const formInstance = window._tempFormInstance;
+                                                const requireAuth = window._tempRequireAuth;
+                                                const updateJobStatus = window._tempUpdateJobStatus;
+                                                const deductFromInventory = window._tempDeductFromInventory;
+                                                
+                                                // Fermer toutes les boîtes de dialogue ouvertes
+                                                const overlays = document.querySelectorAll('.dx-overlay-wrapper');
+                                                overlays.forEach(overlay => {
+                                                    overlay.style.display = 'none';
+                                                });
+                                                
+                                                // Attendre un court instant avant d'ouvrir la nouvelle boîte
+                                                setTimeout(() => {
+                                                    // Demander la quantité
+                                                // Demander la quantité
+                                                DevExpress.ui.dialog.custom({
+                                                    title: "Confirmer la quantité",
+                                                    messageHtml: `<div style="margin: 20px 0;">
+                                                        <p style="margin-bottom: 12px;"><strong>Stock sélectionné:</strong> ${selectedStock.stockNo}</p>
+                                                        <p style="margin-bottom: 12px;"><strong>Produit:</strong> ${selectedStock.wood}</p>
+                                                        <p style="margin-bottom: 12px;"><strong>Quantité disponible:</strong> ${selectedStock.qty} PC</p>
+                                                        <p style="margin-bottom: 12px;"><strong>Localisation:</strong> ${selectedStock.location || 'N/A'}</p>
+                                                        <label style="display: block; margin-bottom: 8px; font-weight: bold;">Quantité à utiliser (PC):</label>
+                                                        <input type="number" id="qtyStockInput" value="${selectedStock.qty}" min="1" max="${selectedStock.qty}" step="0.01"
+                                                               style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 16px;" />
+                                                    </div>`,
+                                                    buttons: [
+                                                        {
+                                                            text: "Annuler",
+                                                            onClick: () => {
+                                                                if (formInstance.current) {
+                                                                    formInstance.current.getEditor("productCode").option("value", null);
+                                                                }
+                                                                return false;
+                                                            }
+                                                        },
+                                                        {
+                                                            text: "Confirmer",
+                                                            onClick: () => {
+                                                                const qtyInput = document.getElementById('qtyStockInput').value;
+                                                                const qtyToUse = parseInt(qtyInput) || 0;
+                                                                
+                                                                if (qtyToUse <= 0 || qtyToUse > selectedStock.qty) {
+                                                                    alert("Quantité invalide.");
+                                                                    return false;
+                                                                }
+                                                                
+                                                                requireAuth((userName) => {
+                                                                    const stockLog = {
+                                                                        user: userName,
+                                                                        action: 'STOCK_USED',
+                                                                        qty: qtyToUse,
+                                                                        timestamp: Date.now(),
+                                                                        description: 'Stock ' + selectedStock.stockNo + ' utilisé'
+                                                                    };
+                                                                    
+                                                                    // Générer les notes avec tous les logs
+                                                                    const allLogs = [...(activeJob.logs || []), stockLog];
+                                                                    const updatedNotes = generateNotesFromLogs(allLogs, activeJob.notes);
+                                                                    
+                                                                    updateJobStatus(activeJob.id, activeJob.status, activeJob.producedQty, updatedNotes, stockLog, { 
+                                                                        productCode: selectedStock.stockNo
+                                                                    });
+                                                                    
+                                                                    deductFromInventory(selectedStock.stockNo, qtyToUse);
+                                                                    
+                                                                    DevExpress.ui.notify({
+                                                                        message: 'Stock ' + selectedStock.stockNo + ' enregistré: ' + qtyToUse + ' PC utilisés',
+                                                                        type: "success",
+                                                                        displayTime: 3000,
+                                                                        width: 400
+                                                                    });
+                                                                    
+                                                                    if (formInstance.current) {
+                                                                        formInstance.current.getEditor("productCode").option("value", null);
+                                                                    }
+                                                                });
+                                                                
+                                                                return true;
+                                                            }
+                                                        }
+                                                    ]
+                                                }).show();
+                                                }, 100); // Petit délai pour s'assurer que la première boîte se ferme
+                                            };
+                                            
+                                            DevExpress.ui.dialog.custom({
+                                                title: "Sélectionner un stock",
+                                                messageHtml: `<div style="max-height: 500px; overflow-y: auto; padding: 10px;">
+                                                    ${itemsHtml}
+                                                </div>`,
+                                                buttons: [
+                                                    {
+                                                        text: "Annuler",
+                                                        onClick: () => true
+                                                    }
+                                                ]
+                                            }).show();
+                                        }
+                                    }
+                                }]
+                            }
+                        },
+                        { dataField: "pqtUsed", label: { text: "#PQT" } },
+                        { dataField: "humidity", label: { text: "%H" } },
+                        { dataField: "coverage", label: { text: "Couvrance" } },
+                        { dataField: "thickness", label: { text: "Épaisseur" } },
+                        { dataField: "width", label: { text: "Largeur (pouces)" } },
+                        { dataField: "sandThickness", label: { text: "Sortie Sableuse" } }
+                    ]
+                },
+                {
+                    dataField: "jobNotes",
+                    editorType: "dxTextArea",
+                    label: { text: t.notes },
+                    editorOptions: { height: 80 }
+                }
+            ],
+            onFieldDataChanged: (e) => {
+                // Update React State
+                    setJobParams(prev => {
+                        const updated = { ...prev, [e.dataField]: e.value };
+                        return updated;
+                    });
+            }
+        });
+        formInstance.current = form;
+        
+        return () => {
+             if(formInstance.current) {
+                 formInstance.current.dispose();
+                 formInstance.current = null;
+             }
+        };
+        
+    }, [!!activeJob]); // Mount when activeJob appears
+
+    // Update Form Data when job changes (switching jobs)
+    // But NOT when typing, otherwise it resets cursor?
+    // We only update IF the job ID changed from previous known ID?
+    // Handled by the 'useEffect' that setsJobParams from activeJob above.
+    // We just need to sync formInstance option
+    useEffect(() => {
+         if (formInstance.current && activeJob) {
+             // Only update if external change? The loop is tricky.
+             // If we type, jobParams updates. 
+             // If we set option formData, does it reset cursor? Yes usually.
+             // We should only update form IF the new ID is different strictly.
+             // But jobParams is already updated by the other effect.
+             
+             // Check if data is different?
+             const currentData = formInstance.current.option("formData");
+             if(JSON.stringify(currentData) !== JSON.stringify(jobParams)){
+                 formInstance.current.option("formData", jobParams);
+             }
+         }
+    }, [jobParams]);
+
+    // Save on Blur/Change logic needs to bridge form -> app state.
+    // The previous implementation used onBlur on HTML inputs.
+    // DevExtreme Form onFieldDataChanged is aggressive.
+    // Let's attach a 'Save' action to the 'onDisposing' or manual save button?
+    // User wants "compatible". Let's auto-save activeJob when these params change, throttled?
+    useEffect(() => {
+        if (activeJob) {
+             // Avoid infinite loop: Only update if different? 
+             // updateJobStatus triggers re-render -> new activeJob -> new params -> form update...
+             // We need to differentiate "Form User Input" vs "Remote Update".
+             // Actually, updateJobStatus saves to 'productionData'.
+             // We should debounce this or only save on specific actions/blur if possible.
+             // For now, to stop flicker, we should NOT call updateJobStatus on every keystroke if it causes full app re-render.
+             // Let's rely on the variables 'jobParams' being passed to the Action Buttons (Pause/Complete).
+             // AND a manual "Save" or "Blur". 
+             // Since dxForm doesn't easily expose "Blur", let's leave it as "Saved on Action".
+        }
+    }, [jobParams]);
+
+
+    const formatTime = (seconds) => {
+        const h = Math.floor(seconds / 3600);
+        const m = Math.floor((seconds % 3600) / 60);
+        return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+    };
+    
+    // Station Display Name
+    const stationName = stationId.replace('station', 'Poste ');
+    const producedQty = activeJob ? (parseInt(activeJob.producedQty) || 0) : 0;
+
+    return (
+        <div className="min-h-screen bg-gray-50 flex flex-col relative">
+            {/* Auth Modal UI */}
+            {authRequired && (
+                <div className="fixed inset-0 z-[100] bg-black/80 flex flex-col items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl p-8 max-w-sm w-full shadow-2xl animate-fade-in-up">
+                        <div className="text-center mb-6">
+                            <div className="w-16 h-16 bg-[#51aff7] rounded-full flex items-center justify-center mx-auto mb-4 border-4 border-blue-50">
+                                <i className="fa-solid fa-lock text-2xl text-white"></i>
+                            </div>
+                            <h2 className="text-2xl font-bold text-gray-800">Authentification</h2>
+                            <p className="text-gray-500 text-sm mt-1">Entrez votre code NIP (1234)</p>
+                        </div>
+                        
+                        <div className="flex justify-center mb-8">
+                            <div className="flex gap-4">
+                                {[0,1,2,3].map(i => (
+                                    <div key={i} className={`w-4 h-4 rounded-full transition-all duration-200 ${pin.length > i ? 'bg-[#51aff7] scale-110' : 'bg-gray-200'}`}></div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {loginError && <div className="text-red-500 font-bold text-center mb-4 animate-shake">{loginError}</div>}
+
+                        <div className="grid grid-cols-3 gap-3">
+                            {[1,2,3,4,5,6,7,8,9].map(num => (
+                                <button key={num} onClick={() => handlePinInput(num.toString())} className="h-16 rounded-xl bg-gray-50 text-xl font-bold text-gray-700 hover:bg-white hover:shadow-md hover:scale-105 transition active:bg-[#51aff7] active:text-white border border-gray-100">
+                                    {num}
+                                </button>
+                            ))}
+                            <div className="col-start-2">
+                                <button onClick={() => handlePinInput('0')} className="h-16 w-full rounded-xl bg-gray-50 text-xl font-bold text-gray-700 hover:bg-white hover:shadow-md hover:scale-105 transition active:bg-[#51aff7] active:text-white border border-gray-100">0</button>
+                            </div>
+                            <div className="col-start-3">
+                                <button onClick={() => { setPin(''); setAuthRequired(false); }} className="h-16 w-full rounded-xl bg-red-50 text-red-500 text-xl hover:bg-red-100 transition border border-red-100">
+                                    <i className="fa-solid fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Header */}
+            <header className="bg-gray-800 text-white p-4 flex justify-between items-center shadow-lg">
+                <div className="flex items-center gap-4">
+                    <div className="bg-[#51aff7] w-12 h-12 rounded flex items-center justify-center font-bold text-xl">
+                        {stationId.replace(/[^0-9]/g, '')}
+                    </div>
+                    <div>
+                        <h1 className="text-2xl font-bold">{stationName}</h1>
+                        <p className="text-[#51aff7] text-sm">{currentTime.toLocaleString()}</p>
+                    </div>
+                </div>
+                <div className="text-right flex items-center gap-3">
+                     <div>
+                         <div className="text-xs text-gray-400 uppercase font-bold">Statut</div>
+                         <div className="text-green-400 font-bold">EN LIGNE</div>
+                     </div>
+                     <button
+                         className="ml-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-bold"
+                         onClick={() => { try { if (window.returnToAdminProduction) window.returnToAdminProduction(); } catch(_) {} }}
+                     >
+                         <i className="fa-solid fa-door-open mr-2"></i> Fermer le poste
+                     </button>
+                </div>
+            </header>
+
+            <div className="flex-1 p-6 grid grid-cols-1 lg:grid-cols-3 gap-6 h-full"> 
+                {/* Active Job Panel */}
+                <div className="lg:col-span-2 flex flex-col gap-6">
+                    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 flex-1">
+                        <div className="flex justify-between items-center border-b pb-4 mb-6">
+                            <div>
+                                <h2 className="text-xl font-bold text-gray-700">{t.currentJob}</h2>
+                                {activeJob && (
+                                    <div className="text-2xl font-bold text-[#51aff7] mt-2">{t[activeJob.process] || activeJob.process}</div>
+                                )}
+                            </div>
+                            {activeJob && (
+                                <span className={`px-3 py-1 rounded text-sm font-bold ${activeJob.status === 'running' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                                    {activeJob.status}
+                                </span>
+                            )}
+                        </div>
+
+                        {activeJob ? (
+                            <div className="flex flex-col gap-6">
+                                {/* Big Metrics */}
+                                <div className="grid grid-cols-2 gap-8">
+                                    <div>
+                                        <div className="text-sm text-gray-400 uppercase font-bold">Client / Stock No</div>
+                                        <div className="text-3xl font-bold text-gray-800">{activeJob.client}</div>
+                                        <div className="flex gap-4">
+                                            <div className="text-[#51aff7] font-mono font-bold text-xl">{activeJob.txn}</div>
+                                            {activeJob.stockNo && <div className="text-gray-500 font-mono text-xl">({activeJob.stockNo})</div>}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div className="text-sm text-gray-400 uppercase font-bold">Essence</div>
+                                        <div className="text-3xl font-bold text-gray-800">{activeJob.wood || 'N/A'}{activeJob.grade ? ` (${activeJob.grade})` : ''}</div>
+                                    </div>
+                                </div>
+
+                                {/* Additional Quantities Display */}
+                                <div style={{display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '1rem'}}>
+                                    <div style={{backgroundColor: '#fef9c3', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #fde047'}}>
+                                        <div style={{fontSize: '0.75rem', color: '#6b7280', fontWeight: 'bold', marginBottom: '0.25rem', textTransform: 'uppercase'}}>Quantités</div>
+                                        <div style={{fontSize: '1.5rem', fontWeight: 'bold', color: '#ca8a04'}}>{(() => {
+                                            const width = parseFloat(jobParams.width || activeJob.width) || 0;
+                                            console.log('DEBUG Case Jaune - producedQty:', producedQty, 'width:', width);
+                                            const pcProduced = width > 0 ? (producedQty * (width / 12)).toFixed(2) : producedQty.toFixed(2);
+                                            console.log('DEBUG Case Jaune - pcProduced:', pcProduced);
+                                            
+                                            // Calculer la quantité planifiée (même calcul que case mauve)
+                                            // activeJob.qty contient déjà les stockDetails initiaux, on ajoute seulement les stocks manuels
+                                            const baseQty = parseFloat(activeJob.qty) || 0;
+                                            const logs = activeJob.logs || [];
+                                            const stockUsedFromLogs = logs
+                                                .filter(log => log.action === 'STOCK_USED')
+                                                .reduce((sum, log) => sum + (parseFloat(log.qty) || 0), 0);
+                                            const pcPlanned = baseQty + stockUsedFromLogs;
+                                            
+                                            return `${pcProduced} / ${pcPlanned.toFixed(2)} pc`;
+                                        })()}</div>
+                                        <div style={{fontSize: '0.75rem', color: '#6b7280'}}>Produite / Planifiée</div>
+                                    </div>
+                                    <div style={{backgroundColor: '#f0fdf4', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #bbf7d0'}}>
+                                        <div style={{fontSize: '0.75rem', color: '#6b7280', fontWeight: 'bold', marginBottom: '0.25rem', textTransform: 'uppercase'}}>Qté Produite</div>
+                                        <div style={{fontSize: '1.5rem', fontWeight: 'bold', color: '#15803d'}}>{producedQty.toFixed(2)}</div>
+                                        <div style={{fontSize: '0.75rem', color: '#6b7280'}}>pieds linéaires</div>
+                                    </div>
+                                    <div style={{backgroundColor: '#eff6ff', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #bfdbfe'}}>
+                                        <div style={{fontSize: '0.75rem', color: '#6b7280', fontWeight: 'bold', marginBottom: '0.25rem', textTransform: 'uppercase'}}>Qté PL Planifiée</div>
+                                        <div style={{fontSize: '1.5rem', fontWeight: 'bold', color: '#1d4ed8'}}>{(() => {
+                                            const width = parseFloat(jobParams.width || activeJob.width) || 0;
+                                            
+                                            // Calculer la quantité planifiée (même calcul que case mauve)
+                                            // activeJob.qty contient déjà les stockDetails initiaux, on ajoute seulement les stocks manuels
+                                            const baseQty = parseFloat(activeJob.qty) || 0;
+                                            const logs = activeJob.logs || [];
+                                            const stockUsedFromLogs = logs
+                                                .filter(log => log.action === 'STOCK_USED')
+                                                .reduce((sum, log) => sum + (parseFloat(log.qty) || 0), 0);
+                                            const qty = baseQty + stockUsedFromLogs;
+                                            
+                                            if (width > 0) {
+                                                const widthInFeet = width / 12;
+                                                const result = qty / widthInFeet;
+                                                return result.toFixed(2);
+                                            }
+                                            return qty.toFixed(2);
+                                        })()}</div>
+                                        <div style={{fontSize: '0.75rem', color: '#6b7280'}}>pieds linéaires</div>
+                                    </div>
+                                    <div style={{backgroundColor: '#f3e8ff', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #d8b4fe'}}>
+                                        <div style={{fontSize: '0.75rem', color: '#6b7280', fontWeight: 'bold', marginBottom: '0.25rem', textTransform: 'uppercase'}}>Qte inventaire utilisé</div>
+                                        <div style={{fontSize: '1.5rem', fontWeight: 'bold', color: '#7c3aed'}}>{(() => {
+                                            // Quantité prédéterminée du tableau de production (contient déjà les stockDetails initiaux)
+                                            const baseQty = parseFloat(activeJob.qty) || 0;
+                                            
+                                            // Compter les stocks ajoutés via les logs
+                                            const logs = activeJob.logs || [];
+                                            const stockUsedFromLogs = logs
+                                                .filter(log => log.action === 'STOCK_USED')
+                                                .reduce((sum, log) => sum + (parseFloat(log.qty) || 0), 0);
+                                            
+                                            const totalStock = baseQty + stockUsedFromLogs;
+                                            return totalStock.toFixed(2);
+                                        })()}</div>
+                                        <div style={{fontSize: '0.75rem', color: '#6b7280'}}>pieds carrés</div>
+                                    </div>
+                                    {activeJob.qtyPMP && (
+                                        <div style={{backgroundColor: '#faf5ff', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #e9d5ff'}}>
+                                            <div style={{fontSize: '0.75rem', color: '#6b7280', fontWeight: 'bold', marginBottom: '0.25rem', textTransform: 'uppercase'}}>Qté PMP</div>
+                                            <div style={{fontSize: '1.5rem', fontWeight: 'bold', color: '#7e22ce'}}>{activeJob.qtyPMP}</div>
+                                            <div style={{fontSize: '0.75rem', color: '#6b7280'}}>BF</div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* DevExtreme Form for Inputs */}
+                                <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                                    <div ref={formRef}></div>
+                                </div>
+
+                                {/* Timer & Actions */}
+                                <div className="grid grid-cols-2 gap-6 items-center">
+                                    <div className="bg-gray-900 text-white p-4 rounded-xl text-center">
+                                         <div className="text-xs text-gray-400 uppercase font-bold">Temps Écoulé</div>
+                                         <div className="text-4xl font-mono font-bold mt-1">{formatTime(elapsed)}</div>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        {activeJob.status === 'running' ? (
+                                             <button 
+                                                onClick={() => handleActionClick('pause')}
+                                                className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-4 rounded-xl shadow-lg transition"
+                                             >
+                                                <i className="fa-solid fa-pause mr-2"></i> {t.pauseJob}
+                                             </button>
+                                        ) : (
+                                            <button 
+                                                onClick={() => requireAuth((userName) => {
+                                                    const resumeLog = { 
+                                                        user: userName, 
+                                                        action: 'RESUME', 
+                                                        qty: 0, 
+                                                        timestamp: Date.now() 
+                                                    };
+                                                    
+                                                    // Générer les notes avec tous les logs
+                                                    const allLogs = [...(activeJob.logs || []), resumeLog];
+                                                    const updatedNotes = generateNotesFromLogs(allLogs, jobParams.jobNotes);
+                                                    
+                                                    updateJobStatus(activeJob.id, 'running', activeJob.producedQty, updatedNotes, resumeLog, jobParams);
+                                                })}
+                                                className="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-4 rounded-xl shadow-lg transition"
+                                            >
+                                                <i className="fa-solid fa-play mr-2"></i> {t.startJob}
+                                            </button>
+                                        )}
+                                        <button 
+                                            onClick={() => handleActionClick('complete')}
+                                            className="flex-1 bg-[#51aff7] hover:bg-blue-600 text-white font-bold py-4 rounded-xl shadow-lg transition"
+                                        >
+                                            <i className="fa-solid fa-check mr-2"></i> {t.finishJob}
+                                        </button>
+                                    </div>
+                                </div>
+                                <button 
+                                    onClick={() => handleActionClick('reportIssue')}
+                                    className="w-full py-3 border-2 border-red-100 text-red-500 font-bold rounded-xl hover:bg-red-50 transition"
+                                >
+                                    <i className="fa-solid fa-triangle-exclamation mr-2"></i> SIGNALER UN PROBLÈME
+                                </button>
+
+
+                                {/* History Grid */}
+                                <div className="mt-4">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <h3 className="font-bold text-gray-400 text-sm uppercase">Historique</h3>
+                                        <button 
+                                            onClick={handleUndoLastQuantity}
+                                            className="px-3 py-1 text-xs bg-orange-100 text-orange-600 rounded hover:bg-orange-200 transition font-bold"
+                                        >
+                                            <i className="fa-solid fa-undo mr-1"></i> Annuler Dernière Qté
+                                        </button>
+                                    </div>
+                                    <div ref={historyGridRef}></div>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="h-full flex flex-col items-center justify-center p-6">
+                                <div className="bg-gray-50 rounded-xl p-8 w-full max-w-md border-2 border-dashed border-gray-300">
+                                    <div className="text-center">
+                                        <i className="fa-solid fa-clipboard-check text-6xl mb-4 text-gray-300"></i>
+                                        <h3 className="font-bold text-gray-700 text-xl mb-2">{t.waitingForJob}</h3>
+                                        <p className="text-base text-gray-500 mt-3">Sélectionnez un travail depuis le tableau de production</p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Queue Panel */}
+                <div className="bg-white p-0 rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col">
+                    <div className="p-4 bg-gray-50 border-b">
+                        <div className="flex items-center justify-between mb-3">
+                            <div className="font-bold text-lg text-gray-700">
+                                {t.jobQueue} <span className="text-sm bg-gray-200 px-2 rounded ml-2">{queue.length}</span>
+                            </div>
+                        </div>
+                        
+                        {/* Filtres */}
+                        <div className="grid grid-cols-2 gap-2 mt-3">
+                            <input
+                                type="text"
+                                placeholder="Date requise"
+                                value={queueFilters.date}
+                                onChange={(e) => setQueueFilters({...queueFilters, date: e.target.value})}
+                                className="px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                            />
+                            <input
+                                type="text"
+                                placeholder="No. Production"
+                                value={queueFilters.txn}
+                                onChange={(e) => setQueueFilters({...queueFilters, txn: e.target.value})}
+                                className="px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                            />
+                            <input
+                                type="text"
+                                placeholder="Client"
+                                value={queueFilters.client}
+                                onChange={(e) => setQueueFilters({...queueFilters, client: e.target.value})}
+                                className="px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                            />
+                            <input
+                                type="text"
+                                placeholder="Essence"
+                                value={queueFilters.wood}
+                                onChange={(e) => setQueueFilters({...queueFilters, wood: e.target.value})}
+                                className="px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                            />
+                            <input
+                                type="text"
+                                placeholder="Quantité"
+                                value={queueFilters.qty}
+                                onChange={(e) => setQueueFilters({...queueFilters, qty: e.target.value})}
+                                className="px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                            />
+                            <button
+                                onClick={() => setQueueFilters({date: '', txn: '', client: '', wood: '', qty: ''})}
+                                className="px-2 py-1 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition"
+                            >
+                                <i className="fa-solid fa-times mr-1"></i> Effacer
+                            </button>
+                        </div>
+                    </div>
+                    <div className="flex-1 p-2">
+                        <div ref={queueListRef} className="h-full"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const App = () => {
+    const [activeTab, setActiveTab] = useState('dashboard');
+    const [lang, setLang] = useState('fr');
+    const [subcontractModal, setSubcontractModal] = useState({ show: false, job: null });
+    
+    // Initialize App Mode from URL
+    const [appMode, setAppMode] = useState(() => {
+        if (typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search);
+            return params.get('mode') || 'admin';
+        }
+        return 'admin';
+    });
+    
+    // State initialization
+    const [productionData, setProductionData] = useState(() => {
+        const saved = localStorage.getItem('productionData');
+        let parsed = saved ? JSON.parse(saved) : null;
+        if (!Array.isArray(parsed) || parsed.length === 0) {
+            // Ligne de test forcée si aucune donnée
+            parsed = [{
+                id: 1,
+                client: 'Test Client',
+                wood: 'Chêne',
+                qty: 10,
+                process: 'procBeckage',
+                date: '2026-01-29',
+                stockNo: 'STK-TEST',
+                status: 'planning',
+                progress: 0
+            }];
+        }
+        return parsed;
+    });
+    const [stationConfig, setStationConfig] = useState(() => JSON.parse(localStorage.getItem('stationConfig')) || {});
+    const [customProcesses, setCustomProcesses] = useState(() => JSON.parse(localStorage.getItem('customProcesses')) || []);
+    const [woodTreatments, setWoodTreatments] = useState(() => JSON.parse(localStorage.getItem('woodTreatments')) || []);
+    const [processCodes, setProcessCodes] = useState(() => JSON.parse(localStorage.getItem('processCodes')) || {});
+    const [productCodes, setProductCodes] = useState(() => JSON.parse(localStorage.getItem('productCodes')) || []);
+    const [inventoryStates, setInventoryStates] = useState(() => {
+        const saved = localStorage.getItem('inventoryStates');
+        return saved ? JSON.parse(saved) : [];
+    });
+    const [processParameters, setProcessParameters] = useState(() => {
+        const saved = localStorage.getItem('processParameters');
+        // Structure: { procId: [{ name: 'stainColor', label: 'Couleur Teinture', required: true }, ...] }
+        return saved ? JSON.parse(saved) : {
+            'procStaining': [{ name: 'stainColor', label: 'Couleur Teinture', required: false }],
+            'procPainting': [{ name: 'paintColor', label: 'Couleur Peinture', required: false }]
+        };
+    });
+    
+    // Inventaire dynamique
+    const [inventory, setInventory] = useState(() => {
+        const saved = localStorage.getItem('inventory');
+        let parsedInventory = saved ? JSON.parse(saved) : null;
+        
+        // Charger les états disponibles
+        const availableStates = (() => {
+            const savedStates = localStorage.getItem('inventoryStates');
+            return savedStates ? JSON.parse(savedStates) : [];
+        })();
+        
+        // Vérifier si les données ont le champ 'state', sinon réinitialiser
+        if (parsedInventory && parsedInventory.length > 0 && !parsedInventory[0].hasOwnProperty('state')) {
+            console.log('Migration de l\'inventaire vers la nouvelle structure avec état');
+            parsedInventory = null; // Forcer la réinitialisation
+        }
+        
+        // Vérifier si les données ont le champ 'grade', sinon réinitialiser
+        if (parsedInventory && parsedInventory.length > 0 && !parsedInventory[0].hasOwnProperty('grade')) {
+            console.log('Migration de l\'inventaire vers la nouvelle structure avec grade');
+            parsedInventory = null; // Forcer la réinitialisation
+        }
+        
+        // Vérifier si les items d'inventaire ont des états vides alors que des états sont configurés
+        if (parsedInventory && parsedInventory.length > 0 && availableStates.length > 0) {
+            const hasEmptyStates = parsedInventory.some(item => !item.state || item.state === '');
+            if (hasEmptyStates) {
+                console.log('Régénération de l\'inventaire avec les nouveaux états configurés');
+                parsedInventory = null; // Forcer la régénération
+            }
+        }
+        
+        // Si l'inventaire existe et a des états valides, le garder
+        if (parsedInventory && parsedInventory.length > 0) {
+            return parsedInventory;
+        }
+        
+        // Générer un inventaire simulé utilisant les états configurés
+        const simulatedInventory = [
+            { stockNo: 'STK-001', wood: 'Chêne', grade: 'Select', client: 'Client A', qty: 2500, location: 'A1', state: availableStates[0] || '' },
+            { stockNo: 'STK-002', wood: 'Érable', grade: 'Authentic', client: 'Client B', qty: 1850, location: 'B3', state: availableStates[1] || availableStates[0] || '' },
+            { stockNo: 'STK-003', wood: 'Pin', grade: 'Naturel', client: 'Client C', qty: 3200, location: 'A5', state: availableStates[2] || availableStates[0] || '' },
+            { stockNo: 'STK-004', wood: 'Hêtre', grade: 'Select', client: 'Client D', qty: 1750, location: 'C2', state: availableStates[0] || '' },
+            { stockNo: 'STK-005', wood: 'Sapin', grade: 'Naturel', client: 'Client E', qty: 2800, location: 'B1', state: availableStates[3] || availableStates[0] || '' },
+            { stockNo: 'STK-006', wood: 'Merisier', grade: 'Authentic', client: 'Client F', qty: 1450, location: 'A3', state: availableStates[4] || availableStates[0] || '' },
+            { stockNo: 'STK-007', wood: 'Noyer', grade: 'Select', client: 'Client G', qty: 2100, location: 'C5', state: availableStates[1] || availableStates[0] || '' },
+            { stockNo: 'STK-008', wood: 'Frêne', grade: 'Authentic', client: 'Client H', qty: 2650, location: 'B2', state: availableStates[5] || availableStates[0] || '' }
+        ];
+        
+        return simulatedInventory;
+    });
+
+    // Persist
+    useEffect(() => { localStorage.setItem('productionData', JSON.stringify(productionData)); }, [productionData]);
+    useEffect(() => { localStorage.setItem('stationConfig', JSON.stringify(stationConfig)); }, [stationConfig]);
+    useEffect(() => { localStorage.setItem('customProcesses', JSON.stringify(customProcesses)); }, [customProcesses]);
+    useEffect(() => { localStorage.setItem('woodTreatments', JSON.stringify(woodTreatments)); }, [woodTreatments]);
+    useEffect(() => { localStorage.setItem('inventoryStates', JSON.stringify(inventoryStates)); }, [inventoryStates]);
+    useEffect(() => { localStorage.setItem('inventory', JSON.stringify(inventory)); }, [inventory]);
+    useEffect(() => { localStorage.setItem('productCodes', JSON.stringify(productCodes)); }, [productCodes]);
+    useEffect(() => { localStorage.setItem('processCodes', JSON.stringify(processCodes)); }, [processCodes]);
+    useEffect(() => { localStorage.setItem('processParameters', JSON.stringify(processParameters)); }, [processParameters]);
+
+    // Listen for cross-tab updates (Sync changes from Station tabs)
+    useEffect(() => {
+        const handleStorageChange = (e) => {
+            if (e.key === 'productionData') {
+                try {
+                    const newData = e.newValue ? JSON.parse(e.newValue) : [];
+                    if (Array.isArray(newData)) {
+                        setProductionData(newData);
+                        window.dispatchEvent(new CustomEvent('productionDataUpdated'));
+                    }
+                } catch (err) { console.error("Storage sync error", err); }
+            }
+        };
+        window.addEventListener('storage', handleStorageChange);
+        return () => window.removeEventListener('storage', handleStorageChange);
+    }, []);
+
+    const addBatch = (batch) => {
+        setProductionData(prev => {
+             // Calculate ID safely ignoring NaNs
+             const ids = prev.map(p => parseInt(p.id)).filter(n => !isNaN(n));
+             const maxId = ids.length > 0 ? Math.max(...ids) : 999;
+             const id = maxId < 1000 ? 1000 : maxId + 1;
+             
+             // Create new array with new item at TOP
+             const newData = [{...batch, id}, ...prev];
+             
+             // Check if we need to persist immediately just in case
+             localStorage.setItem('productionData', JSON.stringify(newData));
+             try { window.dispatchEvent(new CustomEvent('productionDataUpdated')); } catch (_) {}
+             return newData;
+        });
+    };
+
+    const deductFromInventory = (stockNo, quantity) => {
+        setInventory(prev => {
+            return prev.map(item => {
+                if (item.stockNo === stockNo) {
+                    const newQty = Math.max(0, item.qty - quantity);
+                    return { ...item, qty: newQty };
+                }
+                return item;
+            });
+        });
+    };
+
+    const adjustInventory = (stockNo, newQty) => {
+        setInventory(prev => {
+            return prev.map(item => {
+                if (item.stockNo === stockNo) {
+                    return { ...item, qty: Math.max(0, newQty) };
+                }
+                return item;
+            });
+        });
+    };
+
+    const addToInventory = (stockNo, wood, grade, client, qty, location, state) => {
+        setInventory(prev => {
+            const newItem = {
+                stockNo: stockNo,
+                wood: wood,
+                grade: grade || '',
+                client: client,
+                qty: parseFloat(qty) || 0,
+                location: location || '',
+                state: state || ''
+            };
+            const updated = [...prev, newItem];
+            localStorage.setItem('inventory', JSON.stringify(updated));
+            return updated;
+        });
+    };
+
+    const generateProductCode = (job) => {
+        console.log('=== GÉNÉRATION CODE PRODUIT ===');
+        console.log('Job:', job);
+        console.log('ProcessCodes disponibles:', processCodes);
+        
+        // Générer le code produit: Essence (complète) + ProcessCodes + Largeur
+        const woodSpecies = (job.wood || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+        console.log('Essence formatée:', woodSpecies);
+        
+        // Récupérer les procédés utilisés
+        const processes = job.steps && job.steps.length > 0 ? job.steps : [job.process];
+        console.log('Procédés à traiter:', processes);
+        
+        const codes = processes
+            .map(proc => {
+                const code = processCodes[proc] || '';
+                console.log(`Code pour ${proc}: ${code}`);
+                return code;
+            })
+            .filter(code => code.length > 0)
+            .join('');
+        
+        console.log('Codes combinés:', codes);
+        
+        // Ajouter la largeur à la fin
+        const width = job.width ? Math.round(parseFloat(job.width)).toString() : '';
+        console.log('Largeur:', width);
+        
+        const productCode = `${woodSpecies}${codes}${width}`;
+        console.log('Code produit final:', productCode);
+        console.log('Codes produits existants:', productCodes);
+        
+        // Vérifier si le code existe déjà
+        if (productCode && productCode.length > 0 && !productCodes.includes(productCode)) {
+            console.log('✓ Nouveau code produit créé!');
+            setProductCodes(prev => {
+                const updated = [...prev, productCode];
+                localStorage.setItem('productCodes', JSON.stringify(updated));
+                return updated;
+            });
+            
+            // Afficher une notification
+            try {
+                DevExpress.ui.notify({
+                    message: `✓ Nouveau code produit créé: ${productCode}`,
+                    type: 'success',
+                    displayTime: 5000,
+                    position: { at: 'top center', my: 'top center', offset: '0 60' }
+                });
+            } catch (e) {
+                alert(`✓ Nouveau code produit créé: ${productCode}`);
+            }
+        } else if (productCodes.includes(productCode)) {
+            console.log('Code produit déjà existant:', productCode);
+        } else {
+            console.log('⚠ Code produit vide ou invalide');
+        }
+        
+        return productCode;
+    };
+
+    const generatePalletLabel = (job, storageLocation = '') => {
+        const stockNo = job.customStockNo || ('STK-' + Date.now().toString().slice(-6));
+        const productCode = job.productCode || generateProductCode(job);
+        const orderNumber = job.txn || job.id;
+        const barcodeSVG = generateBarcodeSVG(stockNo);
+        const width = job.width || 'N/A';
+        const tallyList = job.tallyList || '';
+        
+        // Formater la liste de tally en HTML
+        let tallyHTML = '';
+        if (tallyList) {
+            const tallyLines = tallyList.split('\n').filter(l => l.trim());
+            tallyHTML = `
+                <div style="margin-bottom: 6px; border-bottom: 1px solid #333; padding-bottom: 4px;">
+                    <div style="font-size: 11px; margin-bottom: 4px;"><strong>Liste de Tally:</strong></div>
+                    <table style="width: 100%; font-size: 10px; border-collapse: collapse;">
+                        <thead>
+                            <tr style="background-color: #f3f4f6;">
+                                <th style="border: 1px solid #ccc; padding: 2px 4px; text-align: left;">#</th>
+                                <th style="border: 1px solid #ccc; padding: 2px 4px; text-align: left;">Dimensions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${tallyLines.map((line, i) => 
+                                '<tr><td style="border: 1px solid #ccc; padding: 2px 4px;">' + (i + 1) + '</td><td style="border: 1px solid #ccc; padding: 2px 4px;">' + line.trim() + '</td></tr>'
+                            ).join('')}
+                        </tbody>
+                    </table>
+                    <div style="font-size: 10px; color: #666; margin-top: 2px;"><strong>Total pièces:</strong> ${tallyLines.length}</div>
+                </div>`;
+        }
+        
+        const tagContent = `
+            <div style="width: 4in; padding: 12px; font-family: Arial, sans-serif; border: 2px solid #000; box-sizing: border-box;">
+                <div style="text-align: center; margin-bottom: 8px;">
+                    <h1 style="margin: 0; font-size: 18px; font-weight: bold;">ÉTIQUETTE DE PALETTE</h1>
+                </div>
+                
+                <div style="margin-bottom: 6px; border-bottom: 1px solid #333; padding-bottom: 4px;">
+                    <div style="font-size: 11px; margin-bottom: 2px;"><strong>Numéro de Stock:</strong></div>
+                    <div style="font-size: 22px; font-weight: bold; color: #cc0000;">${stockNo}</div>
+                    <div style="margin-top: 4px; text-align: center; height: 50px;">
+                        ${barcodeSVG}
+                    </div>
+                    <div style="font-size: 10px; color: #666; margin-top: 4px;"><strong>No. Production:</strong> ${orderNumber}</div>
+                </div>
+                
+                ${productCode ? `<div style="margin-bottom: 6px; border-bottom: 1px solid #333; padding-bottom: 4px;">
+                    <div style="font-size: 11px; margin-bottom: 2px;"><strong>Code Produit:</strong></div>
+                    <div style="font-size: 16px; font-weight: bold; color: #009900; font-family: monospace;">${productCode}</div>
+                </div>` : ''}
+                
+                ${storageLocation ? `<div style="margin-bottom: 6px; border-bottom: 1px solid #333; padding-bottom: 4px;">
+                    <div style="font-size: 11px; margin-bottom: 2px;"><strong>Localisation:</strong></div>
+                    <div style="font-size: 14px; font-weight: bold; color: #ff8800;">${storageLocation}</div>
+                </div>` : ''}
+                
+                <div style="margin-bottom: 3px;">
+                    <div style="font-size: 12px;"><strong>Client:</strong> ${job.client || 'N/A'}</div>
+                </div>
+                <div style="margin-bottom: 3px;">
+                    <div style="font-size: 12px;"><strong>Produit:</strong> ${job.wood || 'N/A'}</div>
+                </div>
+                <div style="margin-bottom: 3px;">
+                    <div style="font-size: 12px;"><strong>Grade:</strong> ${job.grade || 'N/A'}</div>
+                </div>
+                <div style="margin-bottom: 3px;">
+                    <div style="font-size: 12px;"><strong>Largeur:</strong> ${width}${typeof width === 'number' ? ' po' : ''}</div>
+                </div>
+                <div style="margin-bottom: 3px;">
+                    <div style="font-size: 12px;"><strong>Procédé:</strong> ${job.process ? (t[job.process] || job.process) : 'N/A'}</div>
+                </div>
+                <div style="margin-bottom: 6px;">
+                    <div style="font-size: 12px;"><strong>Quantité:</strong> ${job.producedQty?.toFixed(2) || '0'} PL</div>
+                </div>
+                
+                ${tallyHTML}
+                
+                <div style="margin-top: 6px; text-align: center; font-size: 10px; color: #666;">
+                    <div>Date: ${new Date().toLocaleDateString()} - Heure: ${new Date().toLocaleTimeString()}</div>
+                </div>
+            </div>
+        `;
+        
+        const printWindow = window.open('', '_blank', 'width=600,height=900');
+        printWindow.document.write(`
+            <html>
+            <head>
+                <title>Étiquette Palette - ${stockNo}</title>
+                <style>
+                    @page { size: 4in auto; margin: 0; }
+                    @media print {
+                        body { margin: 0; }
+                    }
+                    body { margin: 0; padding: 0; }
+                </style>
+            </head>
+            <body>
+                ${tagContent}
+                <script>
+                    window.onload = function() {
+                        window.print();
+                    };
+                <\/script>
+            </body>
+            </html>
+        `);
+        printWindow.document.close();
+    };
+
+    const generateProductionTag = (job, storageLocation = '') => {
+        // Utiliser le numéro de stock personnalisé si fourni, sinon générer un nouveau
+        const newStockNo = job.customStockNo || ('STK-' + Date.now().toString().slice(-6));
+        
+        // Générer le code produit
+        const productCode = generateProductCode(job);
+        
+        // Ajouter à l'inventaire seulement si pas de numéro de stock personnalisé
+        // (car dans ce cas, l'ajout a déjà été fait lors de la fermeture de la palette)
+        if (!job.customStockNo) {
+            const processState = job.process ? (t[job.process] || job.process) : 'N/A';
+            const qtyPL = job.producedQty || 0;
+            const jobGrade = job.grade || '';
+            addToInventory(newStockNo, job.wood, jobGrade, job.client, qtyPL, storageLocation, processState);
+        }
+        
+        // Générer le code-barres SVG pour le numéro de STOCK
+        const orderNumber = job.txn || job.id;
+        const barcodeSVG = generateBarcodeSVG(newStockNo);
+        
+        // Récupérer la largeur et la couvrance
+        const width = job.width || 'N/A';
+        const coverage = job.coverage || 'N/A';
+        
+        // Créer le contenu du tag
+        const tagContent = `
+            <div style="width: 4in; height: 6in; padding: 12px; font-family: Arial, sans-serif; border: 2px solid #000; box-sizing: border-box;">
+                <div style="text-align: center; margin-bottom: 8px;">
+                    <h1 style="margin: 0; font-size: 20px; font-weight: bold;">TAG DE PRODUCTION</h1>
+                </div>
+                
+                <div style="margin-bottom: 6px; border-bottom: 1px solid #333; padding-bottom: 4px;">
+                    <div style="font-size: 11px; margin-bottom: 2px;"><strong>Numéro de Stock:</strong></div>
+                    <div style="font-size: 24px; font-weight: bold; color: #cc0000;">${newStockNo}</div>
+                    <div style="margin-top: 4px; text-align: center; height: 50px;">
+                        ${barcodeSVG}
+                    </div>
+                    <div style="font-size: 10px; color: #666; margin-top: 8px;"><strong>No. Production:</strong> ${orderNumber}</div>
+                </div>
+                
+                ${productCode ? `<div style="margin-bottom: 6px; border-bottom: 1px solid #333; padding-bottom: 4px;">
+                    <div style="font-size: 11px; margin-bottom: 2px;"><strong>Code Produit:</strong></div>
+                    <div style="font-size: 16px; font-weight: bold; color: #009900; font-family: monospace;">${productCode}</div>
+                </div>` : ''}
+                
+                ${storageLocation ? `<div style="margin-bottom: 6px; border-bottom: 1px solid #333; padding-bottom: 4px;">
+                    <div style="font-size: 11px; margin-bottom: 2px;"><strong>Localisation:</strong></div>
+                    <div style="font-size: 16px; font-weight: bold; color: #ff8800;">${storageLocation}</div>
+                </div>` : ''}
+                
+                <div style="margin-bottom: 4px;">
+                    <div style="font-size: 12px;"><strong>Client:</strong> ${job.client}</div>
+                </div>
+                
+                <div style="margin-bottom: 4px;">
+                    <div style="font-size: 12px;"><strong>Produit:</strong> ${job.wood || 'N/A'}</div>
+                </div>
+                
+                <div style="margin-bottom: 4px;">
+                    <div style="font-size: 12px;"><strong>Largeur:</strong> ${width}${typeof width === 'number' ? ' po' : ''}</div>
+                </div>
+                
+                <div style="margin-bottom: 4px;">
+                    <div style="font-size: 12px;"><strong>Couvrance:</strong> ${coverage}${typeof coverage === 'number' ? ' pi²/gal' : ''}</div>
+                </div>
+                
+                <div style="margin-bottom: 4px;">
+                    <div style="font-size: 12px;"><strong>Dernier Traitement:</strong> ${job.process ? (t[job.process] || job.process) : 'N/A'}</div>
+                </div>
+                
+                <div style="margin-bottom: 4px;">
+                    <div style="font-size: 12px;"><strong>Quantité Produite:</strong> ${job.producedQty?.toFixed(2) || '0'} PL</div>
+                </div>
+                
+                <div style="margin-top: 8px; text-align: center; font-size: 10px; color: #666;">
+                    <div>Date: ${new Date().toLocaleDateString()}</div>
+                    <div>Heure: ${new Date().toLocaleTimeString()}</div>
+                </div>
+            </div>
+        `;
+        
+        // Ouvrir dans une nouvelle fenêtre pour impression
+        const printWindow = window.open('', '_blank', 'width=600,height=900');
+        printWindow.document.write(`
+            <html>
+            <head>
+                <title>Tag de Production - ${newStockNo}</title>
+                <style>
+                    @page { size: 4in 6in; margin: 0; }
+                    @media print {
+                        body { margin: 0; }
+                    }
+                    body { margin: 0; padding: 0; }
+                </style>
+            </head>
+            <body>
+                ${tagContent}
+                <script>
+                    window.onload = function() {
+                        window.print();
+                    };
+                </script>
+            </body>
+            </html>
+        `);
+        printWindow.document.close();
+    };
+
+    const updateJobStatus = (id, status, producedQty, notes, log, extras) => {
+        setProductionData(prev => {
+            const next = prev.map(item => {
+                if (item.id === id) {
+                    let updates = { 
+                        status, 
+                        producedQty: producedQty !== undefined ? producedQty : item.producedQty, 
+                        notes: notes !== undefined ? notes : item.notes,
+                        logs: log ? [...(item.logs || []), log] : item.logs,
+                        ...extras 
+                    };
+                    
+                    // Variable pour savoir si on doit générer le code produit
+                    let shouldGenerateCode = false;
+                    
+                    // Si le statut est 'completed' et qu'il y a plusieurs processus (steps)
+                    if (status === 'completed' && item.steps && Array.isArray(item.steps) && item.steps.length > 1) {
+                        const currentStepIndex = item.stepIndex || 0;
+                        const nextStepIndex = currentStepIndex + 1;
+                        
+                        // Vérifier s'il reste des processus
+                        if (nextStepIndex < item.steps.length) {
+                            const nextProcess = item.steps[nextStepIndex];
+                            const nextStation = stationConfig[nextProcess] || '';
+                            
+                            // Passer au prochain processus
+                            updates = {
+                                ...updates,
+                                status: 'planning',  // Remettre en planning pour le prochain processus
+                                stepIndex: nextStepIndex,
+                                process: nextProcess,
+                                station: nextStation,
+                                producedQty: 0  // Réinitialiser la quantité pour le nouveau processus
+                            };
+                        } else {
+                            // Tous les processus sont terminés - générer le code produit
+                            shouldGenerateCode = true;
+                        }
+                    } else if (status === 'completed' && (!item.steps || item.steps.length <= 1)) {
+                        // Production avec un seul processus terminée - générer le code produit
+                        shouldGenerateCode = true;
+                    }
+                    
+                    // Générer le code produit si nécessaire
+                    if (shouldGenerateCode) {
+                        const updatedItem = { ...item, ...updates };
+                        setTimeout(() => generateProductCode(updatedItem), 150);
+                    }
+                    
+                    return { ...item, ...updates };
+                }
+                return item;
+            });
+            try { localStorage.setItem('productionData', JSON.stringify(next)); } catch (_) {}
+            try { window.dispatchEvent(new CustomEvent('productionDataUpdated')); } catch (_) {}
+            return next;
+        });
+    };
+
+    const deleteBatch = (id) => {
+        const targetId = Number(id);
+        setProductionData(prev => {
+            // Safety check: Only allow deleting 'planning' items (matches UI visibility)
+            const item = prev.find(i => Number(i.id) === targetId);
+            if (item && item.status !== 'planning') {
+                  // If status changed (e.g. started in another tab), abort delete
+                  try { console.warn(`Cannot delete job ${targetId} with status ${item.status}`); } catch (_) {}
+                  return prev;
+            }
+
+            const next = prev.filter(i => Number(i.id) !== targetId);
+            try { localStorage.setItem('productionData', JSON.stringify(next)); } catch (_) {}
+            try { window.dispatchEvent(new CustomEvent('productionDataUpdated')); } catch (_) {}
+            return next;
+        });
+    };
+    const assignStation = (id, st) => setProductionData(prev => prev.map(i => i.id === id ? { ...i, station: st } : i));
+
+    const t = translations[lang];
+    customProcesses.forEach(p => t[p.id] = p.label);
+    woodTreatments.forEach(p => t[p.id] = p.label);
+
+    // Exposer generateProductionTag globalement pour le tableau
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            window.generateProductionTagFromTable = generateProductionTag;
+        }
+    }, [generateProductionTag]);
+
+    // Pour permettre l'ajout depuis ProductionView (hack simple)
+    if (typeof window !== 'undefined') {
+        window.addBatch = addBatch;
+        window.assignStation = assignStation;
+        window.openSubcontractModal = (job) => {
+            setSubcontractModal({ show: true, job });
+        };
+        // Global helper to return from station mode to admin/production
+        window.returnToAdminProduction = () => {
+            try {
+                const params = new URLSearchParams(window.location.search);
+                params.delete('mode');
+                const newUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
+                window.history.replaceState({}, '', newUrl);
+            } catch (_) {}
+            try { window.dispatchEvent(new CustomEvent('productionDataUpdated')); } catch (_) {}
+            setAppMode('admin');
+            setActiveTab('production');
+        };
+    }
+    if(appMode !== 'admin') return <WorkerStationView t={t} stationId={appMode} productionData={productionData} updateJobStatus={updateJobStatus} stationConfig={stationConfig} inventory={inventory} deductFromInventory={deductFromInventory} addToInventory={addToInventory} adjustInventory={adjustInventory} generateProductionTag={generateProductionTag} generatePalletLabel={generatePalletLabel} generateProductCode={generateProductCode} />;
+
+    // Refresh event when returning to Production tab or Admin mode
+    useEffect(() => {
+        try {
+            if (activeTab === 'production') {
+                window.dispatchEvent(new CustomEvent('productionDataUpdated'));
+            }
+        } catch (_) {}
+    }, [activeTab]);
+    useEffect(() => {
+        try {
+            if (appMode === 'admin' && activeTab === 'production') {
+                window.dispatchEvent(new CustomEvent('productionDataUpdated'));
+            }
+        } catch (_) {}
+    }, [appMode, activeTab]);
+
+    return (
+        <div className="flex min-h-screen bg-gray-50">
+            {subcontractModal.show && subcontractModal.job && (
+                <SubcontractPOModal 
+                    job={subcontractModal.job} 
+                    t={t}
+                    productionData={productionData}
+                    woodTreatments={woodTreatments}
+                    updateJobStatus={updateJobStatus}
+                    onClose={() => setSubcontractModal({ show: false, job: null })}
+                    onConfirm={(vendor, poNumber) => {
+                        // Assigner le poste et enregistrer le sous-traitant
+                        if (subcontractModal.job) {
+                            setProductionData(prev => prev.map(i => 
+                                i.id === subcontractModal.job.id 
+                                    ? { ...i, station: 'subcontractor', subcontractorName: vendor.name, subcontractorInfo: vendor, poNumber: poNumber }
+                                    : i
+                            ));
+                        }
+                        setSubcontractModal({ show: false, job: null });
+                    }}
+                />
+            )}
+            <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} t={t} />
+            <div className="flex-1 ml-64">
+                <Header t={t} lang={lang} setLang={setLang} />
+                <div className="absolute top-4 right-4 z-50">
+                  <button
+                    className="px-3 py-1 bg-red-100 text-red-600 rounded shadow text-xs font-bold hover:bg-red-200"
+                    onClick={() => {
+                      localStorage.clear();
+                      window.location.reload();
+                    }}
+                  >
+                    Vider le localStorage
+                  </button>
+                </div>
+                <main className="mt-16 p-8">
+                    {activeTab === 'dashboard' && <DashboardView t={t} productionData={productionData} customProcesses={customProcesses} woodTreatments={woodTreatments} />}
+                    {activeTab === 'production' && <ProductionView key="production" t={t} productionData={productionData} assignStation={assignStation} updateJobStatus={updateJobStatus} deleteBatch={deleteBatch} customProcesses={customProcesses} woodTreatments={woodTreatments} stationConfig={stationConfig} inventory={inventory} deductFromInventory={deductFromInventory} />}
+                    {activeTab === 'inventory' && <InventoryView t={t} inventory={inventory} setInventory={setInventory} />}
+                    {activeTab === 'rawWood' && <div className="p-12 text-center text-gray-400">Le tableau de traitement inventaire brut est désactivé.</div>}
+                    {activeTab === 'dataEntry' && <DataEntryView t={t} addBatch={addBatch} setActiveTab={setActiveTab} customProcesses={customProcesses} woodTreatments={woodTreatments} processParameters={processParameters} />}
+                    {activeTab === 'employeeEfficiency' && <EmployeeEfficiencyView t={t} productionData={productionData} />}
+                    {activeTab === 'settings' && <SettingsView t={t} appMode={appMode} setAppMode={setAppMode} stationConfig={stationConfig} setStationConfig={setStationConfig} customProcesses={customProcesses} setCustomProcesses={setCustomProcesses} woodTreatments={woodTreatments} setWoodTreatments={setWoodTreatments} inventoryStates={inventoryStates} setInventoryStates={setInventoryStates} processCodes={processCodes} setProcessCodes={setProcessCodes} processParameters={processParameters} setProcessParameters={setProcessParameters} />}
+                </main>
+            </div>
+        </div>
+    );
+};
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App />);
