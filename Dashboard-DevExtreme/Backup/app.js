@@ -23,8 +23,8 @@ const translations = {
         vsLastMonth: "vs last month",
         productionTrend: "Daily Production Evolution",
         recentAlerts: "Recent Alerts",
-        alertBeckage: "Calibration Required",
-        descBeckage: "Station 1 - Precision deviation > 0.5mm",
+        alertBaker: "Calibration Required",
+        descBaker: "Station 1 - Precision deviation > 0.5mm",
         alertMoulding: "Material Low",
         descMoulding: "Station 3 - Input hopper < 10%",
         alertFinishing: "Ventilation Error",
@@ -37,7 +37,7 @@ const translations = {
         colBatchId: "Prod No",
         colClient: "Client", // New
         colTxnId: "Transaction ID",
-        colProduct: "Product/Wood", // Renamed
+        colProduct: "Wood Species",
         colProcess: "Process",
         colTreatment: "Treatment",
         colQty: "Quantity (pc)", // New
@@ -67,7 +67,7 @@ const translations = {
         statusError: "ALERT IN PROGRESS",
         statusPlanning: "PLANNING", 
         statusCompleted: "COMPLETED",
-        procBeckage: "Beckage",
+        procBaker: "Baker",
         procMoulding: "Moulding",
         procSanding1: "Sanding 1 Side",
         procSanding2: "Sanding 2 Sides",
@@ -197,8 +197,8 @@ const translations = {
         vsLastMonth: "vs mois dernier",
         productionTrend: "Évolution de la production journalière",
         recentAlerts: "Alertes Récentes",
-        alertBeckage: "Requis Calibration",
-        descBeckage: "Poste 1 - Écart précision > 0.5mm",
+        alertBaker: "Requis Calibration",
+        descBaker: "Poste 1 - Écart précision > 0.5mm",
         alertMoulding: "Matière Faible",
         descMoulding: "Poste 3 - Trémie entrée < 10%",
         alertFinishing: "Erreur Ventilation",
@@ -211,7 +211,7 @@ const translations = {
         colBatchId: "No Prod",
         colClient: "Client", // New
         colTxnId: "ID Transaction",
-        colProduct: "Produit/Essence", // Renamed
+        colProduct: "Essence",
         colProcess: "Procédé",
         colTreatment: "Traitement",
         colQty: "Quantité (pc)", // New
@@ -241,7 +241,7 @@ const translations = {
         statusError: "Alerte en cours",
         statusPlanning: "En Planification",
         statusCompleted: "Terminé",
-        procBeckage: "Beckage",
+        procBaker: "Baker",
         procMoulding: "Moulurage",
         procSanding1: "Sablage 1 Côté",
         procSanding2: "Sablage 2 Côtés",
@@ -345,7 +345,7 @@ const translations = {
         enterQty: "Quantité (pc)",
         enterLocation: "Localisation",
         enterState: "État",
-        colProductCode: "Code Produit",
+        colProductCode: "Code de produit",
         save: "Enregistrer",
         stockAdded: "Stock ajouté avec succès",
         stockUpdated: "Stock mis à jour avec succès",
@@ -1140,7 +1140,7 @@ const StatCard = ({ title, value, t }) => (
 const DashboardView = ({ t, productionData, customProcesses = [], woodTreatments = [] }) => {
     // Process Colors Configuration
     const processColors = {
-        'procBeckage': 'bg-blue-500',
+        'procBaker': 'bg-blue-500',
         'procSanding1': 'bg-yellow-400', 
         'procSanding2': 'bg-orange-500', 
         'procMoulding': 'bg-purple-500', 
@@ -1367,7 +1367,7 @@ const DashboardView = ({ t, productionData, customProcesses = [], woodTreatments
 
 
 const processOrder = [
-    { id: 'procBeckage', label: 'Beckage' },
+    { id: 'procBaker', label: 'Baker' },
     { id: 'procSanding1', label: 'Sablage (1)' },
     { id: 'procSanding2', label: 'Sablage (2)' },
     { id: 'procMoulding', label: "Moulurage" },
@@ -1387,7 +1387,7 @@ const stationDefinitions = [
 ];
 
 // --- Production View with DevExtreme ---
-const ProductionView = ({ t, productionData, assignStation, updateJobStatus, deleteBatch, customProcesses = [], isRawWood = false, woodTreatments = [], stationConfig = {}, inventory = [], deductFromInventory = () => {} }) => {
+const ProductionView = ({ t, productionData, assignStation, updateJobStatus, deleteBatch, customProcesses = [], isRawWood = false, woodTreatments = [], stationConfig = {}, inventory = [], deductFromInventory = () => {}, inventoryStates = [] }) => {
     const [printingJob, setPrintingJob] = useState(null);
     const [printingPO, setPrintingPO] = useState(null);
     const [activeStatuses, setActiveStatuses] = useState(['planning', 'running', 'paused', 'error', 'completed']);
@@ -1399,6 +1399,7 @@ const ProductionView = ({ t, productionData, assignStation, updateJobStatus, del
     const existingWoods = Array.from(new Set(productionData.map(item => item.wood).filter(Boolean)));
     const [isCustomWood, setIsCustomWood] = useState(false);
     const [stockSearch, setStockSearch] = useState('');
+    const [stockStateFilter, setStockStateFilter] = useState('');
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [refreshTick, setRefreshTick] = useState(0);
     
@@ -1410,7 +1411,7 @@ const ProductionView = ({ t, productionData, assignStation, updateJobStatus, del
 
     // Liste de base des processus standards
     const standardProcesses = [
-        { id: 'procBeckage', label: t.procBeckage },
+        { id: 'procBaker', label: t.procBaker },
         { id: 'procMoulding', label: t.procMoulding },
         { id: 'procSanding1', label: t.procSanding1 },
         { id: 'procSanding2', label: t.procSanding2 },
@@ -1466,9 +1467,6 @@ const ProductionView = ({ t, productionData, assignStation, updateJobStatus, del
 
            if (!activeStatuses.includes(visualStatus)) return false;
            if (filterProcess !== 'all' && item.process !== filterProcess) return false;
-
-           // Correction : Toujours afficher la ligne de test (id:1)
-           if (item.id === 1) return true;
 
            // Strict Separation Logic
            const isWoodTreat = woodTreatments.some(wt => wt.id === item.process);
@@ -2126,97 +2124,141 @@ const ProductionView = ({ t, productionData, assignStation, updateJobStatus, del
                     <div className="bg-white p-6 rounded-xl shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
                         <h3 className="font-bold text-xl mb-4 sticky top-0 bg-white pb-2 border-b">Ajouter un produit à transformer</h3>
                         <div className="space-y-3 mt-4">
-                            {/* Champ No Prod (auto-généré si vide) */}
-                            <input
-                                className="w-full border p-3 rounded text-base"
-                                placeholder="No Prod"
-                                value={newStock.txn || ''}
-                                onChange={e => setNewStock({ ...newStock, txn: e.target.value })}
-                                onFocus={() => {
-                                    if (!newStock.txn) {
-                                        // Générer un numéro de production auto-incrémenté formaté PROD-0001
-                                        let nextNum = 1;
-                                        try {
-                                            const data = JSON.parse(localStorage.getItem('productionData')) || [];
-                                            const prodNums = data
-                                                .map(item => (item.txn || '').match(/^PROD-(\d{4,})$/))
-                                                .filter(Boolean)
-                                                .map(match => parseInt(match[1], 10));
-                                            if (prodNums.length > 0) {
-                                                nextNum = Math.max(...prodNums) + 1;
-                                            }
-                                        } catch (e) {}
-                                        const autoTxn = `PROD-${nextNum.toString().padStart(4, '0')}`;
-                                        setNewStock(ns => ({ ...ns, txn: autoTxn }));
-                                    }
-                                }}
-                            />
-                            {/* Champ No. stock avec loupe */}
-                            <div className="relative">
-                                <input
-                                    className="w-full border p-3 rounded pr-10 text-base"
-                                    placeholder="No. stock"
-                                    value={newStock.stockNo || ''}
-                                    onChange={e => {
-                                        const stockNo = e.target.value;
-                                        setNewStock({ ...newStock, stockNo });
-                                        setStockSearch(stockNo);
-                                        // Si correspondance exacte, remplir les champs
-                                        const found = inventory.find(s => s.stockNo === stockNo);
-                                        if (found) {
-                                            setNewStock({
-                                                ...newStock,
-                                                stockNo: found.stockNo,
-                                                wood: found.wood,
-                                                grade: found.grade || '',
-                                                qty: found.qty,
-                                                location: found.location,
-                                                state: found.state || ''
-                                            });
-                                            setShowSuggestions(false);
-                                        }
-                                    }}
-                                    autoComplete="off"
-                                />
-                                <span
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 cursor-pointer"
-                                    title="Rechercher le stock"
-                                    onClick={() => setShowSuggestions(s => !s)}
-                                >
-                                    <i className="fa fa-search"></i>
-                                </span>
-                                {/* Suggestions d'inventaire */}
-                                {showSuggestions && (
-                                    <div className="absolute left-0 right-0 bg-white border rounded shadow z-10 max-h-60 overflow-y-auto mt-1">
-                                        {inventory.filter(s => s.stockNo.toLowerCase().includes((newStock.stockNo || '').toLowerCase())).length === 0 && (
-                                            <div className="p-3 text-gray-400 text-base">Aucun stock trouvé</div>
-                                        )}
-                                        {inventory.filter(s => s.stockNo.toLowerCase().includes((newStock.stockNo || '').toLowerCase())).map(s => (
-                                            <div
-                                                key={s.stockNo}
-                                                className="p-3 hover:bg-blue-50 cursor-pointer flex flex-col"
-                                                onClick={() => {
-                                                    setNewStock({
-                                                        ...newStock,
-                                                        stockNo: s.stockNo,
-                                                        wood: s.wood,
-                                                        grade: s.grade || '',
-                                                        qty: s.qty,
-                                                        location: s.location,
-                                                        state: s.state || ''
-                                                    });
-                                                    setShowSuggestions(false);
+                            {/* Sélection multiple de traitements - EN PREMIER */}
+                            <div className="border-2 border-blue-200 bg-blue-50 p-3 rounded">
+                                <label className="block text-base font-semibold mb-2">1. Choisir le(s) traitement(s)</label>
+                                <div className="space-y-2 max-h-40 overflow-y-auto bg-white rounded p-2">
+                                    {allProcesses.map(p => (
+                                        <label key={p.id} className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded">
+                                            <input
+                                                type="checkbox"
+                                                checked={newStock.processes.includes(p.id)}
+                                                onChange={e => {
+                                                    if (e.target.checked) {
+                                                        setNewStock({ ...newStock, processes: [...newStock.processes, p.id] });
+                                                    } else {
+                                                        setNewStock({ ...newStock, processes: newStock.processes.filter(id => id !== p.id) });
+                                                    }
                                                 }}
-                                            >
-                                                <span className="font-bold text-base">{s.stockNo}</span>
-                                                <span className="text-sm text-gray-600">{s.wood}{s.grade ? ' (' + s.grade + ')' : ''} — {s.qty} PC — Loc: {s.location}</span>
-                                                {s.state && (
-                                                    <span className="text-sm font-semibold text-blue-600 mt-1">
-                                                        <i className="fa fa-tag mr-1"></i>État: {s.state}
-                                                    </span>
-                                                )}
-                                            </div>
+                                            />
+                                            <span className="text-base">{t[p.id] || p.label}</span>
+                                        </label>
+                                    ))}
+                                </div>
+                                {newStock.processes.length > 0 && (
+                                    <div className="mt-2 text-sm text-blue-700">
+                                        <i className="fa fa-check-circle mr-1"></i>
+                                        {newStock.processes.length} traitement(s) sélectionné(s)
+                                    </div>
+                                )}
+                            </div>
+                            
+                            {/* Date requise */}
+                            <div>
+                                <label className="block text-base font-semibold mb-1">2. Date requise</label>
+                                <input className="w-full border p-3 rounded text-base" type="date" value={newStock.date} onChange={e => setNewStock({ ...newStock, date: e.target.value })} />
+                            </div>
+                            
+                            {/* Recherche de stock */}
+                            <div className="border-2 border-green-200 bg-green-50 p-3 rounded">
+                                <label className="block text-base font-semibold mb-2">3. Sélectionner le(s) stock(s)</label>
+                            {/* Champ No. stock avec recherche par mot-clé */}
+                            <div className="relative">
+                                <div className="flex gap-2 mb-2">
+                                    <input
+                                        className="flex-1 border p-3 rounded text-base"
+                                        placeholder="Rechercher (No. stock, description, essence, code produit...)"
+                                        value={stockSearch || ''}
+                                        onChange={e => {
+                                            const search = e.target.value;
+                                            setStockSearch(search);
+                                            setShowSuggestions(true);
+                                        }}
+                                        onFocus={() => setShowSuggestions(true)}
+                                        autoComplete="off"
+                                    />
+                                    <select
+                                        className="border p-3 rounded text-base min-w-[150px]"
+                                        value={stockStateFilter || ''}
+                                        onChange={e => {
+                                            setStockStateFilter(e.target.value);
+                                            setShowSuggestions(true);
+                                        }}
+                                    >
+                                        <option value="">Tous les états</option>
+                                        {[...new Set(inventory.map(s => s.state).filter(Boolean))].sort().map(state => (
+                                            <option key={state} value={state}>{state}</option>
                                         ))}
+                                    </select>
+                                    <button
+                                        className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                                        title="Afficher les résultats"
+                                        onClick={() => setShowSuggestions(s => !s)}
+                                    >
+                                        <i className="fa fa-search"></i>
+                                    </button>
+                                </div>
+                                {/* Suggestions d'inventaire avec recherche par mot-clé */}
+                                {showSuggestions && (
+                                    <div className="absolute left-0 right-0 bg-white border rounded shadow z-10 max-h-80 overflow-y-auto mt-1">
+                                        {(() => {
+                                            const searchLower = (stockSearch || '').toLowerCase();
+                                            const filtered = inventory.filter(s => {
+                                                // Filtre par état si sélectionné
+                                                if (stockStateFilter && s.state !== stockStateFilter) return false;
+                                                // Filtre par mot-clé
+                                                if (!searchLower) return true;
+                                                return (
+                                                    (s.stockNo || '').toLowerCase().includes(searchLower) ||
+                                                    (s.productCode || '').toLowerCase().includes(searchLower) ||
+                                                    (s.wood || '').toLowerCase().includes(searchLower) ||
+                                                    (s.description || '').toLowerCase().includes(searchLower) ||
+                                                    (s.grade || '').toLowerCase().includes(searchLower) ||
+                                                    (s.state || '').toLowerCase().includes(searchLower) ||
+                                                    (s.location || '').toLowerCase().includes(searchLower) ||
+                                                    (s.unite || '').toLowerCase().includes(searchLower)
+                                                );
+                                            });
+                                            
+                                            if (filtered.length === 0) {
+                                                return <div className="p-3 text-gray-400 text-base">Aucun stock trouvé</div>;
+                                            }
+                                            
+                                            return filtered.slice(0, 50).map(s => (
+                                                <div
+                                                    key={s.stockNo}
+                                                    className="p-3 hover:bg-blue-50 cursor-pointer border-b last:border-b-0"
+                                                    onClick={() => {
+                                                        setNewStock({
+                                                            ...newStock,
+                                                            stockNo: s.stockNo,
+                                                            wood: s.wood,
+                                                            grade: s.grade || '',
+                                                            qty: s.qty,
+                                                            location: s.location,
+                                                            state: s.state || ''
+                                                        });
+                                                        setStockSearch(s.stockNo);
+                                                        setShowSuggestions(false);
+                                                    }}
+                                                >
+                                                    <div className="flex justify-between items-start">
+                                                        <span className="font-bold text-base text-blue-700">{s.stockNo}</span>
+                                                        <span className="text-sm bg-gray-100 px-2 py-0.5 rounded">{s.qty} {s.unite || 'PC'}</span>
+                                                    </div>
+                                                    {s.productCode && <div className="text-xs text-gray-500 mt-0.5">Code: {s.productCode}</div>}
+                                                    {s.description && <div className="text-sm text-gray-700 mt-1">{s.description}</div>}
+                                                    <div className="flex flex-wrap gap-2 mt-1">
+                                                        {s.wood && <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">{s.wood}</span>}
+                                                        {s.grade && <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded">{s.grade}</span>}
+                                                        {s.state && <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">{s.state}</span>}
+                                                        {s.epaisseur && <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded">Ép: {s.epaisseur}</span>}
+                                                        {s.largeur && <span className="text-xs bg-pink-100 text-pink-700 px-2 py-0.5 rounded">Larg: {s.largeur}</span>}
+                                                    </div>
+                                                    {s.location && <div className="text-xs text-gray-500 mt-1"><i className="fa fa-map-marker-alt mr-1"></i>{s.location}</div>}
+                                                </div>
+                                            ));
+                                        })()}
                                     </div>
                                 )}
                             </div>
@@ -2230,11 +2272,44 @@ const ProductionView = ({ t, productionData, assignStation, updateJobStatus, del
                                     value={newStock.qty} 
                                     onChange={e => setNewStock({ ...newStock, qty: e.target.value })} 
                                 />
+                                {/* Avertissement si quantité insuffisante pour état avec qtyRequired */}
+                                {(() => {
+                                    const stateConfig = inventoryStates.find(s => (typeof s === 'object' ? s.name : s) === newStock.state);
+                                    const isQtyRequired = stateConfig && typeof stateConfig === 'object' && stateConfig.qtyRequired;
+                                    const inventoryItem = inventory.find(s => s.stockNo === newStock.stockNo);
+                                    const availableQty = inventoryItem ? inventoryItem.qty : 0;
+                                    const requestedQty = Number(newStock.qty) || 0;
+                                    
+                                    if (isQtyRequired && requestedQty > availableQty) {
+                                        return (
+                                            <div className="mt-2 p-2 bg-red-100 border border-red-300 rounded text-red-700 text-sm">
+                                                <i className="fa fa-exclamation-triangle mr-2"></i>
+                                                Quantité insuffisante! Disponible: {availableQty}, Demandée: {requestedQty}
+                                            </div>
+                                        );
+                                    }
+                                    return null;
+                                })()}
                             </div>
                             {/* Bouton pour ajouter le stock à la liste */}
                             <button 
                                 className="w-full py-2 bg-green-500 text-white rounded font-bold hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                                disabled={!newStock.stockNo || !newStock.wood || !newStock.qty || newStock.qty <= 0}
+                                disabled={(() => {
+                                    if (!newStock.stockNo || !newStock.wood || !newStock.qty || newStock.qty <= 0) return true;
+                                    
+                                    // Vérifier si l'état a qtyRequired et si la quantité est suffisante
+                                    const stateConfig = inventoryStates.find(s => (typeof s === 'object' ? s.name : s) === newStock.state);
+                                    const isQtyRequired = stateConfig && typeof stateConfig === 'object' && stateConfig.qtyRequired;
+                                    
+                                    if (isQtyRequired) {
+                                        const inventoryItem = inventory.find(s => s.stockNo === newStock.stockNo);
+                                        const availableQty = inventoryItem ? inventoryItem.qty : 0;
+                                        const requestedQty = Number(newStock.qty) || 0;
+                                        if (requestedQty > availableQty) return true;
+                                    }
+                                    
+                                    return false;
+                                })()}
                                 onClick={() => {
                                     if (newStock.stockNo && newStock.wood && newStock.qty && newStock.qty > 0) {
                                         const stockToAdd = {
@@ -2303,52 +2378,19 @@ const ProductionView = ({ t, productionData, assignStation, updateJobStatus, del
                                     />
                                 </div>
                             )}
-                            
-                            {/* Localisations des stocks sélectionnés */}
-                            {selectedStocks.length > 0 && (
-                                <div>
-                                    <label className="block text-base mb-1 font-medium">Localisation(s)</label>
-                                    <input 
-                                        className="w-full border p-3 rounded text-base bg-gray-100" 
-                                        value={selectedStocks.map(stock => stock.location).filter(loc => loc).join(', ')} 
-                                        readOnly 
-                                    />
-                                </div>
-                            )}
-                            
-                            {/* Sélection multiple de traitements */}
-                            <div className="border p-3 rounded">
-                                <label className="block text-base font-semibold mb-2">Traitement(s)</label>
-                                <div className="space-y-2 max-h-40 overflow-y-auto">
-                                    {allProcesses.map(p => (
-                                        <label key={p.id} className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded">
-                                            <input
-                                                type="checkbox"
-                                                checked={newStock.processes.includes(p.id)}
-                                                onChange={e => {
-                                                    if (e.target.checked) {
-                                                        setNewStock({ ...newStock, processes: [...newStock.processes, p.id] });
-                                                    } else {
-                                                        setNewStock({ ...newStock, processes: newStock.processes.filter(id => id !== p.id) });
-                                                    }
-                                                }}
-                                            />
-                                            <span className="text-base">{t[p.id] || p.label}</span>
-                                        </label>
-                                    ))}
-                                </div>
                             </div>
-                            <input className="w-full border p-3 rounded text-base" type="date" value={newStock.date} onChange={e => setNewStock({ ...newStock, date: e.target.value })} />
                         </div>
                         <div className="flex justify-end gap-3 mt-5">
                             <button className="px-6 py-3 bg-gray-200 rounded text-base font-medium hover:bg-gray-300" onClick={() => {
                                 setShowAddStock(false);
                                 setSelectedStocks([]);
+                                setStockSearch('');
+                                setStockStateFilter('');
                                 setNewStock({ client: 'Prod. Inventaire', isInventoryProd: true, wood: '', grade: '', qty: '', processes: [], date: '', location: '', state: '', txn: '', stockNo: '' });
                             }}>Annuler</button>
                             <button 
                                 className="px-6 py-3 bg-[#51aff7] text-white rounded text-base font-medium hover:bg-blue-600 disabled:opacity-50"
-                                disabled={selectedStocks.length === 0 && !newStock.stockNo}
+                                disabled={(selectedStocks.length === 0 && !newStock.stockNo) || newStock.processes.length === 0}
                                 onClick={() => {
                                     // Ajouter le stock en cours s'il n'est pas vide
                                     const stocksToProcess = [...selectedStocks];
@@ -2379,8 +2421,8 @@ const ProductionView = ({ t, productionData, assignStation, updateJobStatus, del
                                     Object.entries(groupedByProduct).forEach(([woodType, stocks], groupIndex) => {
                                         let txn = newStock.txn;
                                         if (!txn || groupIndex > 0) {
-                                            // Générer un numéro de production auto-incrémenté formaté PROD-0001
-                                            let nextNum = 1;
+                                            // Générer un numéro de production auto-incrémenté (commence à 10000)
+                                            let nextNum = 10000;
                                             try {
                                                 const data = JSON.parse(localStorage.getItem('productionData')) || [];
                                                 const prodNums = data
@@ -2388,10 +2430,11 @@ const ProductionView = ({ t, productionData, assignStation, updateJobStatus, del
                                                     .filter(Boolean)
                                                     .map(match => parseInt(match[1], 10));
                                                 if (prodNums.length > 0) {
-                                                    nextNum = Math.max(...prodNums) + 1 + groupIndex;
+                                                    const maxNum = Math.max(...prodNums);
+                                                    nextNum = (maxNum < 10000 ? 10000 : maxNum + 1) + groupIndex;
                                                 }
                                             } catch (e) {}
-                                            txn = `PROD-${nextNum.toString().padStart(4, '0')}`;
+                                            txn = `PROD-${nextNum.toString().padStart(5, '0')}`;
                                         }
                                         
                                         // Calculer la quantité totale pour ce produit
@@ -2439,6 +2482,8 @@ const ProductionView = ({ t, productionData, assignStation, updateJobStatus, del
                                     
                                     setShowAddStock(false);
                                     setSelectedStocks([]);
+                                    setStockSearch('');
+                                    setStockStateFilter('');
                                     setNewStock({ client: 'Prod. Inventaire', isInventoryProd: true, wood: '', qty: '', processes: [], date: '', location: '', state: '', txn: '', stockNo: '' });
                                 }}
                             >
@@ -2716,6 +2761,201 @@ const DataEntryView = ({ t, addBatch, setActiveTab, customProcesses = [], woodTr
 };
 
 const InventoryView = ({ t, inventory, setInventory }) => {
+    const fileInputRef = useRef(null);
+    
+    const handleImportExcel = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+            try {
+                const data = new Uint8Array(evt.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+                
+                // Trouver le prochain numéro de stock (commence à 10000)
+                let nextNum = 10000;
+                const existingNums = inventory
+                    .map(item => parseInt(item.stockNo, 10))
+                    .filter(n => !isNaN(n));
+                if (existingNums.length > 0) {
+                    const maxNum = Math.max(...existingNums);
+                    nextNum = maxNum < 10000 ? 10000 : maxNum + 1;
+                }
+                
+                const newItems = jsonData.map((row, idx) => {
+                    // Fonction pour normaliser les clés (sans accents, minuscules)
+                    const normalize = (str) => str.toLowerCase()
+                        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                        .replace(/[^a-z0-9]/g, '');
+                    
+                    // Fonction pour trouver une valeur par nom de colonne (insensible accents/majuscules)
+                    // Priorité au premier nom de la liste qui correspond
+                    const getCol = (...names) => {
+                        const normalizedNames = names.map(n => normalize(n));
+                        // Chercher dans l'ordre de priorité des noms recherchés
+                        for (const searchName of normalizedNames) {
+                            for (const key of Object.keys(row)) {
+                                const normalizedKey = normalize(key);
+                                // Match exact ou partiel (le terme recherché est dans le nom de colonne)
+                                if (normalizedKey === searchName || normalizedKey.includes(searchName)) {
+                                    return row[key];
+                                }
+                            }
+                        }
+                        return '';
+                    };
+                    
+                    const categorieVal = String(getCol('Catégorie', 'Categorie', 'Category', 'Cat') || '');
+                    let stateVal = String(getCol('État', 'Etat', 'State', 'Statut') || '');
+                    
+                    // Mappages catégorie-état
+                    if (categorieVal === '109') stateVal = 'Brut baker';
+                    else if (categorieVal === '10') stateVal = 'Brut vert';
+                    else if (categorieVal === '23') stateVal = 'REV. Exterieur';
+                    else if (categorieVal === '106') stateVal = 'Ébénisterie';
+                    else if (categorieVal === '18') stateVal = 'Plancher';
+                    
+                    // Si état est BRUT, changer en Brut Sec avec catégorie 15
+                    let finalCategorie = categorieVal;
+                    if (stateVal.toUpperCase() === 'BRUT') {
+                        finalCategorie = '15';
+                        stateVal = 'Brut Sec';
+                    }
+                    
+                    const productCode = getCol('Code Produit', 'Code de produit', 'ProductCode', 'CodeProduit', 'Code');
+                    
+                    // Ne pas importer si pas de code de produit
+                    if (!productCode || productCode.toString().trim() === '') {
+                        return null;
+                    }
+                    
+                    const description = getCol('Description', 'Desc', 'Détail', 'Detail');
+                    let woodValue = getCol('Couleur');
+                    
+                    // Si la description contient "CEDRE D'ALASKA", utiliser comme essence
+                    if (description && description.toUpperCase().includes("CEDRE D'ALASKA")) {
+                        woodValue = "CEDRE D'ALASKA";
+                    }
+                    // Si la description contient "CEDRE BLANC", utiliser comme essence
+                    else if (description && description.toUpperCase().includes("CEDRE BLANC")) {
+                        woodValue = "CEDRE BLANC";
+                    }
+                    // Si la description contient "CEDRE ROUGE", utiliser comme essence
+                    else if (description && description.toUpperCase().includes("CEDRE ROUGE")) {
+                        woodValue = "CEDRE ROUGE";
+                    }
+                    // Si la description contient "PIN BLANC", utiliser comme essence
+                    else if (description && description.toUpperCase().includes("PIN BLANC")) {
+                        woodValue = "PIN BLANC";
+                    }
+                    // Si la description contient "PIN JAUNE", utiliser comme essence
+                    else if (description && description.toUpperCase().includes("PIN JAUNE")) {
+                        woodValue = "PIN JAUNE";
+                    }
+                    // Si la description contient "PEUPLIER JAUNE", utiliser comme essence
+                    else if (description && description.toUpperCase().includes("PEUPLIER JAUNE")) {
+                        woodValue = "PEUPLIER JAUNE";
+                    }
+                    // Si la description contient "PEUPLIER" (sans JAUNE), utiliser comme essence
+                    else if (description && description.toUpperCase().includes("PEUPLIER")) {
+                        woodValue = "PEUPLIER";
+                    }
+                    // Si la description contient "PIN ROUGE", utiliser comme essence
+                    else if (description && description.toUpperCase().includes("PIN ROUGE")) {
+                        woodValue = "PIN ROUGE";
+                    }
+                    // Si la description contient "MELEZE", utiliser comme essence
+                    else if (description && description.toUpperCase().includes("MELEZE")) {
+                        woodValue = "MELEZE";
+                    }
+                    // Si la description contient "EPINETTE", utiliser comme essence
+                    else if (description && description.toUpperCase().includes("EPINETTE")) {
+                        woodValue = "EPINETTE";
+                    }
+                    
+                    return {
+                        stockNo: null, // Sera assigné après filtrage
+                        productCode: productCode,
+                        wood: woodValue,
+                        description: description,
+                        grade: getCol('Style', 'Grade', 'Qualité', 'Quality'),
+                        unite: getCol('CODE U. M. SURFAGEST', 'Unité', 'Unite', 'U.M.', 'UM', 'Unité de mesure', 'Code u. m. surfagest', 'surfagest', 'Unit', 'UOM'),
+                        largeur: getCol('Largeur', 'Width', 'Larg', 'W'),
+                        epaisseur: getCol('Épaisseur', 'Epaisseur', 'Thickness', 'Epais'),
+                        qty: parseInt(getCol('Quantité', 'Quantite', 'Qty', 'Quantity', 'Qte') || 0, 10),
+                        location: getCol('Emplacement', 'Location', 'Lieu', 'Position'),
+                        state: stateVal,
+                        categorie: finalCategorie,
+                        dateAdded: new Date().toISOString()
+                    };
+                }).filter(item => item !== null);
+                
+                if (newItems.length === 0) {
+                    DevExpress.ui.notify('Aucun produit valide trouvé (colonne Code de produit vide)', 'warning', 3000);
+                    return;
+                }
+                
+                setInventory(prev => {
+                    let updatedCount = 0;
+                    let addedCount = 0;
+                    
+                    // Créer une copie de l'inventaire existant
+                    const updatedInventory = [...prev];
+                    
+                    // Trouver le prochain numéro de stock disponible
+                    let currentNextNum = nextNum;
+                    
+                    newItems.forEach(newItem => {
+                        // Chercher si le produit existe déjà (par productCode)
+                        const existingIndex = updatedInventory.findIndex(
+                            existing => existing.productCode === newItem.productCode
+                        );
+                        
+                        if (existingIndex !== -1) {
+                            // Mettre à jour le produit existant (garder stockNo et dateAdded originaux)
+                            const existingItem = updatedInventory[existingIndex];
+                            updatedInventory[existingIndex] = {
+                                ...existingItem,
+                                ...newItem,
+                                stockNo: existingItem.stockNo,
+                                dateAdded: existingItem.dateAdded,
+                                dateUpdated: new Date().toISOString()
+                            };
+                            updatedCount++;
+                        } else {
+                            // Ajouter comme nouveau produit
+                            updatedInventory.push({
+                                ...newItem,
+                                stockNo: String(currentNextNum++)
+                            });
+                            addedCount++;
+                        }
+                    });
+                    
+                    localStorage.setItem('inventory', JSON.stringify(updatedInventory));
+                    return updatedInventory;
+                });
+                
+                const skipped = jsonData.length - newItems.length;
+                let msg = '';
+                if (skipped > 0) {
+                    msg = `Import terminé (${skipped} lignes ignorées - produit manquant). Vérifiez les mises à jour.`;
+                } else {
+                    msg = `Import terminé avec succès`;
+                }
+                DevExpress.ui.notify(msg, 'success', 3000);
+            } catch (err) {
+                console.error('Erreur import Excel:', err);
+                DevExpress.ui.notify('Erreur lors de l\'import du fichier Excel', 'error', 3000);
+            }
+        };
+        reader.readAsArrayBuffer(file);
+        e.target.value = '';
+    };
+    
     useEffect(() => {
         const gridContainer = document.getElementById('inventoryGrid');
         if (!gridContainer) return;
@@ -2724,6 +2964,8 @@ const InventoryView = ({ t, inventory, setInventory }) => {
             dataSource: inventory,
             keyExpr: 'stockNo',
             showBorders: true,
+            height: 'calc(100vh - 250px)',
+            scrolling: { mode: 'standard', useNative: true },
             filterRow: { visible: true },
             searchPanel: { visible: true, width: 240, placeholder: 'Rechercher...' },
             headerFilter: { visible: true },
@@ -2766,6 +3008,11 @@ const InventoryView = ({ t, inventory, setInventory }) => {
                     width: 150
                 },
                 { 
+                    dataField: 'description', 
+                    caption: 'Description', 
+                    width: 400
+                },
+                { 
                     dataField: 'wood', 
                     caption: t.colProduct, 
                     width: 150,
@@ -2774,11 +3021,22 @@ const InventoryView = ({ t, inventory, setInventory }) => {
                 { 
                     dataField: 'grade', 
                     caption: t.colGrade, 
-                    width: 120,
-                    lookup: {
-                        dataSource: ['Select', 'Noueux', 'Grade B'],
-                        allowClearing: true
-                    }
+                    width: 120
+                },
+                { 
+                    dataField: 'unite', 
+                    caption: 'Unité', 
+                    width: 70
+                },
+                { 
+                    dataField: 'largeur', 
+                    caption: 'Largeur', 
+                    width: 80
+                },
+                { 
+                    dataField: 'epaisseur', 
+                    caption: 'Épaisseur', 
+                    width: 90
                 },
                 { 
                     dataField: 'qty', 
@@ -2792,6 +3050,11 @@ const InventoryView = ({ t, inventory, setInventory }) => {
                     dataField: 'location', 
                     caption: t.colLocation, 
                     width: 120
+                },
+                { 
+                    dataField: 'categorie', 
+                    caption: 'Catégorie', 
+                    width: 100
                 },
                 { 
                     dataField: 'state', 
@@ -2852,6 +3115,40 @@ const InventoryView = ({ t, inventory, setInventory }) => {
         <div>
             <div className="flex justify-between items-center mb-6">
                 <h2 className="text-2xl font-bold text-gray-800">{t.inventoryTitle}</h2>
+                <div className="flex gap-2">
+                    <input
+                        type="file"
+                        ref={fileInputRef}
+                        accept=".xlsx,.xls"
+                        onChange={handleImportExcel}
+                        className="hidden"
+                    />
+                    <button
+                        onClick={() => fileInputRef.current?.click()}
+                        className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 flex items-center gap-2"
+                    >
+                        <i className="fas fa-file-import"></i>
+                        Importer Excel
+                    </button>
+                    <button
+                        onClick={() => {
+                            DevExpress.ui.dialog.confirm({
+                                title: 'Vider l\'inventaire',
+                                messageHtml: '<div class="text-center"><i class="fas fa-exclamation-triangle text-red-500 text-4xl mb-4"></i><p class="text-lg">Êtes-vous sûr de vouloir supprimer <strong>tous les produits</strong> de l\'inventaire?</p><p class="text-gray-500 mt-2">Cette action est irréversible.</p></div>'
+                            }).then((confirmed) => {
+                                if (confirmed) {
+                                    setInventory([]);
+                                    localStorage.setItem('inventory', JSON.stringify([]));
+                                    DevExpress.ui.notify('Inventaire vidé avec succès', 'success', 2000);
+                                }
+                            });
+                        }}
+                        className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 flex items-center gap-2"
+                    >
+                        <i className="fas fa-trash"></i>
+                        Vider l'inventaire
+                    </button>
+                </div>
             </div>
 
             <div className="bg-white rounded-lg shadow-lg p-6">
@@ -2868,6 +3165,146 @@ const SettingsView = ({ t, appMode, setAppMode, stationConfig, setStationConfig,
     const [selectedProcessForParams, setSelectedProcessForParams] = useState('');
     const [newParamName, setNewParamName] = useState('');
     const [newParamLabel, setNewParamLabel] = useState('');
+
+    // Code creation tables state
+    const defaultCodeTables = {
+        type: [
+            { code: 'BE', label: 'ÉBÉNISTERIE' },
+            { code: 'BF', label: 'BOIS FRANC' },
+            { code: 'CO', label: 'COMPTOIR' },
+            { code: 'ES', label: 'ESCALIER' },
+            { code: 'MO', label: 'MOULURE' },
+            { code: 'PL', label: 'PLANCHER' },
+            { code: 'PO', label: 'POUTRE' },
+            { code: 'PR', label: 'PREPARATION' },
+            { code: 'RE', label: 'REVÊTEMENT EXTÉRIEUR' },
+            { code: 'RI', label: 'REVÊTEMENT INTÉRIEUR' }
+        ],
+        essence: [
+            { code: 'EP', label: 'ÉPINETTE' },
+            { code: 'CR', label: 'CÈDRE ROUGE' },
+            { code: 'FR', label: 'FRÊNE' },
+            { code: 'PB', label: 'PIN BLANC' },
+            { code: 'PR', label: 'PIN ROUGE' },
+            { code: 'PP', label: 'PEUPLIER' },
+            { code: 'ME', label: 'MÉLÈZE' },
+            { code: 'BC', label: 'BCFIR' },
+            { code: 'PU', label: 'PRUCHE' }
+        ],
+        grade: [
+            { code: '00', label: 'N/A' },
+            { code: 'N', label: 'GRADE NOUEUX' },
+            { code: 'B', label: 'GRADE B' },
+            { code: 'S', label: 'SELECT' },
+            { code: 'D', label: 'SELECT DECLASSÉ' }
+        ],
+        dimensions: [
+            { code: '0106', label: '01X06' },
+            { code: '5406', label: '5/4X06' },
+            { code: '6406', label: '6/4X06' },
+            { code: '0206', label: '02X06' },
+            { code: '0606', label: '06X06' },
+            { code: '1218', label: '12X18' },
+            { code: '2404', label: '1/2X04' },
+            { code: '3406', label: '3/4X06' }
+        ],
+        modele: [
+            { code: 'CLIN', label: 'CLIN' },
+            { code: 'CLAS', label: 'CLASSIQUE' },
+            { code: 'CONT', label: 'CONTEMPORAIN' },
+            { code: 'GOCA', label: 'GORGE CARRÉE' },
+            { code: 'GORO', label: 'GORGE RONDE' },
+            { code: 'LOCA', label: 'LOGCABIN' },
+            { code: 'P200', label: 'PATRON 20' },
+            { code: '1719', label: 'PATRON 17/19' },
+            { code: 'P240', label: 'PATRON 24' },
+            { code: 'MOAS', label: 'MODÈLE ASSORTI' }
+        ],
+        attache: [
+            { code: '0', label: 'N/A OU À CLOUS' },
+            { code: 'C', label: 'À CRAMPES' },
+            { code: 'E', label: 'EMBOUVETÉ 4 FACES' },
+            { code: 'M', label: 'MAXI-CLIP' }
+        ],
+        etat: [
+            { code: '0', label: 'N/A' },
+            { code: 'A', label: 'AIR DRY (SÉCHÉ À L\'AIR)' },
+            { code: 'G', label: 'VERT' },
+            { code: 'K', label: 'SEC (KILN DRIED)' },
+            { code: 'T', label: 'TORRÉFIÉ' }
+        ]
+    };
+
+    const [codeTables, setCodeTables] = useState(() => {
+        const saved = localStorage.getItem('codeTables');
+        return saved ? JSON.parse(saved) : defaultCodeTables;
+    });
+
+    const [newCodeInputs, setNewCodeInputs] = useState({
+        type: { code: '', label: '' },
+        essence: { code: '', label: '' },
+        grade: { code: '', label: '' },
+        dimensions: { code: '', label: '' },
+        modele: { code: '', label: '' },
+        attache: { code: '', label: '' },
+        etat: { code: '', label: '' }
+    });
+
+    useEffect(() => {
+        localStorage.setItem('codeTables', JSON.stringify(codeTables));
+    }, [codeTables]);
+
+    const [editingCode, setEditingCode] = useState(null); // { category, index, code, label }
+
+    const addCodeItem = (category) => {
+        const input = newCodeInputs[category];
+        if (input.code.trim() && input.label.trim()) {
+            setCodeTables(prev => ({
+                ...prev,
+                [category]: [...prev[category], { code: input.code.trim().toUpperCase(), label: input.label.trim().toUpperCase() }]
+            }));
+            setNewCodeInputs(prev => ({
+                ...prev,
+                [category]: { code: '', label: '' }
+            }));
+        }
+    };
+
+    const removeCodeItem = (category, index) => {
+        setCodeTables(prev => ({
+            ...prev,
+            [category]: prev[category].filter((_, i) => i !== index)
+        }));
+    };
+
+    const startEditCodeItem = (category, index, item) => {
+        setEditingCode({ category, index, code: item.code, label: item.label });
+    };
+
+    const saveEditCodeItem = () => {
+        if (editingCode && editingCode.code.trim() && editingCode.label.trim()) {
+            setCodeTables(prev => ({
+                ...prev,
+                [editingCode.category]: prev[editingCode.category].map((item, i) => 
+                    i === editingCode.index 
+                        ? { code: editingCode.code.trim().toUpperCase(), label: editingCode.label.trim().toUpperCase() }
+                        : item
+                )
+            }));
+            setEditingCode(null);
+        }
+    };
+
+    const cancelEditCodeItem = () => {
+        setEditingCode(null);
+    };
+
+    const updateNewCodeInput = (category, field, value) => {
+        setNewCodeInputs(prev => ({
+            ...prev,
+            [category]: { ...prev[category], [field]: value }
+        }));
+    };
 
     // Hidden standard processes state
     const [hiddenProcesses, setHiddenProcesses] = useState(() => {
@@ -2941,7 +3378,7 @@ const SettingsView = ({ t, appMode, setAppMode, stationConfig, setStationConfig,
     };
 
     const allProcessesList = [
-        { id: 'procBeckage', label: t.procBeckage },
+        { id: 'procBaker', label: t.procBaker },
         { id: 'procMoulding', label: t.procMoulding },
         { id: 'procSanding1', label: t.procSanding1 },
         { id: 'procSanding2', label: t.procSanding2 },
@@ -2976,7 +3413,7 @@ const SettingsView = ({ t, appMode, setAppMode, stationConfig, setStationConfig,
 
     // -- Exclusive Assignment Logic --
     const standardProcessIds = [
-        'procBeckage', 'procMoulding', 'procSanding1', 'procSanding2',
+        'procBaker', 'procMoulding', 'procSanding1', 'procSanding2',
         'procStaining', 'procBrushing', 'procPolishing', 'procOiling', 'procPainting',
         ...customProcesses.map(p => p.id)
     ];
@@ -3006,7 +3443,7 @@ const SettingsView = ({ t, appMode, setAppMode, stationConfig, setStationConfig,
     };
 
     return (
-    <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100 max-w-2xl mx-auto">
+    <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100 w-full max-w-7xl mx-auto">
         <h2 className="text-2xl font-bold text-gray-800 mb-6">{t.settings}</h2>
         
         <div className="space-y-8">
@@ -3154,12 +3591,28 @@ const SettingsView = ({ t, appMode, setAppMode, stationConfig, setStationConfig,
             {/* États d'inventaire */}
             <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">États d'inventaire</label>
-                <p className="text-sm text-gray-500 mb-4">Configurez les états possibles pour les produits en inventaire.</p>
+                <p className="text-sm text-gray-500 mb-4">Configurez les états possibles pour les produits en inventaire. Cochez "Qté obligatoire" pour les états qui nécessitent une quantité d'inventaire.</p>
                 <div className="space-y-2">
                     {inventoryStates.map((state, index) => (
-                        <div key={index} className="flex items-center gap-2 bg-gray-50 p-3 rounded-lg">
+                        <div key={index} className="flex items-center gap-3 bg-gray-50 p-3 rounded-lg">
                             <i className="fa-solid fa-tag text-gray-400"></i>
-                            <span className="flex-1 font-medium">{state}</span>
+                            <span className="flex-1 font-medium">{typeof state === 'string' ? state : state.name}</span>
+                            <label className="flex items-center gap-2 cursor-pointer bg-white px-3 py-1 rounded border">
+                                <input
+                                    type="checkbox"
+                                    checked={typeof state === 'object' ? state.qtyRequired : false}
+                                    onChange={(e) => {
+                                        const newStates = [...inventoryStates];
+                                        if (typeof newStates[index] === 'string') {
+                                            newStates[index] = { name: newStates[index], qtyRequired: e.target.checked };
+                                        } else {
+                                            newStates[index] = { ...newStates[index], qtyRequired: e.target.checked };
+                                        }
+                                        setInventoryStates(newStates);
+                                    }}
+                                />
+                                <span className="text-sm">Qté obligatoire</span>
+                            </label>
                             <button
                                 onClick={() => {
                                     setInventoryStates(inventoryStates.filter((_, i) => i !== index));
@@ -3184,7 +3637,7 @@ const SettingsView = ({ t, appMode, setAppMode, stationConfig, setStationConfig,
                         <button
                             onClick={() => {
                                 if (newInventoryStateName.trim()) {
-                                    setInventoryStates([...inventoryStates, newInventoryStateName.trim()]);
+                                    setInventoryStates([...inventoryStates, { name: newInventoryStateName.trim(), qtyRequired: false }]);
                                     setNewInventoryStateName('');
                                 }
                             }}
@@ -3197,129 +3650,120 @@ const SettingsView = ({ t, appMode, setAppMode, stationConfig, setStationConfig,
                 </div>
             </div>
 
-            {/* Paramètres des procédés */}
-            <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Paramètres des procédés</label>
-                <p className="text-sm text-gray-500 mb-4">Configurez les paramètres spécifiques pour chaque procédé (ex: couleur de teinture, couleur de peinture). Cochez la case pour rendre un paramètre obligatoire.</p>
+            {/* Création de code */}
+            <div className="pt-8 border-t border-gray-100">
+                <h3 className="text-lg font-bold text-gray-800 mb-2">Création de code</h3>
+                <p className="text-sm text-gray-500 mb-6">Référence des codes pour la création de codes produits (modifiable) - Double-cliquez sur une ligne pour éditer</p>
                 
-                {/* Sélecteur de procédé */}
-                <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Sélectionner un procédé</label>
-                    <select
-                        value={selectedProcessForParams}
-                        onChange={(e) => setSelectedProcessForParams(e.target.value)}
-                        className="w-full p-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-[#51aff7] focus:outline-none"
-                    >
-                        <option value="">-- Sélectionner un procédé --</option>
-                        {processes.map(proc => (
-                            <option key={proc.id} value={proc.id}>{proc.label}</option>
-                        ))}
-                    </select>
-                </div>
-
-                {/* Afficher les paramètres du procédé sélectionné */}
-                {selectedProcessForParams && (
-                    <div className="space-y-3 bg-gray-50 p-4 rounded-lg border border-gray-200">
-                        <h4 className="font-semibold text-gray-800 mb-3">
-                            Paramètres pour: {processes.find(p => p.id === selectedProcessForParams)?.label}
-                        </h4>
-                        
-                        {/* Liste des paramètres existants */}
-                        {(processParameters[selectedProcessForParams] || []).map((param, index) => (
-                            <div key={index} className="flex items-center gap-3 bg-white p-3 rounded-lg border border-gray-200">
-                                <div className="flex items-center gap-2 flex-1">
-                                    <input
-                                        type="checkbox"
-                                        checked={param.required || false}
-                                        onChange={(e) => {
-                                            const updated = { ...processParameters };
-                                            if (!updated[selectedProcessForParams]) {
-                                                updated[selectedProcessForParams] = [];
-                                            }
-                                            updated[selectedProcessForParams] = updated[selectedProcessForParams].map((p, i) => 
-                                                i === index ? { ...p, required: e.target.checked } : p
-                                            );
-                                            setProcessParameters(updated);
-                                        }}
-                                        className="w-5 h-5 text-[#51aff7] border-gray-300 rounded focus:ring-2 focus:ring-[#51aff7]"
-                                    />
-                                    <i className="fa-solid fa-sliders text-gray-400"></i>
-                                    <div className="flex-1">
-                                        <span className="font-medium text-gray-700">{param.label}</span>
-                                        <span className="text-xs text-gray-500 ml-2">({param.name})</span>
-                                        {param.required && (
-                                            <span className="ml-2 text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded font-bold">
-                                                OBLIGATOIRE
-                                            </span>
-                                        )}
-                                    </div>
-                                </div>
-                                <button
-                                    onClick={() => {
-                                        const updated = { ...processParameters };
-                                        updated[selectedProcessForParams] = updated[selectedProcessForParams].filter((_, i) => i !== index);
-                                        if (updated[selectedProcessForParams].length === 0) {
-                                            delete updated[selectedProcessForParams];
-                                        }
-                                        setProcessParameters(updated);
-                                    }}
-                                    className="text-red-500 hover:text-red-700 p-2"
-                                    title="Supprimer le paramètre"
-                                >
-                                    <i className="fa-solid fa-trash"></i>
-                                </button>
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                    {[
+                        { key: 'type', title: 'TYPE', headerBg: 'bg-blue-600', codeBg: 'text-blue-600', btnBg: 'bg-blue-500 hover:bg-blue-600' },
+                        { key: 'essence', title: 'ESSENCE', headerBg: 'bg-green-600', codeBg: 'text-green-600', btnBg: 'bg-green-500 hover:bg-green-600' },
+                        { key: 'grade', title: 'GRADE', headerBg: 'bg-purple-600', codeBg: 'text-purple-600', btnBg: 'bg-purple-500 hover:bg-purple-600' },
+                        { key: 'dimensions', title: 'DIMENSIONS', headerBg: 'bg-orange-600', codeBg: 'text-orange-600', btnBg: 'bg-orange-500 hover:bg-orange-600' },
+                        { key: 'modele', title: 'MODÈLE', headerBg: 'bg-teal-600', codeBg: 'text-teal-600', btnBg: 'bg-teal-500 hover:bg-teal-600' },
+                        { key: 'attache', title: 'ATTACHE', headerBg: 'bg-pink-600', codeBg: 'text-pink-600', btnBg: 'bg-pink-500 hover:bg-pink-600' },
+                        { key: 'etat', title: 'ÉTAT', headerBg: 'bg-red-600', codeBg: 'text-red-600', btnBg: 'bg-red-500 hover:bg-red-600' }
+                    ].map(({ key, title, headerBg, codeBg, btnBg }) => (
+                        <div key={key} className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+                            <div className={`${headerBg} text-white px-4 py-3 font-bold`}>
+                                {title}
                             </div>
-                        ))}
-
-                        {/* Ajouter un nouveau paramètre */}
-                        <div className="pt-4 mt-4 border-t border-gray-200">
-                            <div className="grid grid-cols-3 gap-3 items-end">
-                                <div>
-                                    <label className="block text-xs font-medium text-gray-700 mb-1">Nom du paramètre</label>
-                                    <input
-                                        type="text"
-                                        value={newParamName}
-                                        onChange={(e) => setNewParamName(e.target.value)}
-                                        placeholder="Ex: stainColor"
-                                        className="w-full p-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-[#51aff7] focus:outline-none"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-medium text-gray-700 mb-1">Libellé affiché</label>
-                                    <input
-                                        type="text"
-                                        value={newParamLabel}
-                                        onChange={(e) => setNewParamLabel(e.target.value)}
-                                        placeholder="Ex: Couleur Teinture"
-                                        className="w-full p-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-[#51aff7] focus:outline-none"
-                                    />
-                                </div>
-                                <button
-                                    onClick={() => {
-                                        if (newParamName.trim() && newParamLabel.trim()) {
-                                            const updated = { ...processParameters };
-                                            if (!updated[selectedProcessForParams]) {
-                                                updated[selectedProcessForParams] = [];
-                                            }
-                                            updated[selectedProcessForParams].push({
-                                                name: newParamName.trim(),
-                                                label: newParamLabel.trim(),
-                                                required: false
-                                            });
-                                            setProcessParameters(updated);
-                                            setNewParamName('');
-                                            setNewParamLabel('');
-                                        }
-                                    }}
-                                    disabled={!newParamName.trim() || !newParamLabel.trim()}
-                                    className="px-4 py-2 bg-gray-200 text-gray-700 font-bold rounded-lg hover:bg-gray-300 disabled:opacity-50"
+                            <div className="max-h-80 overflow-y-auto">
+                                <table className="w-full">
+                                    <thead className="bg-gray-100 sticky top-0">
+                                        <tr>
+                                            <th className="px-4 py-2 text-left font-semibold text-gray-700 border-b w-28">Code</th>
+                                            <th className="px-4 py-2 text-left font-semibold text-gray-700 border-b">Description</th>
+                                            <th className="w-20 border-b text-center text-gray-600 text-xs font-semibold">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {(codeTables[key] || []).map((item, idx) => (
+                                            editingCode && editingCode.category === key && editingCode.index === idx ? (
+                                                <tr key={idx} className="bg-yellow-50 border-b border-gray-100">
+                                                    <td className="px-2 py-1">
+                                                        <input 
+                                                            type="text" 
+                                                            value={editingCode.code}
+                                                            onChange={(e) => setEditingCode({...editingCode, code: e.target.value})}
+                                                            className="w-full px-2 py-1 text-sm border border-blue-400 rounded font-mono font-bold"
+                                                            autoFocus
+                                                        />
+                                                    </td>
+                                                    <td className="px-2 py-1">
+                                                        <input 
+                                                            type="text" 
+                                                            value={editingCode.label}
+                                                            onChange={(e) => setEditingCode({...editingCode, label: e.target.value})}
+                                                            className="w-full px-2 py-1 text-sm border border-blue-400 rounded"
+                                                        />
+                                                    </td>
+                                                    <td className="px-2 py-1 text-center">
+                                                        <button onClick={saveEditCodeItem} className="text-green-600 hover:text-green-800 mx-1" title="Sauvegarder">
+                                                            <i className="fa-solid fa-check"></i>
+                                                        </button>
+                                                        <button onClick={cancelEditCodeItem} className="text-gray-500 hover:text-gray-700 mx-1" title="Annuler">
+                                                            <i className="fa-solid fa-times"></i>
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ) : (
+                                                <tr 
+                                                    key={idx} 
+                                                    className="hover:bg-blue-50 group border-b border-gray-100 cursor-pointer"
+                                                    onDoubleClick={() => startEditCodeItem(key, idx, item)}
+                                                >
+                                                    <td className={`px-4 py-2 font-mono font-bold ${codeBg}`}>{item.code}</td>
+                                                    <td className="px-4 py-2 text-gray-700">{item.label}</td>
+                                                    <td className="px-2 text-center whitespace-nowrap">
+                                                        <button 
+                                                            onClick={() => startEditCodeItem(key, idx, item)} 
+                                                            className="text-gray-300 hover:text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity mx-1"
+                                                            title="Modifier"
+                                                        >
+                                                            <i className="fa-solid fa-pen"></i>
+                                                        </button>
+                                                        <button 
+                                                            onClick={() => removeCodeItem(key, idx)} 
+                                                            className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity mx-1"
+                                                            title="Supprimer"
+                                                        >
+                                                            <i className="fa-solid fa-trash-can"></i>
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            )
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div className="bg-gray-50 px-4 py-3 border-t flex gap-2 items-center">
+                                <input 
+                                    type="text" 
+                                    placeholder="Code" 
+                                    value={newCodeInputs[key]?.code || ''} 
+                                    onChange={(e) => updateNewCodeInput(key, 'code', e.target.value)} 
+                                    className="w-24 px-3 py-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-300 focus:outline-none font-mono"
+                                />
+                                <input 
+                                    type="text" 
+                                    placeholder="Description" 
+                                    value={newCodeInputs[key]?.label || ''} 
+                                    onChange={(e) => updateNewCodeInput(key, 'label', e.target.value)} 
+                                    className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-300 focus:outline-none"
+                                />
+                                <button 
+                                    onClick={() => addCodeItem(key)} 
+                                    className={`px-4 py-2 ${btnBg} text-white rounded font-bold transition-colors`}
+                                    title="Ajouter"
                                 >
-                                    <i className="fa-solid fa-plus mr-2"></i> Ajouter
+                                    <i className="fa-solid fa-plus mr-1"></i> Ajouter
                                 </button>
                             </div>
                         </div>
-                    </div>
-                )}
+                    ))}
+                </div>
             </div>
         </div>
     </div>
@@ -3412,6 +3856,16 @@ const WorkerStationView = ({ t, stationId, productionData, updateJobStatus, stat
         wood: '',
         qty: ''
     });
+
+    // Modal Ajout de matériel
+    const [showMaterialModal, setShowMaterialModal] = useState(false);
+    const [materialSearch, setMaterialSearch] = useState('');
+    const [selectedMaterial, setSelectedMaterial] = useState(null);
+    const [materialQty, setMaterialQty] = useState('');
+    const [isNonInventory, setIsNonInventory] = useState(false);
+    const [nonInventoryName, setNonInventoryName] = useState('');
+    const [nonInventoryQty, setNonInventoryQty] = useState('');
+    const [productNameSuggestions, setProductNameSuggestions] = useState([]);
 
     const employees = React.useMemo(() => {
         const saved = localStorage.getItem('employees');
@@ -3529,9 +3983,13 @@ const WorkerStationView = ({ t, stationId, productionData, updateJobStatus, stat
     // --- Sync Job Params ---
     useEffect(() => {
         if (activeJob) {
+            // Calculer #PQT automatiquement depuis les logs PALLET_CLOSED
+            const logs = activeJob.logs || [];
+            const palletClosedCount = logs.filter(log => log.action === 'PALLET_CLOSED').length;
+            
             const newParams = {
                 productCode: activeJob.productCode || '',
-                pqtUsed: activeJob.pqtUsed || '',
+                pqtUsed: palletClosedCount > 0 ? String(palletClosedCount) : (activeJob.pqtUsed || ''),
                 humidity: activeJob.humidity || '',
                 coverage: activeJob.coverage || '',
                 thickness: activeJob.thickness || '',
@@ -3544,7 +4002,7 @@ const WorkerStationView = ({ t, stationId, productionData, updateJobStatus, stat
                 formInstance.current.option("formData", newParams);
             }
         }
-    }, [activeJob?.id, activeJob?.width]); // Sync when ID or width changes
+    }, [activeJob?.id, activeJob?.width, activeJob?.logs?.length]); // Sync when ID, width or logs change
 
     // --- Debounced Auto-Save for Job Params ---
     useEffect(() => {
@@ -4195,13 +4653,16 @@ const WorkerStationView = ({ t, stationId, productionData, updateJobStatus, stat
                                     const totalPalletQtyForLabel = accumulatedPalletQty + palletQty;
                                     
                                     setTimeout(() => {
-                                        const existingStocks = inventory.map(item => item.stockNo);
-                                        let stockNumber = 1;
-                                        let stockNo = '';
-                                        do {
-                                            stockNo = 'STK-' + String(stockNumber).padStart(4, '0');
-                                            stockNumber++;
-                                        } while (existingStocks.includes(stockNo));
+                                        // Générer le prochain numéro de stock (commence à 10000)
+                                        let nextNum = 10000;
+                                        const existingNums = inventory
+                                            .map(item => parseInt(item.stockNo, 10))
+                                            .filter(n => !isNaN(n));
+                                        if (existingNums.length > 0) {
+                                            const maxNum = Math.max(...existingNums);
+                                            nextNum = maxNum < 10000 ? 10000 : maxNum + 1;
+                                        }
+                                        const stockNo = String(nextNum);
                                         
                                         const palletGrade = reclassify ? newGrade : (activeJob.grade || 'Standard');
                                         const palletJobData = { ...activeJob, grade: palletGrade, producedQty: totalPalletQtyForLabel };
@@ -4233,13 +4694,16 @@ const WorkerStationView = ({ t, stationId, productionData, updateJobStatus, stat
                                     const totalReclassQtyForLabel = accumulatedReclassQty + reclassifyQty;
                                     
                                     setTimeout(() => {
-                                        const existingStocks = inventory.map(item => item.stockNo);
-                                        let stockNumber = 1;
-                                        let stockNo = '';
-                                        do {
-                                            stockNo = 'STK-' + String(stockNumber).padStart(4, '0');
-                                            stockNumber++;
-                                        } while (existingStocks.includes(stockNo));
+                                        // Générer le prochain numéro de stock (commence à 10000)
+                                        let nextNum = 10000;
+                                        const existingNums = inventory
+                                            .map(item => parseInt(item.stockNo, 10))
+                                            .filter(n => !isNaN(n));
+                                        if (existingNums.length > 0) {
+                                            const maxNum = Math.max(...existingNums);
+                                            nextNum = maxNum < 10000 ? 10000 : maxNum + 1;
+                                        }
+                                        const stockNo = String(nextNum);
                                         
                                         const reclassJobData = { ...activeJob, grade: newGrade, producedQty: totalReclassQtyForLabel };
                                         const productCode = generateProductCode(reclassJobData);
@@ -4600,7 +5064,40 @@ const WorkerStationView = ({ t, stationId, productionData, updateJobStatus, stat
                     items: [
                         {
                             dataField: "productCode",
-                            label: { text: "Code Produit / Stock" },
+                            label: { text: "Ajout de matériel" },
+                            editorType: "dxTextBox",
+                            editorOptions: {
+                                placeholder: "Cliquer pour ajouter...",
+                                showClearButton: true,
+                                readOnly: true,
+                                buttons: [{
+                                    name: "search",
+                                    location: "after",
+                                    options: { 
+                                        icon: "add",
+                                        stylingMode: "contained",
+                                        type: "success",
+                                        onClick: () => {
+                                            // Pré-remplir la recherche avec le produit du job actif
+                                            if (activeJobRef.current && activeJobRef.current.wood) {
+                                                setMaterialSearch(activeJobRef.current.wood);
+                                            }
+                                            setShowMaterialModal(true);
+                                        }
+                                    }
+                                }],
+                                onFocusIn: () => {
+                                    if (activeJobRef.current && activeJobRef.current.wood) {
+                                        setMaterialSearch(activeJobRef.current.wood);
+                                    }
+                                    setShowMaterialModal(true);
+                                }
+                            }
+                        },
+                        {
+                            dataField: "productCodeOld",
+                            visible: false,
+                            label: { text: "Code Produit / Stock (ancien)" },
                             editorType: "dxTextBox",
                             editorOptions: {
                                 placeholder: "Rechercher un stock...",
@@ -4766,7 +5263,7 @@ const WorkerStationView = ({ t, stationId, productionData, updateJobStatus, stat
                                 }]
                             }
                         },
-                        { dataField: "pqtUsed", label: { text: "#PQT" } },
+                        { dataField: "pqtUsed", label: { text: "#PQT" }, editorOptions: { readOnly: true, hint: 'Calculé automatiquement depuis les palettes fermées' } },
                         { dataField: "humidity", label: { text: "%H" } },
                         { dataField: "coverage", label: { text: "Couvrance" } },
                         { dataField: "thickness", label: { text: "Épaisseur" } },
@@ -4889,6 +5386,246 @@ const WorkerStationView = ({ t, stationId, productionData, updateJobStatus, stat
                                     <i className="fa-solid fa-times"></i>
                                 </button>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal Ajout de matériel */}
+            {showMaterialModal && (
+                <div className="fixed inset-0 z-[90] bg-black/60 flex items-start justify-center pt-8 overflow-y-auto">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[95vh] flex flex-col m-4">
+                        <div className="p-6 border-b flex justify-between items-center">
+                            <h2 className="text-xl font-bold text-gray-800">
+                                <i className="fas fa-boxes mr-2 text-blue-500"></i>
+                                Ajout de matériel
+                            </h2>
+                            <button 
+                                onClick={() => { setShowMaterialModal(false); setSelectedMaterial(null); setMaterialSearch(''); setIsNonInventory(false); }}
+                                className="text-gray-400 hover:text-gray-600 text-2xl"
+                            >
+                                <i className="fas fa-times"></i>
+                            </button>
+                        </div>
+                        
+                        <div className="p-6 flex-1 overflow-y-auto">
+                            {/* Option produit non inventorié */}
+                            <div className="mb-4 flex items-center gap-4">
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input 
+                                        type="checkbox" 
+                                        checked={isNonInventory}
+                                        onChange={(e) => {
+                                            setIsNonInventory(e.target.checked);
+                                            if (e.target.checked) {
+                                                setSelectedMaterial(null);
+                                                // Suggestions de noms de produits existants
+                                                const existingNames = [...new Set(inventory.map(i => i.wood).filter(Boolean))];
+                                                setProductNameSuggestions(existingNames);
+                                            }
+                                        }}
+                                        className="w-5 h-5 rounded border-gray-300"
+                                    />
+                                    <span className="text-gray-700 font-medium">Produit non inventorié</span>
+                                </label>
+                            </div>
+
+                            {isNonInventory ? (
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Nom du produit</label>
+                                        <div className="relative">
+                                            <input
+                                                type="text"
+                                                value={nonInventoryName}
+                                                onChange={(e) => {
+                                                    setNonInventoryName(e.target.value);
+                                                    const filtered = [...new Set(inventory.map(i => i.wood).filter(Boolean))]
+                                                        .filter(n => n.toLowerCase().includes(e.target.value.toLowerCase()));
+                                                    setProductNameSuggestions(filtered);
+                                                }}
+                                                placeholder="Entrer le nom du produit..."
+                                                className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                                            />
+                                            {productNameSuggestions.length > 0 && nonInventoryName && (
+                                                <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-40 overflow-y-auto">
+                                                    {productNameSuggestions.slice(0, 10).map((name, idx) => (
+                                                        <div 
+                                                            key={idx}
+                                                            onClick={() => { setNonInventoryName(name); setProductNameSuggestions([]); }}
+                                                            className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
+                                                        >
+                                                            {name}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Quantité utilisée</label>
+                                        <input
+                                            type="number"
+                                            value={nonInventoryQty}
+                                            onChange={(e) => setNonInventoryQty(e.target.value)}
+                                            placeholder="Quantité..."
+                                            className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                                        />
+                                    </div>
+                                    <button
+                                        onClick={() => {
+                                            if (!nonInventoryName || !nonInventoryQty) {
+                                                DevExpress.ui.notify('Veuillez remplir tous les champs', 'warning', 2000);
+                                                return;
+                                            }
+                                            const qty = parseInt(nonInventoryQty);
+                                            if (isNaN(qty) || qty <= 0) {
+                                                DevExpress.ui.notify('Quantité invalide', 'warning', 2000);
+                                                return;
+                                            }
+                                            // Ajouter au log du job
+                                            if (activeJobRef.current) {
+                                                updateJobStatus(activeJobRef.current.id, 'running', {
+                                                    logs: [...(activeJobRef.current.logs || []), {
+                                                        action: 'MATERIAL_USED',
+                                                        timestamp: Date.now(),
+                                                        user: 'Opérateur',
+                                                        description: `${nonInventoryName} (non inventorié)`,
+                                                        qty: qty
+                                                    }]
+                                                });
+                                            }
+                                            DevExpress.ui.notify(`${qty} unités de "${nonInventoryName}" ajoutées`, 'success', 2000);
+                                            setShowMaterialModal(false);
+                                            setNonInventoryName('');
+                                            setNonInventoryQty('');
+                                            setIsNonInventory(false);
+                                        }}
+                                        className="w-full py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-bold"
+                                    >
+                                        <i className="fas fa-plus mr-2"></i>
+                                        Ajouter le matériel
+                                    </button>
+                                </div>
+                            ) : (
+                                <>
+                                    {/* Recherche inventaire */}
+                                    <div className="mb-4">
+                                        <div className="relative">
+                                            <input
+                                                type="text"
+                                                value={materialSearch}
+                                                onChange={(e) => setMaterialSearch(e.target.value)}
+                                                placeholder="Rechercher par produit, stock, grade, état..."
+                                                className="w-full px-4 py-3 pl-10 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                                            />
+                                            <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                                            <button
+                                                onClick={() => setMaterialSearch('')}
+                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 px-2 py-1 rounded"
+                                            >
+                                                <i className="fas fa-search"></i> Tout afficher
+                                            </button>
+                                        </div>
+                                    </div>
+                                    
+                                    {/* Liste des produits */}
+                                    <div className="border rounded-lg overflow-hidden" style={{ maxHeight: '70vh' }}>
+                                        <div className="overflow-y-auto" style={{ maxHeight: '70vh' }}>
+                                            {inventory
+                                                .filter(item => item.qty > 0 && (
+                                                    !materialSearch ||
+                                                    (item.stockNo || '').toLowerCase().includes(materialSearch.toLowerCase()) ||
+                                                    (item.wood || '').toLowerCase().includes(materialSearch.toLowerCase()) ||
+                                                    (item.grade || '').toLowerCase().includes(materialSearch.toLowerCase()) ||
+                                                    (item.state || '').toLowerCase().includes(materialSearch.toLowerCase()) ||
+                                                    (item.location || '').toLowerCase().includes(materialSearch.toLowerCase())
+                                                ))
+                                                .map(item => (
+                                                    <div 
+                                                        key={item.stockNo}
+                                                        onClick={() => setSelectedMaterial(item)}
+                                                        className={`p-4 border-b cursor-pointer hover:bg-blue-50 transition ${selectedMaterial?.stockNo === item.stockNo ? 'bg-blue-100 border-l-4 border-l-blue-500' : ''}`}
+                                                    >
+                                                        <div className="flex justify-between items-start">
+                                                            <div>
+                                                                <div className="font-bold text-gray-800">{item.stockNo}</div>
+                                                                <div className="text-sm text-gray-600">
+                                                                    {item.wood} {item.grade && `(${item.grade})`}
+                                                                </div>
+                                                                <div className="text-xs text-gray-500">{item.state} • {item.location}</div>
+                                                            </div>
+                                                            <div className="text-right">
+                                                                <div className="text-lg font-bold text-green-600">{item.qty} PC</div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ))
+                                            }
+                                        </div>
+                                    </div>
+                                    
+                                    {/* Sélection et quantité */}
+                                    {selectedMaterial && (
+                                        <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+                                            <div className="flex justify-between items-center mb-3">
+                                                <div>
+                                                    <span className="font-bold">{selectedMaterial.stockNo}</span>
+                                                    <span className="text-gray-600 ml-2">{selectedMaterial.wood}</span>
+                                                </div>
+                                                <span className="text-green-600 font-bold">Dispo: {selectedMaterial.qty} PC</span>
+                                            </div>
+                                            <div className="flex gap-3">
+                                                <input
+                                                    type="number"
+                                                    value={materialQty}
+                                                    onChange={(e) => setMaterialQty(e.target.value)}
+                                                    placeholder="Quantité à utiliser..."
+                                                    max={selectedMaterial.qty}
+                                                    className="flex-1 px-4 py-2 border rounded-lg"
+                                                />
+                                                <button
+                                                    onClick={() => {
+                                                        const qty = parseInt(materialQty);
+                                                        if (isNaN(qty) || qty <= 0) {
+                                                            DevExpress.ui.notify('Quantité invalide', 'warning', 2000);
+                                                            return;
+                                                        }
+                                                        if (qty > selectedMaterial.qty) {
+                                                            DevExpress.ui.notify('Quantité insuffisante', 'error', 2000);
+                                                            return;
+                                                        }
+                                                        // Déduire de l'inventaire
+                                                        deductFromInventory(selectedMaterial.stockNo, qty);
+                                                        // Ajouter au log du job
+                                                        if (activeJobRef.current) {
+                                                            updateJobStatus(activeJobRef.current.id, 'running', {
+                                                                logs: [...(activeJobRef.current.logs || []), {
+                                                                    action: 'STOCK_USED',
+                                                                    timestamp: Date.now(),
+                                                                    user: 'Opérateur',
+                                                                    stockNo: selectedMaterial.stockNo,
+                                                                    description: `${selectedMaterial.wood} (${selectedMaterial.stockNo})`,
+                                                                    qty: qty
+                                                                }]
+                                                            });
+                                                        }
+                                                        DevExpress.ui.notify(`${qty} unités déduites de ${selectedMaterial.stockNo}`, 'success', 2000);
+                                                        setShowMaterialModal(false);
+                                                        setSelectedMaterial(null);
+                                                        setMaterialSearch('');
+                                                        setMaterialQty('');
+                                                    }}
+                                                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold"
+                                                >
+                                                    <i className="fas fa-check mr-2"></i>
+                                                    Confirmer
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+                                </>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -5196,20 +5933,9 @@ const App = () => {
     // State initialization
     const [productionData, setProductionData] = useState(() => {
         const saved = localStorage.getItem('productionData');
-        let parsed = saved ? JSON.parse(saved) : null;
-        if (!Array.isArray(parsed) || parsed.length === 0) {
-            // Ligne de test forcée si aucune donnée
-            parsed = [{
-                id: 1,
-                client: 'Test Client',
-                wood: 'Chêne',
-                qty: 10,
-                process: 'procBeckage',
-                date: '2026-01-29',
-                stockNo: 'STK-TEST',
-                status: 'planning',
-                progress: 0
-            }];
+        let parsed = saved ? JSON.parse(saved) : [];
+        if (!Array.isArray(parsed)) {
+            parsed = [];
         }
         return parsed;
     });
@@ -5219,8 +5945,31 @@ const App = () => {
     const [processCodes, setProcessCodes] = useState(() => JSON.parse(localStorage.getItem('processCodes')) || {});
     const [productCodes, setProductCodes] = useState(() => JSON.parse(localStorage.getItem('productCodes')) || []);
     const [inventoryStates, setInventoryStates] = useState(() => {
+        // États prédéfinis basés sur les catégories d'inventaire - TOUJOURS utiliser ces états
+        const defaultStates = [
+            { name: 'Brut baker', qtyRequired: false },
+            { name: 'Brut vert', qtyRequired: false },
+            { name: 'Brut Sec', qtyRequired: false },
+            { name: 'REV. Exterieur', qtyRequired: false },
+            { name: 'Ébénisterie', qtyRequired: false },
+            { name: 'Plancher', qtyRequired: false }
+        ];
+        
+        // Récupérer les données sauvegardées pour préserver l'option qtyRequired
         const saved = localStorage.getItem('inventoryStates');
-        return saved ? JSON.parse(saved) : [];
+        const parsed = saved ? JSON.parse(saved) : null;
+        
+        if (parsed && parsed.length > 0 && typeof parsed[0] === 'object' && parsed[0].name) {
+            // Fusionner les états par défaut avec les options sauvegardées (qtyRequired)
+            return defaultStates.map(defaultState => {
+                const savedState = parsed.find(s => s.name === defaultState.name);
+                return savedState ? { ...defaultState, qtyRequired: savedState.qtyRequired } : defaultState;
+            });
+        }
+        
+        // Forcer les nouveaux états
+        localStorage.setItem('inventoryStates', JSON.stringify(defaultStates));
+        return defaultStates;
     });
     const [processParameters, setProcessParameters] = useState(() => {
         const saved = localStorage.getItem('processParameters');
@@ -5263,24 +6012,13 @@ const App = () => {
             }
         }
         
-        // Si l'inventaire existe et a des états valides, le garder
+        // Si l'inventaire existe, le garder
         if (parsedInventory && parsedInventory.length > 0) {
             return parsedInventory;
         }
         
-        // Générer un inventaire simulé utilisant les états configurés
-        const simulatedInventory = [
-            { stockNo: 'STK-001', wood: 'Chêne', grade: 'Select', client: 'Client A', qty: 2500, location: 'A1', state: availableStates[0] || '' },
-            { stockNo: 'STK-002', wood: 'Érable', grade: 'Authentic', client: 'Client B', qty: 1850, location: 'B3', state: availableStates[1] || availableStates[0] || '' },
-            { stockNo: 'STK-003', wood: 'Pin', grade: 'Naturel', client: 'Client C', qty: 3200, location: 'A5', state: availableStates[2] || availableStates[0] || '' },
-            { stockNo: 'STK-004', wood: 'Hêtre', grade: 'Select', client: 'Client D', qty: 1750, location: 'C2', state: availableStates[0] || '' },
-            { stockNo: 'STK-005', wood: 'Sapin', grade: 'Naturel', client: 'Client E', qty: 2800, location: 'B1', state: availableStates[3] || availableStates[0] || '' },
-            { stockNo: 'STK-006', wood: 'Merisier', grade: 'Authentic', client: 'Client F', qty: 1450, location: 'A3', state: availableStates[4] || availableStates[0] || '' },
-            { stockNo: 'STK-007', wood: 'Noyer', grade: 'Select', client: 'Client G', qty: 2100, location: 'C5', state: availableStates[1] || availableStates[0] || '' },
-            { stockNo: 'STK-008', wood: 'Frêne', grade: 'Authentic', client: 'Client H', qty: 2650, location: 'B2', state: availableStates[5] || availableStates[0] || '' }
-        ];
-        
-        return simulatedInventory;
+        // Retourner un inventaire vide
+        return [];
     });
 
     // Persist
@@ -5293,6 +6031,192 @@ const App = () => {
     useEffect(() => { localStorage.setItem('productCodes', JSON.stringify(productCodes)); }, [productCodes]);
     useEffect(() => { localStorage.setItem('processCodes', JSON.stringify(processCodes)); }, [processCodes]);
     useEffect(() => { localStorage.setItem('processParameters', JSON.stringify(processParameters)); }, [processParameters]);
+
+    // Mettre à jour les états selon les catégories pour les produits existants
+    useEffect(() => {
+        const hasItemsToUpdate109 = inventory.some(item => item.categorie === '109' && item.state !== 'Brut baker');
+        if (hasItemsToUpdate109) {
+            setInventory(prev => prev.map(item =>
+                item.categorie === '109' ? { ...item, state: 'Brut baker' } : item
+            ));
+        }
+    }, []);
+
+    // Assigner des quantités aléatoires (100-3000) aux catégories 15, 10, 109 si qty est 0 ou non définie
+    useEffect(() => {
+        const categoriesToUpdate = ['15', '10', '109'];
+        const hasItemsToUpdateQty = inventory.some(item => 
+            categoriesToUpdate.includes(item.categorie) && (!item.qty || item.qty === 0)
+        );
+        if (hasItemsToUpdateQty) {
+            setInventory(prev => prev.map(item => {
+                if (categoriesToUpdate.includes(item.categorie) && (!item.qty || item.qty === 0)) {
+                    const randomQty = Math.floor(Math.random() * (3000 - 100 + 1)) + 100;
+                    return { ...item, qty: randomQty };
+                }
+                return item;
+            }));
+        }
+    }, []);
+
+    useEffect(() => {
+        const hasItemsToUpdate10 = inventory.some(item => item.categorie === '10' && item.state !== 'Brut vert');
+        if (hasItemsToUpdate10) {
+            setInventory(prev => prev.map(item =>
+                item.categorie === '10' ? { ...item, state: 'Brut vert' } : item
+            ));
+        }
+    }, []);
+
+    // Assigner des localisations aléatoires (A1 à F10) aux items sans localisation
+    useEffect(() => {
+        const hasItemsWithoutLocation = inventory.some(item => !item.location || item.location === '');
+        if (hasItemsWithoutLocation) {
+            const generateRandomLocation = () => {
+                const letters = ['A', 'B', 'C', 'D', 'E', 'F'];
+                const numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+                const letter = letters[Math.floor(Math.random() * letters.length)];
+                const number = numbers[Math.floor(Math.random() * numbers.length)];
+                return `${letter}${number}`;
+            };
+            
+            setInventory(prev => prev.map(item => 
+                !item.location || item.location === '' 
+                    ? { ...item, location: generateRandomLocation() } 
+                    : item
+            ));
+        }
+    }, []);
+
+    // Catégorie 23 = REV. Exterieur
+    useEffect(() => {
+        const hasItemsToUpdate23 = inventory.some(item => item.categorie === '23' && item.state !== 'REV. Exterieur');
+        if (hasItemsToUpdate23) {
+            setInventory(prev => prev.map(item =>
+                item.categorie === '23' ? { ...item, state: 'REV. Exterieur' } : item
+            ));
+        }
+    }, []);
+
+    // Catégorie 106 = Ébénisterie
+    useEffect(() => {
+        const hasItemsToUpdate106 = inventory.some(item => item.categorie === '106' && item.state !== 'Ébénisterie');
+        if (hasItemsToUpdate106) {
+            setInventory(prev => prev.map(item =>
+                item.categorie === '106' ? { ...item, state: 'Ébénisterie' } : item
+            ));
+        }
+    }, []);
+
+    // Catégorie 18 = Plancher
+    useEffect(() => {
+        const hasItemsToUpdate18 = inventory.some(item => item.categorie === '18' && item.state !== 'Plancher');
+        if (hasItemsToUpdate18) {
+            setInventory(prev => prev.map(item =>
+                item.categorie === '18' ? { ...item, state: 'Plancher' } : item
+            ));
+        }
+    }, []);
+
+    // Mettre à jour l'essence selon la description (CEDRE D'ALASKA, CEDRE BLANC, CEDRE ROUGE, PIN BLANC, PIN JAUNE, PIN ROUGE, PEUPLIER JAUNE, PEUPLIER, EPINETTE)
+    useEffect(() => {
+        const hasItemsToUpdate = inventory.some(item => 
+            item.description && (
+                (item.description.toUpperCase().includes("CEDRE D'ALASKA") && item.wood !== "CEDRE D'ALASKA") ||
+                (item.description.toUpperCase().includes("CEDRE BLANC") && item.wood !== "CEDRE BLANC") ||
+                (item.description.toUpperCase().includes("CEDRE ROUGE") && item.wood !== "CEDRE ROUGE") ||
+                (item.description.toUpperCase().includes("PIN BLANC") && item.wood !== "PIN BLANC") ||
+                (item.description.toUpperCase().includes("PIN JAUNE") && item.wood !== "PIN JAUNE") ||
+                (item.description.toUpperCase().includes("PIN ROUGE") && item.wood !== "PIN ROUGE") ||
+                (item.description.toUpperCase().includes("MELEZE") && item.wood !== "MELEZE") ||
+                (item.description.toUpperCase().includes("PEUPLIER JAUNE") && item.wood !== "PEUPLIER JAUNE") ||
+                (item.description.toUpperCase().includes("PEUPLIER") && !item.description.toUpperCase().includes("PEUPLIER JAUNE") && item.wood !== "PEUPLIER") ||
+                (item.description.toUpperCase().includes("EPINETTE") && item.wood !== "EPINETTE")
+            )
+        );
+        if (hasItemsToUpdate) {
+            setInventory(prev => prev.map(item => {
+                if (item.description && item.description.toUpperCase().includes("CEDRE D'ALASKA")) {
+                    return { ...item, wood: "CEDRE D'ALASKA" };
+                }
+                if (item.description && item.description.toUpperCase().includes("CEDRE BLANC")) {
+                    return { ...item, wood: "CEDRE BLANC" };
+                }
+                if (item.description && item.description.toUpperCase().includes("CEDRE ROUGE")) {
+                    return { ...item, wood: "CEDRE ROUGE" };
+                }
+                if (item.description && item.description.toUpperCase().includes("PIN BLANC")) {
+                    return { ...item, wood: "PIN BLANC" };
+                }
+                if (item.description && item.description.toUpperCase().includes("PIN JAUNE")) {
+                    return { ...item, wood: "PIN JAUNE" };
+                }
+                if (item.description && item.description.toUpperCase().includes("PIN ROUGE")) {
+                    return { ...item, wood: "PIN ROUGE" };
+                }
+                if (item.description && item.description.toUpperCase().includes("MELEZE")) {
+                    return { ...item, wood: "MELEZE" };
+                }
+                if (item.description && item.description.toUpperCase().includes("PEUPLIER JAUNE")) {
+                    return { ...item, wood: "PEUPLIER JAUNE" };
+                }
+                if (item.description && item.description.toUpperCase().includes("PEUPLIER")) {
+                    return { ...item, wood: "PEUPLIER" };
+                }
+                if (item.description && item.description.toUpperCase().includes("EPINETTE")) {
+                    return { ...item, wood: "EPINETTE" };
+                }
+                return item;
+            }));
+        }
+    }, []);
+
+    useEffect(() => {
+        const hasItemsToUpdateBrut = inventory.some(item => item.state && item.state.toUpperCase() === 'BRUT');
+        if (hasItemsToUpdateBrut) {
+            setInventory(prev => prev.map(item =>
+                item.state && item.state.toUpperCase() === 'BRUT' 
+                    ? { ...item, state: 'Brut Sec', categorie: '15' } 
+                    : item
+            ));
+        }
+    }, []);
+
+    // Nettoyage catégorie 106 - garder 20 produits aléatoires
+    useEffect(() => {
+        const cleanupDone = localStorage.getItem('cat106CleanupDone');
+        if (cleanupDone) return;
+        
+        const cat106Items = inventory.filter(item => item.categorie === '106');
+        if (cat106Items.length > 20) {
+            // Mélanger et garder 20 aléatoires
+            const shuffled = [...cat106Items].sort(() => Math.random() - 0.5);
+            const toKeep = new Set(shuffled.slice(0, 20).map(item => item.stockNo));
+            const toRemove = cat106Items.filter(item => !toKeep.has(item.stockNo)).map(item => item.stockNo);
+            
+            setInventory(prev => prev.filter(item => item.categorie !== '106' || toKeep.has(item.stockNo)));
+            localStorage.setItem('cat106CleanupDone', 'true');
+            console.log(`Catégorie 106: ${toRemove.length} produits supprimés, 20 conservés`);
+        }
+    }, []);
+
+    // Nettoyage catégorie 23 - garder 20 produits aléatoires
+    useEffect(() => {
+        const cleanupDone = localStorage.getItem('cat23CleanupDone');
+        if (cleanupDone) return;
+        
+        const cat23Items = inventory.filter(item => item.categorie === '23');
+        if (cat23Items.length > 20) {
+            // Mélanger et garder 20 aléatoires
+            const shuffled = [...cat23Items].sort(() => Math.random() - 0.5);
+            const toKeep = new Set(shuffled.slice(0, 20).map(item => item.stockNo));
+            const toRemove = cat23Items.filter(item => !toKeep.has(item.stockNo)).map(item => item.stockNo);
+            
+            setInventory(prev => prev.filter(item => item.categorie !== '23' || toKeep.has(item.stockNo)));
+            localStorage.setItem('cat23CleanupDone', 'true');
+            console.log(`Catégorie 23: ${toRemove.length} produits supprimés, 20 conservés`);
+        }
+    }, []);
 
     // Listen for cross-tab updates (Sync changes from Station tabs)
     useEffect(() => {
@@ -5313,10 +6237,10 @@ const App = () => {
 
     const addBatch = (batch) => {
         setProductionData(prev => {
-             // Calculate ID safely ignoring NaNs
+             // Calculate ID safely ignoring NaNs (commence à 10000)
              const ids = prev.map(p => parseInt(p.id)).filter(n => !isNaN(n));
-             const maxId = ids.length > 0 ? Math.max(...ids) : 999;
-             const id = maxId < 1000 ? 1000 : maxId + 1;
+             const maxId = ids.length > 0 ? Math.max(...ids) : 9999;
+             const id = maxId < 10000 ? 10000 : maxId + 1;
              
              // Create new array with new item at TOP
              const newData = [{...batch, id}, ...prev];
@@ -5813,7 +6737,7 @@ const App = () => {
                 </div>
                 <main className="mt-16 p-8">
                     {activeTab === 'dashboard' && <DashboardView t={t} productionData={productionData} customProcesses={customProcesses} woodTreatments={woodTreatments} />}
-                    {activeTab === 'production' && <ProductionView key="production" t={t} productionData={productionData} assignStation={assignStation} updateJobStatus={updateJobStatus} deleteBatch={deleteBatch} customProcesses={customProcesses} woodTreatments={woodTreatments} stationConfig={stationConfig} inventory={inventory} deductFromInventory={deductFromInventory} />}
+                    {activeTab === 'production' && <ProductionView key="production" t={t} productionData={productionData} assignStation={assignStation} updateJobStatus={updateJobStatus} deleteBatch={deleteBatch} customProcesses={customProcesses} woodTreatments={woodTreatments} stationConfig={stationConfig} inventory={inventory} deductFromInventory={deductFromInventory} inventoryStates={inventoryStates} />}
                     {activeTab === 'inventory' && <InventoryView t={t} inventory={inventory} setInventory={setInventory} />}
                     {activeTab === 'rawWood' && <div className="p-12 text-center text-gray-400">Le tableau de traitement inventaire brut est désactivé.</div>}
                     {activeTab === 'dataEntry' && <DataEntryView t={t} addBatch={addBatch} setActiveTab={setActiveTab} customProcesses={customProcesses} woodTreatments={woodTreatments} processParameters={processParameters} />}
