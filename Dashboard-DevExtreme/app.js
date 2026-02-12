@@ -19,6 +19,8 @@ const translations = {
         totalProduction: "Total Production",
         efficiency: "Efficiency",
         activeErrors: "Active Errors",
+        annualAlerts: "Annual Alerts",
+        vsLastYear: "vs last year",
         revenue: "Revenue",
         vsLastMonth: "vs last month",
         productionTrend: "Daily Production Evolution",
@@ -194,6 +196,8 @@ const translations = {
         totalProduction: "Production Totale",
         efficiency: "Efficacité",
         activeErrors: "Alerte Mensuel",
+        annualAlerts: "Alertes Annuelles",
+        vsLastYear: "vs année précédente",
         revenue: "Revenu mensuel",
         vsLastMonth: "vs mois dernier",
         productionTrend: "Évolution de la production journalière",
@@ -366,8 +370,7 @@ const Barcode = ({ value }) => {
     };
 
     const encoded = `*${value}*`.split('').map(c => code39[c] || '101010101').join('0');
-    
-    console.log('filteredData for DataGrid (avant render):', filteredData);
+
     return (
         <svg viewBox={`0 0 ${encoded.length} 100`} className="w-full h-full" preserveAspectRatio="none">
             {encoded.split('').map((bit, i) => (
@@ -1131,10 +1134,14 @@ const Header = ({ t, lang, setLang }) => (
     </header>
 );
 
-const StatCard = ({ title, value, t }) => (
-    <div className="bg-white p-6 rounded shadow">
-        <h3 className="text-gray-500 text-sm">{title}</h3>
-        <p className="text-2xl font-bold">{value}</p>
+const StatCard = ({ title, value, change, icon, colorClass, t }) => (
+    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+        <div className="flex items-center justify-between mb-2">
+            <h3 className="text-gray-500 text-sm font-medium">{title}</h3>
+            {icon && <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${colorClass || 'bg-gray-100 text-gray-400'}`}><i className={`fa-solid ${icon}`}></i></div>}
+        </div>
+        <p className="text-2xl font-bold text-gray-800">{value}</p>
+        {change && <p className={`text-xs font-semibold mt-1 ${change.startsWith('+') ? 'text-green-500' : change.startsWith('-') ? 'text-red-500' : 'text-gray-400'}`}>{change} {t.vsLastMonth || ''}</p>}
     </div>
 );
 
@@ -1259,6 +1266,22 @@ const DashboardView = ({ t, productionData, customProcesses = [], woodTreatments
         : (errorsCurrentMonth > 0 ? "+100%" : "0%");
     const errorsChangeLabel = errorsDiff >= 0 ? "+" + errorsDiff : errorsDiff.toString();
 
+    // Calcul des alertes annuelles vs année précédente
+    const alertsCurrentYear = productionData.filter(item => {
+        if (!item.issueTimestamp) return false;
+        const d = new Date(item.issueTimestamp);
+        return d.getFullYear() === currentYear;
+    }).length;
+
+    const alertsPrevYear = productionData.filter(item => {
+        if (!item.issueTimestamp) return false;
+        const d = new Date(item.issueTimestamp);
+        return d.getFullYear() === currentYear - 1;
+    }).length;
+
+    const alertsYearDiff = alertsCurrentYear - alertsPrevYear;
+    const alertsYearChangeLabel = alertsYearDiff >= 0 ? "+" + alertsYearDiff : alertsYearDiff.toString();
+
     // Calcul du revenu basé sur la production (1.60$ par PC)
     const pricePerPC = 1.60;
     const revenueCurrentMonth = totalQtyCurrentMonth * pricePerPC;
@@ -1309,10 +1332,11 @@ const DashboardView = ({ t, productionData, customProcesses = [], woodTreatments
             </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
             <StatCard t={t} title={t.totalProduction} value={totalQtyCurrentMonth.toString() + " PC"} change={(prodDiff >= 0 ? "+" : "") + prodDiff + " PC"} icon="fa-box" colorClass="bg-[#51aff7]/10 text-[#51aff7]" />
             <StatCard t={t} title={t.efficiency} value={efficiencyLabel} change="" icon="fa-tachometer-alt" colorClass={efficiencyPct >= 0 ? "bg-green-100 text-green-600" : "bg-red-100 text-red-600"} />
             <StatCard t={t} title={t.activeErrors} value={errorsCurrentMonth.toString()} change={errorsChangeLabel} icon="fa-exclamation-triangle" colorClass={errorsCurrentMonth > 0 ? "bg-red-100 text-red-600" : "bg-gray-100 text-gray-400"} />
+            <StatCard t={t} title={t.annualAlerts || "Alertes Annuelles"} value={alertsCurrentYear.toString()} change={alertsYearChangeLabel} icon="fa-calendar-xmark" colorClass={alertsCurrentYear > alertsPrevYear ? "bg-orange-100 text-orange-600" : "bg-green-100 text-green-600"} />
             <StatCard t={t} title={t.revenue} value={revenueLabel} change={revenueChangeLabel} icon="fa-dollar-sign" colorClass="bg-purple-100 text-purple-600" />
         </div>
         
@@ -2870,224 +2894,657 @@ const ProductionView = ({ t, productionData, assignStation, updateJobStatus, del
 };
 
 
-const DataEntryView = ({ t, addBatch, setActiveTab, customProcesses = [], woodTreatments = [], processParameters = {} }) => {
-    const [formData, setFormData] = useState({
-        client: '',
-        txn: '',
-        qty: '',
-        wood: '',
-        grade: '',
-        date: '',
-        width: '',
-        thickness: '',
-        stainColor: '',
-        paintColor: ''
+const DataEntryView = ({ t, addBatch, setActiveTab, customProcesses = [], woodTreatments = [], processParameters = {}, inventory = [] }) => {
+    // Saved invoices
+    const [savedInvoices, setSavedInvoices] = useState(() => {
+        const saved = localStorage.getItem('invoices');
+        return saved ? JSON.parse(saved) : [];
+    });
+    useEffect(() => { localStorage.setItem('invoices', JSON.stringify(savedInvoices)); }, [savedInvoices]);
+
+    // Invoice number auto-generated
+    const generateInvoiceNo = () => {
+        const existing = savedInvoices.map(inv => {
+            const m = (inv.invoiceNo || '').match(/FAC-(\d+)/);
+            return m ? parseInt(m[1], 10) : 0;
+        });
+        const max = existing.length > 0 ? Math.max(...existing) : 0;
+        return 'FAC-' + String(max + 1).padStart(5, '0');
+    };
+
+    // Client info
+    const [clientInfo, setClientInfo] = useState({
+        name: '',
+        address: '',
+        city: '',
+        postalCode: '',
+        phone: '',
+        email: '',
+        deliveryAddress: '',
+        deliveryCity: '',
+        deliveryPostalCode: '',
+        deliveryNotes: ''
     });
 
-    const [rawFormData, setRawFormData] = useState({
-        orderNo: '',
-        supplier: '',
-        species: '',
-        qtyPMP: '',
-        process: ''
-    });
+    const [invoiceNo, setInvoiceNo] = useState(generateInvoiceNo);
+    const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split('T')[0]);
+    const [invoiceNotes, setInvoiceNotes] = useState('');
 
-    const [steps, setSteps] = useState([]);
+    // Invoice lines
+    const emptyLine = { stockNo: '', productCode: '', description: '', qtyVendu: '', qtyExp: '', um: 'PC', prix: '', escompte: '', statut: 'En attente' };
+    const [lines, setLines] = useState(() => Array.from({ length: 10 }, () => ({ ...emptyLine })));
 
-    const toggleStep = (procId) => {
-        if (steps.includes(procId)) {
-            setSteps(steps.filter(s => s !== procId));
-        } else {
-            const newSteps = [...steps, procId];
-            newSteps.sort((a,b) => {
-                const idxA = processOrder.findIndex(p => p.id === a);
-                const idxB = processOrder.findIndex(p => p.id === b);
-                return idxA - idxB;
-            });
-            setSteps(newSteps);
-        }
+    // Document type (Soumission, Bon de vente, Facture)
+    const docTypeOptions = ['Soumission', 'Bon de vente', 'Facture'];
+    const [docType, setDocType] = useState('Facture');
+
+    // Inventory search state per line
+    const [activeLineSearch, setActiveLineSearch] = useState(null);
+    const [lineSearch, setLineSearch] = useState('');
+    const [lineSearchFilter, setLineSearchFilter] = useState('');
+
+    const inputClass = "w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-[#51aff7] focus:border-transparent transition text-sm";
+    const labelClass = "block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide";
+    const thClass = "px-2 py-2 text-left text-xs font-bold text-gray-600 uppercase tracking-wider bg-gray-100 border-b-2 border-gray-300";
+
+    const updateLine = (index, field, value) => {
+        setLines(prev => prev.map((line, i) => {
+            if (i !== index) return line;
+            const updated = { ...line, [field]: value };
+            // Auto-calc Qté restante
+            const vendu = parseFloat(updated.qtyVendu) || 0;
+            const exp = parseFloat(updated.qtyExp) || 0;
+            updated.qtyRes = Math.max(0, vendu - exp);
+            // Auto-calc Prix vente
+            const prix = parseFloat(updated.prix) || 0;
+            const esc = parseFloat(updated.escompte) || 0;
+            updated.prixVente = (prix * (1 - esc / 100) * vendu).toFixed(2);
+            return updated;
+        }));
     };
 
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
+    const addLine = () => {
+        setLines(prev => [...prev, { ...emptyLine }]);
     };
 
-    const handleRawChange = (e) => {
-        const { name, value } = e.target;
-        setRawFormData(prev => ({ ...prev, [name]: value }));
+    const removeLine = (index) => {
+        if (lines.length <= 1) return;
+        setLines(prev => prev.filter((_, i) => i !== index));
     };
 
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        if(!formData.client || !formData.qty || steps.length === 0) {
-            alert("Veuillez remplir tous les champs obligatoires et sélectionner au moins un procédé.");
+    const selectInventoryForLine = (index, item) => {
+        updateLine(index, 'stockNo', item.stockNo);
+        setLines(prev => prev.map((line, i) => {
+            if (i !== index) return line;
+            return {
+                ...line,
+                stockNo: item.stockNo,
+                productCode: item.productCode || '',
+                description: (item.description || item.wood || '') + (item.grade ? ' (' + item.grade + ')' : ''),
+                um: item.unite || 'PC',
+                prix: ''
+            };
+        }));
+        setActiveLineSearch(null);
+        setLineSearch('');
+        setLineSearchFilter('');
+    };
+
+    // Totals
+    const sousTotal = lines.reduce((sum, l) => sum + (parseFloat(l.prixVente) || 0), 0);
+    const tps = sousTotal * 0.05;
+    const tvq = sousTotal * 0.09975;
+    const total = sousTotal + tps + tvq;
+
+    const handleSaveInvoice = () => {
+        if (!clientInfo.name) {
+            alert('Veuillez entrer le nom du client.');
             return;
         }
-
-        // Vérifier les paramètres obligatoires pour chaque procédé sélectionné
-        for (const step of steps) {
-            const params = processParameters[step] || [];
-            for (const param of params) {
-                if (param.required && !formData[param.name]) {
-                    alert(`Le paramètre "${param.label}" est obligatoire pour le procédé sélectionné.`);
-                    return;
-                }
-            }
+        if (lines.every(l => !l.stockNo && !l.description)) {
+            alert('Veuillez ajouter au moins une ligne à la facture.');
+            return;
         }
-
-        const newBatch = {
-            ...formData,
-            steps: steps,
-            process: steps[0],
-            stepIndex: 0,
-            status: 'planning', // Explicitly set status
-            progress: 0 
+        const invoice = {
+            invoiceNo,
+            docType,
+            date: invoiceDate,
+            client: { ...clientInfo },
+            lines: lines.filter(l => l.stockNo || l.description),
+            notes: invoiceNotes,
+            sousTotal: sousTotal.toFixed(2),
+            tps: tps.toFixed(2),
+            tvq: tvq.toFixed(2),
+            total: total.toFixed(2),
+            createdAt: new Date().toISOString()
         };
-
-        addBatch(newBatch);
-        
-        // Use timeout to ensure state propagation before switch
-        setTimeout(() => setActiveTab('production'), 50);
-        
-        setFormData({ client: '', txn: '', qty: '', wood: '', grade: '', date: '', width: '', thickness: '', stainColor: '', paintColor: '' });
-        setSteps([]);
+        setSavedInvoices(prev => [invoice, ...prev]);
+        DevExpress.ui.notify(docType + ' ' + invoiceNo + ' sauvegardée avec succès', 'success', 3000);
+        // Reset
+        setClientInfo({ name: '', address: '', city: '', postalCode: '', phone: '', email: '', deliveryAddress: '', deliveryCity: '', deliveryPostalCode: '', deliveryNotes: '' });
+        setLines(Array.from({ length: 10 }, () => ({ ...emptyLine })));
+        setInvoiceNotes('');
+        setInvoiceNo(generateInvoiceNo());
+        setInvoiceDate(new Date().toISOString().split('T')[0]);
+        setDocType('Facture');
     };
 
-    const handleRawSubmit = (e) => {
-        e.preventDefault();
-        
-        // DEBUG: Verify Data Capture
-        console.log("Submitting Raw Wood:", rawFormData);
-
-        if(!rawFormData.orderNo) {
-            alert("Order Number is required.");
-            return;
-        }
-
-        if(!rawFormData.process) {
-            alert("Veuillez sélectionner une étape de traitement.");
-            return;
-        }
-
-        const newRawBatch = {
-            client: rawFormData.supplier,
-            txn: rawFormData.orderNo,
-            qty: rawFormData.qtyPMP ? parseInt(rawFormData.qtyPMP) : 0, 
-            qtyPMP: rawFormData.qtyPMP,
-            wood: rawFormData.species,
-            species: rawFormData.species,
-            process: rawFormData.process,
-            status: 'planning',
-            station: null, 
-            progress: 0,
-            date: new Date().toLocaleDateString()
-        };
-        
-        // Alert to User (Temporary Debug)
-        // alert("Saving: " + JSON.stringify(newRawBatch));
-
-        addBatch(newRawBatch);
-
-        // Use timeout to allow state update
-        setTimeout(() => setActiveTab('rawWood'), 50);
-
-        setRawFormData({ orderNo: '', supplier: '', species: '', qtyPMP: '', process: '' });
+    const handlePrintInvoice = () => {
+        const oldTitle = document.title;
+        document.title = invoiceNo + '.pdf';
+        window.print();
+        setTimeout(() => document.title = oldTitle, 1000);
     };
-
-    const inputClass = "w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#51aff7] focus:border-transparent transition";
-    const labelClass = "block text-sm font-medium text-gray-700 mb-1";
 
     return (
-        <div className="max-w-4xl mx-auto space-y-8">
-            <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100">
-            <h2 className="text-2xl font-bold text-gray-800 mb-6">{t.enterDataTitle}</h2>
-            
-            <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <label className={labelClass}>{t.labelClient}</label>
-                        <input name="client" type="text" value={formData.client} onChange={handleChange} className={inputClass} placeholder="Ex: Acme Corp" required />
-                    </div>
-                    <div>
-                        <label className={labelClass}>{t.labelTxn}</label>
-                        <input name="txn" type="text" value={formData.txn} onChange={handleChange} className={inputClass} placeholder="Ex: TXN-123456" />
-                    </div>
-                    <div>
-                        <label className={labelClass}>{t.labelQty}</label>
-                        <input name="qty" type="number" value={formData.qty} onChange={handleChange} className={inputClass} placeholder="100" required />
-                    </div>
-                    <div>
-                        <label className={labelClass}>{t.labelWood}</label>
-                        <input name="wood" type="text" value={formData.wood} onChange={handleChange} className={inputClass} placeholder="Ex: All, Maple..." />
-                    </div>
-                    <div>
-                        <label className={labelClass}>Grade</label>
-                        <input name="grade" type="text" value={formData.grade} onChange={handleChange} className={inputClass} placeholder="Ex: Select, Authentic, Naturel..." />
-                    </div>
-                    <div>
-                        <label className={labelClass}>Largeur (pouces)</label>
-                        <input name="width" type="number" step="0.01" value={formData.width} onChange={handleChange} className={inputClass} placeholder="Ex: 3.5" />
-                    </div>
-                    <div>
-                        <label className={labelClass}>Épaisseur (pouces)</label>
-                        <input name="thickness" type="number" step="0.01" value={formData.thickness} onChange={handleChange} className={inputClass} placeholder="Ex: 0.75" />
-                    </div>
+        <div className="max-w-7xl mx-auto space-y-6 print:space-y-2 print:max-w-none">
+            {/* Inventory Search Modal */}
+            {activeLineSearch !== null && (
+                <div className="fixed inset-0 z-[80] bg-black/50 flex items-start justify-center pt-12 print:hidden" onClick={(e) => { if (e.target === e.currentTarget) setActiveLineSearch(null); }}>
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[85vh] flex flex-col m-4 overflow-hidden">
+                        {/* Modal Header */}
+                        <div className="p-5 border-b bg-gray-50 flex justify-between items-center rounded-t-2xl">
+                            <h2 className="text-lg font-bold text-gray-800">
+                                <i className="fa-solid fa-boxes-stacked mr-2 text-[#51aff7]"></i>
+                                Rechercher dans l'inventaire
+                                <span className="ml-2 text-sm font-normal text-gray-500">(Ligne {activeLineSearch + 1})</span>
+                            </h2>
+                            <button onClick={() => setActiveLineSearch(null)} className="text-gray-400 hover:text-red-500 text-xl transition">
+                                <i className="fa fa-times"></i>
+                            </button>
+                        </div>
 
-                    <div className="md:col-span-2">
-                        <label className={labelClass}>{t.labelProcess} (Sélection Multiple - Ordre Automatique)</label>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                            {[...processOrder, ...customProcesses].map(proc => (
-                                <button
-                                    key={proc.id}
-                                    type="button"
-                                    onClick={() => toggleStep(proc.id)}
-                                    className={`px-4 py-3 rounded-lg text-sm font-bold border transition text-left relative overflow-hidden ${
-                                        steps.includes(proc.id) 
-                                        ? 'bg-[#51aff7] text-white border-[#51aff7] shadow-lg shadow-blue-500/30' 
-                                        : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'
-                                    }`}
-                                >
-                                    <div className="flex justify-between items-center">
-                                        <span>{t[proc.id] || proc.label}</span>
-                                        {steps.includes(proc.id) && (
-                                            <span className="bg-white/20 px-2 rounded-full text-xs">
-                                                {steps.indexOf(proc.id) + 1}
-                                            </span>
-                                        )}
+                        {/* Search & Filters */}
+                        <div className="p-4 border-b bg-white flex gap-3 items-center">
+                            <div className="relative flex-1">
+                                <i className="fa fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                                <input
+                                    type="text"
+                                    value={lineSearch}
+                                    onChange={e => setLineSearch(e.target.value)}
+                                    placeholder="Rechercher par stock, produit, description, code produit, grade..."
+                                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#51aff7] focus:outline-none"
+                                    autoFocus
+                                    autoComplete="off"
+                                />
+                            </div>
+                            <select
+                                value={lineSearchFilter}
+                                onChange={e => setLineSearchFilter(e.target.value)}
+                                className="border border-gray-300 rounded-lg p-3 text-sm min-w-[160px] focus:ring-2 focus:ring-[#51aff7] focus:outline-none"
+                            >
+                                <option value="">Tous les états</option>
+                                {[...new Set(inventory.map(s => s.state).filter(Boolean))].sort().map(st => (
+                                    <option key={st} value={st}>{st}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {/* Results Count */}
+                        <div className="px-4 py-2 bg-gray-50 border-b text-xs text-gray-500 font-semibold">
+                            {(() => {
+                                const searchLower = (lineSearch || '').toLowerCase();
+                                const count = inventory.filter(s => {
+                                    if (lineSearchFilter && s.state !== lineSearchFilter) return false;
+                                    if (!searchLower) return true;
+                                    return (
+                                        (s.stockNo || '').toLowerCase().includes(searchLower) ||
+                                        (s.productCode || '').toLowerCase().includes(searchLower) ||
+                                        (s.wood || '').toLowerCase().includes(searchLower) ||
+                                        (s.description || '').toLowerCase().includes(searchLower) ||
+                                        (s.grade || '').toLowerCase().includes(searchLower) ||
+                                        (s.location || '').toLowerCase().includes(searchLower)
+                                    );
+                                }).length;
+                                return count + ' produit(s) trouvé(s)';
+                            })()}
+                        </div>
+
+                        {/* Results List */}
+                        <div className="flex-1 overflow-y-auto">
+                            {(() => {
+                                const searchLower = (lineSearch || '').toLowerCase();
+                                const filtered = inventory.filter(s => {
+                                    if (lineSearchFilter && s.state !== lineSearchFilter) return false;
+                                    if (!searchLower) return true;
+                                    return (
+                                        (s.stockNo || '').toLowerCase().includes(searchLower) ||
+                                        (s.productCode || '').toLowerCase().includes(searchLower) ||
+                                        (s.wood || '').toLowerCase().includes(searchLower) ||
+                                        (s.description || '').toLowerCase().includes(searchLower) ||
+                                        (s.grade || '').toLowerCase().includes(searchLower) ||
+                                        (s.location || '').toLowerCase().includes(searchLower)
+                                    );
+                                });
+                                if (filtered.length === 0) {
+                                    return (
+                                        <div className="p-12 text-center">
+                                            <i className="fa-solid fa-box-open text-5xl text-gray-300 mb-4"></i>
+                                            <p className="text-gray-400 font-semibold">Aucun produit trouvé</p>
+                                            <p className="text-gray-300 text-sm mt-1">Modifiez votre recherche ou vos filtres</p>
+                                        </div>
+                                    );
+                                }
+                                return filtered.slice(0, 100).map(s => (
+                                    <div
+                                        key={s.stockNo}
+                                        className="p-4 hover:bg-blue-50 cursor-pointer border-b last:border-b-0 transition group"
+                                        onClick={() => selectInventoryForLine(activeLineSearch, s)}
+                                    >
+                                        <div className="flex justify-between items-start">
+                                            <div className="flex-1">
+                                                <div className="flex items-center gap-3">
+                                                    <span className="font-bold text-[#51aff7] text-base">{s.stockNo}</span>
+                                                    {s.productCode && <span className="text-xs text-gray-500 font-mono bg-gray-100 px-2 py-0.5 rounded">{s.productCode}</span>}
+                                                </div>
+                                                {s.description && <div className="text-sm text-gray-700 mt-1">{s.description}</div>}
+                                                <div className="flex gap-2 mt-2 flex-wrap">
+                                                    {s.wood && <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded font-medium">{s.wood}</span>}
+                                                    {s.grade && <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded font-medium">{s.grade}</span>}
+                                                    {s.state && <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-medium">{s.state}</span>}
+                                                    {s.epaisseur && <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded">Ép: {s.epaisseur}</span>}
+                                                    {s.largeur && <span className="text-xs bg-pink-100 text-pink-700 px-2 py-0.5 rounded">Larg: {s.largeur}</span>}
+                                                    {s.location && <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded"><i className="fa fa-map-marker-alt mr-1"></i>{s.location}</span>}
+                                                </div>
+                                            </div>
+                                            <div className="text-right ml-4 flex flex-col items-end gap-2">
+                                                <span className="text-sm bg-green-100 text-green-700 px-3 py-1 rounded-lg font-bold">{s.qty} {s.unite || 'PC'}</span>
+                                                <span className="text-xs text-blue-500 font-semibold opacity-0 group-hover:opacity-100 transition">
+                                                    <i className="fa fa-arrow-right mr-1"></i>Sélectionner
+                                                </span>
+                                            </div>
+                                        </div>
                                     </div>
-                                </button>
-                            ))}
+                                ));
+                            })()}
+                        </div>
+
+                        {/* Modal Footer */}
+                        <div className="p-4 border-t bg-gray-50 flex justify-end rounded-b-2xl">
+                            <button
+                                onClick={() => setActiveLineSearch(null)}
+                                className="px-5 py-2.5 bg-gray-200 text-gray-700 font-bold rounded-lg hover:bg-gray-300 transition"
+                            >
+                                <i className="fa fa-times mr-2"></i>Fermer
+                            </button>
                         </div>
                     </div>
+                </div>
+            )}
 
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden print:shadow-none print:border-none">
+                {/* Invoice Header */}
+                <div className="bg-gray-800 text-white p-6 flex justify-between items-start print:bg-white print:text-black print:border-b-2 print:border-gray-800 print:pb-4">
                     <div>
-                        <label className={labelClass}>{t.labelDate}</label>
-                        <input name="date" type="date" value={formData.date} onChange={handleChange} className={inputClass} />
+                        <select
+                            value={docType}
+                            onChange={(e) => {
+                                const newType = e.target.value;
+                                if (newType !== docType) {
+                                    if (confirm(`Êtes-vous certain de vouloir changer le type de document à "${newType}" ?`)) {
+                                        setDocType(newType);
+                                    } else {
+                                        e.target.value = docType;
+                                    }
+                                }
+                            }}
+                            className="text-3xl font-black tracking-tight bg-gray-700 text-white rounded px-3 py-1 border-none cursor-pointer focus:ring-2 focus:ring-[#51aff7] focus:outline-none print:bg-white print:text-black print:border print:border-gray-300"
+                        >
+                            {docTypeOptions.map(opt => (
+                                <option key={opt} value={opt}>{opt.toUpperCase()}</option>
+                            ))}
+                        </select>
+                        <p className="text-gray-400 text-sm mt-1 print:text-gray-600">Surfagest Production</p>
+                    </div>
+                    <div className="text-right">
+                        <div className="text-sm text-gray-400 print:text-gray-600">No. Facture</div>
+                        <input
+                            type="text"
+                            value={invoiceNo}
+                            onChange={(e) => setInvoiceNo(e.target.value)}
+                            className="bg-gray-700 text-white text-xl font-bold text-right rounded px-3 py-1 w-48 print:bg-white print:text-black print:border print:border-gray-300"
+                        />
+                        <div className="mt-2">
+                            <div className="text-sm text-gray-400 print:text-gray-600">Date</div>
+                            <input
+                                type="date"
+                                value={invoiceDate}
+                                onChange={(e) => setInvoiceDate(e.target.value)}
+                                className="bg-gray-700 text-white text-right rounded px-3 py-1 w-48 print:bg-white print:text-black print:border print:border-gray-300"
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Client + Delivery Info */}
+                <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6 border-b border-gray-200 print:p-4">
+                    {/* Client Info */}
+                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                        <h3 className="text-sm font-bold text-blue-800 uppercase tracking-wider mb-3">
+                            <i className="fa-solid fa-user mr-2"></i>Information Client
+                        </h3>
+                        <div className="space-y-2">
+                            <div>
+                                <label className={labelClass}>Nom / Entreprise <span className="text-red-500">*</span></label>
+                                <input type="text" value={clientInfo.name} onChange={e => setClientInfo({...clientInfo, name: e.target.value})} className={inputClass} placeholder="Ex: Constructions ABC Inc." />
+                            </div>
+                            <div>
+                                <label className={labelClass}>Adresse</label>
+                                <input type="text" value={clientInfo.address} onChange={e => setClientInfo({...clientInfo, address: e.target.value})} className={inputClass} placeholder="123 Rue Principale" />
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label className={labelClass}>Ville</label>
+                                    <input type="text" value={clientInfo.city} onChange={e => setClientInfo({...clientInfo, city: e.target.value})} className={inputClass} placeholder="Saint-Georges" />
+                                </div>
+                                <div>
+                                    <label className={labelClass}>Code Postal</label>
+                                    <input type="text" value={clientInfo.postalCode} onChange={e => setClientInfo({...clientInfo, postalCode: e.target.value})} className={inputClass} placeholder="G5Y 5C3" />
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label className={labelClass}>Téléphone</label>
+                                    <input type="tel" value={clientInfo.phone} onChange={e => setClientInfo({...clientInfo, phone: e.target.value})} className={inputClass} placeholder="(418) 555-0123" />
+                                </div>
+                                <div>
+                                    <label className={labelClass}>Courriel</label>
+                                    <input type="email" value={clientInfo.email} onChange={e => setClientInfo({...clientInfo, email: e.target.value})} className={inputClass} placeholder="client@email.com" />
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
-                    {steps.includes('procStaining') && (
-                        <div>
-                            <label className={labelClass}>{t.labelStain}</label>
-                            <input name="stainColor" type="text" value={formData.stainColor} onChange={handleChange} className={inputClass} placeholder="Ex: Golden Oak" />
+                    {/* Delivery Info */}
+                    <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                        <div className="flex justify-between items-center mb-3">
+                            <h3 className="text-sm font-bold text-green-800 uppercase tracking-wider">
+                                <i className="fa-solid fa-truck mr-2"></i>Adresse de Livraison
+                            </h3>
+                            <button
+                                type="button"
+                                onClick={() => setClientInfo(prev => ({
+                                    ...prev,
+                                    deliveryAddress: prev.address,
+                                    deliveryCity: prev.city,
+                                    deliveryPostalCode: prev.postalCode
+                                }))}
+                                className="text-xs text-green-600 hover:text-green-800 font-bold underline"
+                            >
+                                <i className="fa fa-copy mr-1"></i>Même que client
+                            </button>
                         </div>
-                    )}
-                    {steps.includes('procPainting') && (
-                        <div>
-                            <label className={labelClass}>{t.labelPaint}</label>
-                            <input name="paintColor" type="text" value={formData.paintColor} onChange={handleChange} className={inputClass} placeholder="Ex: RAL 9010" />
+                        <div className="space-y-2">
+                            <div>
+                                <label className={labelClass}>Adresse de livraison</label>
+                                <input type="text" value={clientInfo.deliveryAddress} onChange={e => setClientInfo({...clientInfo, deliveryAddress: e.target.value})} className={inputClass} placeholder="456 Boulevard Industriel" />
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label className={labelClass}>Ville</label>
+                                    <input type="text" value={clientInfo.deliveryCity} onChange={e => setClientInfo({...clientInfo, deliveryCity: e.target.value})} className={inputClass} placeholder="Saint-Georges" />
+                                </div>
+                                <div>
+                                    <label className={labelClass}>Code Postal</label>
+                                    <input type="text" value={clientInfo.deliveryPostalCode} onChange={e => setClientInfo({...clientInfo, deliveryPostalCode: e.target.value})} className={inputClass} placeholder="G5Y 5C3" />
+                                </div>
+                            </div>
+                            <div>
+                                <label className={labelClass}>Notes de livraison</label>
+                                <input type="text" value={clientInfo.deliveryNotes} onChange={e => setClientInfo({...clientInfo, deliveryNotes: e.target.value})} className={inputClass} placeholder="Ex: Quai #3, livrer avant 14h..." />
+                            </div>
                         </div>
-                    )}
+                    </div>
                 </div>
 
-                <div className="pt-4 flex justify-end">
-                    <button type="submit" className="px-6 py-3 bg-[#51aff7] text-white font-bold rounded-lg shadow hover:bg-blue-600 transition transform hover:-translate-y-1">
-                        <i className="fa-solid fa-plus-circle mr-2"></i>
-                        {t.btnAddData}
-                    </button>
+                {/* Invoice Lines Table */}
+                <div className="p-6 print:p-4">
+                    <div className="flex justify-between items-center mb-3">
+                        <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wider">
+                            <i className="fa-solid fa-list mr-2"></i>Lignes de Facture
+                        </h3>
+                        <button
+                            type="button"
+                            onClick={addLine}
+                            className="px-3 py-1 bg-[#51aff7] text-white text-sm font-bold rounded hover:bg-blue-600 transition print:hidden"
+                        >
+                            <i className="fa fa-plus mr-1"></i>Ajouter une ligne
+                        </button>
+                    </div>
+
+                    <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                        <table className="w-full text-sm">
+                            <thead>
+                                <tr>
+                                    <th className={thClass} style={{width: '160px'}}>Code / Stock</th>
+                                    <th className={thClass}>Description</th>
+                                    <th className={thClass} style={{width: '90px'}}>Qté vendu</th>
+                                    <th className={thClass} style={{width: '90px'}}>Qté exp</th>
+                                    <th className={thClass} style={{width: '80px'}}>Qté res</th>
+                                    <th className={thClass} style={{width: '65px'}}>UM</th>
+                                    <th className={thClass} style={{width: '90px'}}>Prix</th>
+                                    <th className={thClass} style={{width: '70px'}}>Esc %</th>
+                                    <th className={thClass} style={{width: '100px'}}>Prix vente</th>
+                                    <th className={thClass} style={{width: '120px'}}>Statut</th>
+                                    <th className={`${thClass} print:hidden`} style={{width: '40px'}}></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {lines.map((line, idx) => (
+                                    <tr key={idx} className="border-b border-gray-100 hover:bg-gray-50 transition">
+                                        {/* Code / Stock with inventory search */}
+                                        <td className="px-2 py-1">
+                                            <div className="flex gap-1">
+                                                <input
+                                                    type="text"
+                                                    value={line.stockNo}
+                                                    onChange={e => updateLine(idx, 'stockNo', e.target.value)}
+                                                    placeholder="No. stock..."
+                                                    className="w-full p-1.5 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-blue-400 focus:outline-none"
+                                                    autoComplete="off"
+                                                    readOnly
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => { setActiveLineSearch(idx); setLineSearch(''); setLineSearchFilter(''); }}
+                                                    className="px-1.5 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 text-xs print:hidden"
+                                                    title="Rechercher dans l'inventaire"
+                                                >
+                                                    <i className="fa fa-search"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                        {/* Description */}
+                                        <td className="px-2 py-1">
+                                            <input type="text" value={line.description} onChange={e => updateLine(idx, 'description', e.target.value)} className="w-full p-1.5 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-blue-400 focus:outline-none" placeholder="Description du produit" />
+                                        </td>
+                                        {/* Qté vendu */}
+                                        <td className="px-2 py-1">
+                                            <input type="number" value={line.qtyVendu} onChange={e => updateLine(idx, 'qtyVendu', e.target.value)} className="w-full p-1.5 border border-gray-300 rounded text-sm text-right focus:ring-1 focus:ring-blue-400 focus:outline-none" placeholder="0" min="0" />
+                                        </td>
+                                        {/* Qté exp */}
+                                        <td className="px-2 py-1">
+                                            <input type="number" value={line.qtyExp} onChange={e => updateLine(idx, 'qtyExp', e.target.value)} className="w-full p-1.5 border border-gray-300 rounded text-sm text-right focus:ring-1 focus:ring-blue-400 focus:outline-none" placeholder="0" min="0" />
+                                        </td>
+                                        {/* Qté res (calculated) */}
+                                        <td className="px-2 py-1 text-center">
+                                            <span className={`font-bold text-sm ${(line.qtyRes || 0) > 0 ? 'text-orange-600' : 'text-green-600'}`}>
+                                                {line.qtyRes || 0}
+                                            </span>
+                                        </td>
+                                        {/* UM */}
+                                        <td className="px-2 py-1">
+                                            <input type="text" value={line.um} onChange={e => updateLine(idx, 'um', e.target.value)} className="w-full p-1.5 border border-gray-300 rounded text-sm text-center focus:ring-1 focus:ring-blue-400 focus:outline-none" placeholder="PC" />
+                                        </td>
+                                        {/* Prix */}
+                                        <td className="px-2 py-1">
+                                            <input type="number" value={line.prix} onChange={e => updateLine(idx, 'prix', e.target.value)} step="0.01" className="w-full p-1.5 border border-gray-300 rounded text-sm text-right focus:ring-1 focus:ring-blue-400 focus:outline-none" placeholder="0.00" min="0" />
+                                        </td>
+                                        {/* Escompte */}
+                                        <td className="px-2 py-1">
+                                            <input type="number" value={line.escompte} onChange={e => updateLine(idx, 'escompte', e.target.value)} step="0.1" className="w-full p-1.5 border border-gray-300 rounded text-sm text-right focus:ring-1 focus:ring-blue-400 focus:outline-none" placeholder="0" min="0" max="100" />
+                                        </td>
+                                        {/* Prix vente (calculated) */}
+                                        <td className="px-2 py-1 text-right">
+                                            <span className="font-bold text-sm text-gray-800">{line.prixVente ? '$' + line.prixVente : '—'}</span>
+                                        </td>
+                                        {/* Statut */}
+                                        <td className="px-2 py-1">
+                                            <select value={line.statut} onChange={e => updateLine(idx, 'statut', e.target.value)} className="w-full p-1.5 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-blue-400 focus:outline-none">
+                                                <option value="En attente">En attente</option>
+                                                <option value="Expédié">Expédié</option>
+                                                <option value="Partiel">Partiel</option>
+                                                <option value="Annulé">Annulé</option>
+                                            </select>
+                                        </td>
+                                        {/* Delete */}
+                                        <td className="px-1 py-1 text-center print:hidden">
+                                            <button type="button" onClick={() => removeLine(idx)} className="text-red-400 hover:text-red-600 transition" title="Supprimer la ligne" disabled={lines.length <= 1}>
+                                                <i className="fa fa-trash-can text-xs"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
-            </form>
+
+                {/* Footer: Totals + Notes + Actions */}
+                <div className="p-6 bg-gray-50 border-t border-gray-200 print:bg-white print:p-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Notes */}
+                        <div>
+                            <label className={labelClass}>Notes / Conditions</label>
+                            <textarea
+                                value={invoiceNotes}
+                                onChange={e => setInvoiceNotes(e.target.value)}
+                                rows={4}
+                                className="w-full p-3 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-blue-400 focus:outline-none resize-vertical"
+                                placeholder="Conditions de paiement, notes spéciales..."
+                            />
+                        </div>
+
+                        {/* Totals */}
+                        <div className="flex flex-col justify-end">
+                            <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-2">
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-gray-600">Sous-total</span>
+                                    <span className="font-bold">${sousTotal.toFixed(2)}</span>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-gray-600">TPS (5%)</span>
+                                    <span>${tps.toFixed(2)}</span>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-gray-600">TVQ (9.975%)</span>
+                                    <span>${tvq.toFixed(2)}</span>
+                                </div>
+                                <div className="border-t border-gray-300 pt-2 flex justify-between">
+                                    <span className="text-lg font-black text-gray-800">TOTAL</span>
+                                    <span className="text-lg font-black text-[#51aff7]">${total.toFixed(2)}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="mt-6 flex justify-end gap-3 print:hidden">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setClientInfo({ name: '', address: '', city: '', postalCode: '', phone: '', email: '', deliveryAddress: '', deliveryCity: '', deliveryPostalCode: '', deliveryNotes: '' });
+                                setLines(Array.from({ length: 10 }, () => ({ ...emptyLine })));
+                                setInvoiceNotes('');
+                                setInvoiceNo(generateInvoiceNo());
+                                setDocType('Facture');
+                            }}
+                            className="px-5 py-2.5 bg-gray-200 text-gray-700 font-bold rounded-lg hover:bg-gray-300 transition"
+                        >
+                            <i className="fa fa-eraser mr-2"></i>Réinitialiser
+                        </button>
+                        <button
+                            type="button"
+                            onClick={handlePrintInvoice}
+                            className="px-5 py-2.5 bg-gray-700 text-white font-bold rounded-lg hover:bg-gray-800 transition"
+                        >
+                            <i className="fa fa-print mr-2"></i>Imprimer / PDF
+                        </button>
+                        <button
+                            type="button"
+                            onClick={handleSaveInvoice}
+                            className="px-5 py-2.5 bg-[#51aff7] text-white font-bold rounded-lg hover:bg-blue-600 transition shadow-lg"
+                        >
+                            <i className="fa fa-save mr-2"></i>Sauvegarder la facture
+                        </button>
+                    </div>
+                </div>
             </div>
+
+            {/* Saved Invoices List */}
+            {savedInvoices.length > 0 && (
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 print:hidden">
+                    <h3 className="text-lg font-bold text-gray-800 mb-4">
+                        <i className="fa-solid fa-folder-open mr-2 text-[#51aff7]"></i>
+                        Factures sauvegardées ({savedInvoices.length})
+                    </h3>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                            <thead>
+                                <tr className="bg-gray-100 border-b">
+                                    <th className="p-3 text-left font-bold text-gray-600">No. Facture</th>
+                                    <th className="p-3 text-left font-bold text-gray-600">Type</th>
+                                    <th className="p-3 text-left font-bold text-gray-600">Date</th>
+                                    <th className="p-3 text-left font-bold text-gray-600">Client</th>
+                                    <th className="p-3 text-left font-bold text-gray-600">Lignes</th>
+                                    <th className="p-3 text-right font-bold text-gray-600">Total</th>
+                                    <th className="p-3 text-center font-bold text-gray-600">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {savedInvoices.map((inv, idx) => (
+                                    <tr key={idx} className="border-b hover:bg-gray-50 transition">
+                                        <td className="p-3 font-bold text-[#51aff7]">{inv.invoiceNo}</td>
+                                        <td className="p-3 text-gray-600">{inv.docType || 'Facture'}</td>
+                                        <td className="p-3 text-gray-600">{inv.date}</td>
+                                        <td className="p-3 font-semibold">{inv.client?.name || 'N/A'}</td>
+                                        <td className="p-3 text-gray-600">{inv.lines?.length || 0}</td>
+                                        <td className="p-3 text-right font-bold">${inv.total}</td>
+                                        <td className="p-3 text-center">
+                                            <button
+                                                onClick={() => {
+                                                    setInvoiceNo(inv.invoiceNo);
+                                                    setInvoiceDate(inv.date);
+                                                    setClientInfo(inv.client || {});
+                                                    setDocType(inv.docType || 'Facture');
+                                                    setLines(inv.lines && inv.lines.length > 0 ? inv.lines : Array.from({ length: 10 }, () => ({ ...emptyLine })));
+                                                    setInvoiceNotes(inv.notes || '');
+                                                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                                                }}
+                                                className="px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 text-xs font-bold mr-1"
+                                                title="Charger cette facture"
+                                            >
+                                                <i className="fa fa-eye mr-1"></i>Charger
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    if (confirm('Supprimer la facture ' + inv.invoiceNo + ' ?')) {
+                                                        setSavedInvoices(prev => prev.filter((_, i) => i !== idx));
+                                                    }
+                                                }}
+                                                className="px-2 py-1 bg-red-100 text-red-600 rounded hover:bg-red-200 text-xs font-bold"
+                                                title="Supprimer"
+                                            >
+                                                <i className="fa fa-trash"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
@@ -3145,6 +3602,7 @@ const InventoryView = ({ t, inventory, setInventory }) => {
                     
                     // Mappages catégorie-état
                     if (categorieVal === '109') stateVal = 'Brut baker';
+                    else if (categorieVal === '108') stateVal = 'Brut sec';
                     else if (categorieVal === '10') stateVal = 'Brut vert';
                     else if (categorieVal === '23') stateVal = 'REV. Exterieur';
                     else if (categorieVal === '106') stateVal = 'Ébénisterie';
@@ -3247,13 +3705,25 @@ const InventoryView = ({ t, inventory, setInventory }) => {
                         );
                         
                         if (existingIndex !== -1) {
-                            // Mettre à jour le produit existant (garder stockNo et dateAdded originaux)
+                            // Mettre à jour seulement les colonnes descriptives/catalogue
+                            // Préserver: stockNo, dateAdded, qty, location (données opérationnelles)
                             const existingItem = updatedInventory[existingIndex];
                             updatedInventory[existingIndex] = {
                                 ...existingItem,
-                                ...newItem,
+                                // Colonnes mises à jour depuis l'import Excel
+                                description: newItem.description || existingItem.description,
+                                wood: newItem.wood || existingItem.wood,
+                                grade: newItem.grade || existingItem.grade,
+                                unite: newItem.unite || existingItem.unite,
+                                largeur: newItem.largeur || existingItem.largeur,
+                                epaisseur: newItem.epaisseur || existingItem.epaisseur,
+                                categorie: newItem.categorie || existingItem.categorie,
+                                state: newItem.state || existingItem.state,
+                                // Colonnes préservées (données opérationnelles)
                                 stockNo: existingItem.stockNo,
                                 dateAdded: existingItem.dateAdded,
+                                qty: existingItem.qty,
+                                location: existingItem.location,
                                 dateUpdated: new Date().toISOString()
                             };
                             updatedCount++;
@@ -3272,13 +3742,11 @@ const InventoryView = ({ t, inventory, setInventory }) => {
                 });
                 
                 const skipped = jsonData.length - newItems.length;
-                let msg = '';
+                let msg = `Import terminé: ${newItems.length} produit(s) traité(s)`;
                 if (skipped > 0) {
-                    msg = `Import terminé (${skipped} lignes ignorées - produit manquant). Vérifiez les mises à jour.`;
-                } else {
-                    msg = `Import terminé avec succès`;
+                    msg += ` (${skipped} lignes ignorées - code produit manquant)`;
                 }
-                DevExpress.ui.notify(msg, 'success', 3000);
+                DevExpress.ui.notify(msg, 'success', 4000);
             } catch (err) {
                 console.error('Erreur import Excel:', err);
                 DevExpress.ui.notify('Erreur lors de l\'import du fichier Excel', 'error', 3000);
@@ -7251,7 +7719,7 @@ const App = () => {
                     {activeTab === 'production' && <ProductionView key="production" t={t} productionData={productionData} assignStation={assignStation} updateJobStatus={updateJobStatus} deleteBatch={deleteBatch} customProcesses={customProcesses} woodTreatments={woodTreatments} stationConfig={stationConfig} inventory={inventory} deductFromInventory={deductFromInventory} inventoryStates={inventoryStates} />}
                     {activeTab === 'inventory' && <InventoryView t={t} inventory={inventory} setInventory={setInventory} />}
                     {activeTab === 'rawWood' && <div className="p-12 text-center text-gray-400">Le tableau de traitement inventaire brut est désactivé.</div>}
-                    {activeTab === 'dataEntry' && <DataEntryView t={t} addBatch={addBatch} setActiveTab={setActiveTab} customProcesses={customProcesses} woodTreatments={woodTreatments} processParameters={processParameters} />}
+                    {activeTab === 'dataEntry' && <DataEntryView t={t} addBatch={addBatch} setActiveTab={setActiveTab} customProcesses={customProcesses} woodTreatments={woodTreatments} processParameters={processParameters} inventory={inventory} />}
                     {activeTab === 'employeeEfficiency' && <EmployeeEfficiencyView t={t} productionData={productionData} />}
                     {activeTab === 'settings' && <SettingsView t={t} appMode={appMode} setAppMode={setAppMode} stationConfig={stationConfig} setStationConfig={setStationConfig} customProcesses={customProcesses} setCustomProcesses={setCustomProcesses} woodTreatments={woodTreatments} setWoodTreatments={setWoodTreatments} inventoryStates={inventoryStates} setInventoryStates={setInventoryStates} processCodes={processCodes} setProcessCodes={setProcessCodes} processParameters={processParameters} setProcessParameters={setProcessParameters} />}
                 </main>
