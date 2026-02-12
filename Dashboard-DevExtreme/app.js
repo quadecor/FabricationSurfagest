@@ -40,7 +40,7 @@ const translations = {
         colProduct: "Wood Species",
         colProcess: "Process",
         colTreatment: "Treatment",
-        colQty: "Quantity (pc)", // New
+        colQty: "Quantity", // New
         colQtySqFt: "Area (sq ft)", // New
         colDate: "Date Req.", // New
         colDateTreatment: "Treatment Date",
@@ -99,7 +99,8 @@ const translations = {
         jobQueue: "Job Queue",
         currentJob: "Current Job",
         startJob: "START JOB",
-        pauseJob: "PAUSE",
+        pauseJob: "ADD PRODUCTION",
+        pauseTimerJob: "PAUSE",
         finishJob: "FINISH JOB",
         reportIssue: "Report Issue",
         issueType: "Issue Type",
@@ -214,7 +215,7 @@ const translations = {
         colProduct: "Essence",
         colProcess: "Procédé",
         colTreatment: "Traitement",
-        colQty: "Quantité (pc)", // New
+        colQty: "Quantité", // New
         colQtySqFt: "Surface (pi²)", // New
         colDate: "Date Req.", // New
         colDateTreatment: "Date Traitement",
@@ -273,7 +274,8 @@ const translations = {
         jobQueue: "File d'Attente",
         currentJob: "Tâche Actuelle",
         startJob: "DÉMARRER",
-        pauseJob: "PAUSE",
+        pauseJob: "AJOUTER DE LA PRODUCTION",
+        pauseTimerJob: "PAUSE",
         finishJob: "TERMINER",
         reportIssue: "Signaler Problème",
         issueType: "Type de Problème",
@@ -1393,6 +1395,9 @@ const ProductionView = ({ t, productionData, assignStation, updateJobStatus, del
     const [activeStatuses, setActiveStatuses] = useState(['planning', 'running', 'paused', 'error', 'completed']);
     const [filterProcess, setFilterProcess] = useState('all');
     const [showAddStock, setShowAddStock] = useState(false);
+    const dateInputRef = useRef(null);
+    const wantedQtyRef = useRef(null);
+    const [editingProductionId, setEditingProductionId] = useState(null);
     const [newStock, setNewStock] = useState({ client: 'Prod. Inventaire', isInventoryProd: true, wood: '', grade: '', qty: '', processes: [], date: '', location: '', state: '' });
     const [selectedStocks, setSelectedStocks] = useState([]);  // Liste des stocks sélectionnés
     // Liste des produits/essences uniques déjà présents
@@ -1400,6 +1405,10 @@ const ProductionView = ({ t, productionData, assignStation, updateJobStatus, del
     const [isCustomWood, setIsCustomWood] = useState(false);
     const [stockSearch, setStockSearch] = useState('');
     const [stockStateFilter, setStockStateFilter] = useState('');
+    const [productCodeFilter, setProductCodeFilter] = useState('');
+    const [productCodeStateFilter, setProductCodeStateFilter] = useState('');
+    const [showProductCodeSuggestions, setShowProductCodeSuggestions] = useState(false);
+    const [productCodeSearch, setProductCodeSearch] = useState('');
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [refreshTick, setRefreshTick] = useState(0);
     
@@ -1545,9 +1554,26 @@ const ProductionView = ({ t, productionData, assignStation, updateJobStatus, del
             },
             {
                 dataField: 'qty',
-                caption: 'Quantité',
+                caption: 'Qte voulu',
                 dataType: 'number',
                 width: 120
+            },
+            {
+                dataField: 'inventoryAllocated',
+                caption: 'Inventaire alloué',
+                width: 140,
+                dataType: 'number',
+                allowEditing: false,
+                allowFiltering: true,
+                allowSearch: true,
+                calculateCellValue: (rowData) => {
+                    if (rowData.inventoryAllocated !== undefined) return rowData.inventoryAllocated;
+                    const stockDetails = rowData.stockDetails || [];
+                    if (stockDetails.length > 0) {
+                        return stockDetails.reduce((sum, s) => sum + (Number(s.qty) || 0), 0);
+                    }
+                    return rowData.qty || 0;
+                }
             },
             {
                 dataField: 'unit',
@@ -1555,7 +1581,10 @@ const ProductionView = ({ t, productionData, assignStation, updateJobStatus, del
                 width: 80,
                 allowEditing: false,
                 calculateCellValue: (rowData) => {
-                    // Toujours afficher "PC" pour l'inventaire
+                    // Afficher l'unité du produit voulu si disponible
+                    if (rowData.targetProductInfo && rowData.targetProductInfo.unite) {
+                        return rowData.targetProductInfo.unite;
+                    }
                     return 'PC';
                 }
             },
@@ -1564,6 +1593,18 @@ const ProductionView = ({ t, productionData, assignStation, updateJobStatus, del
                 caption: t.labelDate,
                 dataType: 'date',
                 width: 120
+            },
+            {
+                dataField: 'width',
+                caption: 'Largeur',
+                dataType: 'number',
+                width: 90
+            },
+            {
+                dataField: 'thickness',
+                caption: 'Épaisseur',
+                dataType: 'number',
+                width: 90
             },
             {
                 dataField: 'process',
@@ -1898,11 +1939,15 @@ const ProductionView = ({ t, productionData, assignStation, updateJobStatus, del
                         btnLabel.title = 'Imprimer étiquette d\'inventaire';
                         btnLabel.onclick = (e) => {
                             e.stopPropagation();
-                            // Demander la localisation avant d'imprimer
+                            // Demander le tally et la localisation avant d'imprimer
                             DevExpress.ui.dialog.custom({
-                                title: "Localisation d'entreposage",
+                                title: "Détails de l'étiquette",
                                 messageHtml: `<div style="margin: 20px 0;">
-                                    <label style="display: block; margin-bottom: 8px; font-weight: bold;">Entrez la localisation :</label>
+                                    <label style="display: block; margin-bottom: 4px; font-size: 13px; font-weight: bold; color: #4b5563;">Liste de Tally:</label>
+                                    <textarea id="tableTallyInput" rows="3" 
+                                        style="width: 100%; padding: 6px; border: 1px solid #93c5fd; border-radius: 4px; font-size: 13px; font-family: monospace; resize: vertical; margin-bottom: 12px;" 
+                                        placeholder="Ex: 8x4, 10x6, 12x8..."></textarea>
+                                    <label style="display: block; margin-bottom: 4px; font-size: 13px; font-weight: bold; color: #4b5563;">Localisation:</label>
                                     <input type="text" id="storageLocationPrint" placeholder="Ex: A-12, B-5, C-23..."
                                            style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 16px;" />
                                 </div>`,
@@ -1915,8 +1960,9 @@ const ProductionView = ({ t, productionData, assignStation, updateJobStatus, del
                                         text: "Imprimer",
                                         onClick: () => {
                                             const location = document.getElementById('storageLocationPrint').value.trim();
+                                            const tally = document.getElementById('tableTallyInput').value.trim();
                                             if (typeof window.generateProductionTagFromTable === 'function') {
-                                                window.generateProductionTagFromTable(item, location);
+                                                window.generateProductionTagFromTable(item, location, tally);
                                             }
                                             return true;
                                         }
@@ -1929,6 +1975,46 @@ const ProductionView = ({ t, productionData, assignStation, updateJobStatus, del
                     
                     // Ajout bouton corbeille à droite
                     if (item.status === 'planning') {
+                        // Bouton modifier
+                        const btnEdit = document.createElement('button');
+                        btnEdit.className = 'ml-2 text-blue-600 hover:text-white hover:bg-blue-600 border border-blue-200 rounded px-2 py-1 text-xs font-bold transition';
+                        btnEdit.innerHTML = '<i class="fa fa-pen"></i>';
+                        btnEdit.title = 'Modifier la production';
+                        btnEdit.onclick = (e) => {
+                            e.stopPropagation();
+                            // Pré-remplir le formulaire avec les données existantes
+                            const processes = item.steps && item.steps.length > 0 ? item.steps : (item.process ? [item.process] : []);
+                            setNewStock({
+                                client: item.client || 'Prod. Inventaire',
+                                isInventoryProd: true,
+                                wood: item.wood || '',
+                                grade: item.grade || '',
+                                qty: item.qty || '',
+                                wantedQty: item.qty || '',
+                                processes: processes,
+                                date: item.date || '',
+                                location: '',
+                                state: '',
+                                txn: item.txn || '',
+                                stockNo: ''
+                            });
+                            setSelectedStocks(item.stockDetails || (item.stockNo ? item.stockNo.split(', ').map(sn => {
+                                const inv = inventory.find(i => i.stockNo === sn.trim());
+                                return inv ? { stockNo: inv.stockNo, wood: inv.wood, grade: inv.grade || '', qty: 0, location: inv.location, state: inv.state } : { stockNo: sn.trim(), wood: item.wood, grade: '', qty: 0, location: '', state: '' };
+                            }) : []));
+                            setProductCodeFilter(item.targetProductCode || '');
+                            if (item.targetProductCode) {
+                                const pItems = inventory.filter(s => s.productCode === item.targetProductCode);
+                                const pDesc = pItems[0]?.description || '';
+                                setProductCodeSearch(pDesc ? pDesc + ' (' + item.targetProductCode + ')' : item.targetProductCode);
+                            } else {
+                                setProductCodeSearch('');
+                            }
+                            setEditingProductionId(item.id);
+                            setShowAddStock(true);
+                        };
+                        div.appendChild(btnEdit);
+
                         const btn = document.createElement('button');
                         btn.className = 'ml-2 text-red-600 hover:text-white hover:bg-red-600 border border-red-200 rounded px-2 py-1 text-xs font-bold transition';
                         btn.innerHTML = '<i class="fa fa-trash"></i>';
@@ -2122,7 +2208,7 @@ const ProductionView = ({ t, productionData, assignStation, updateJobStatus, del
             {showAddStock && (
                 <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50 p-4">
                     <div className="bg-white p-6 rounded-xl shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-                        <h3 className="font-bold text-xl mb-4 sticky top-0 bg-white pb-2 border-b">Ajouter un produit à transformer</h3>
+                        <h3 className="font-bold text-xl mb-4 sticky top-0 bg-white pb-2 border-b">{editingProductionId ? 'Modifier la production' : 'Créer une production'}</h3>
                         <div className="space-y-3 mt-4">
                             {/* Sélection multiple de traitements - EN PREMIER */}
                             <div className="border-2 border-blue-200 bg-blue-50 p-3 rounded">
@@ -2153,15 +2239,162 @@ const ProductionView = ({ t, productionData, assignStation, updateJobStatus, del
                                 )}
                             </div>
                             
+                            {/* Sélection du code produit */}
+                            <div className="border-2 border-purple-200 bg-purple-50 p-3 rounded relative">
+                                <label className="block text-base font-semibold mb-2">2. Code produit du produit voulu</label>
+                                <div className="relative">
+                                    <div className="flex gap-2">
+                                        <input
+                                            className="flex-1 border p-3 rounded text-base"
+                                            placeholder="Rechercher un code produit..."
+                                            value={productCodeSearch}
+                                            onChange={e => {
+                                                setProductCodeSearch(e.target.value);
+                                                setShowProductCodeSuggestions(true);
+                                            }}
+                                            onFocus={() => setShowProductCodeSuggestions(true)}
+                                            autoComplete="off"
+                                        />
+                                        <select
+                                            className="border p-3 rounded text-base min-w-[150px]"
+                                            value={productCodeStateFilter}
+                                            onChange={e => {
+                                                setProductCodeStateFilter(e.target.value);
+                                                setShowProductCodeSuggestions(true);
+                                            }}
+                                        >
+                                            <option value="">Tous les états</option>
+                                            {[...new Set(inventory.map(s => s.state).filter(Boolean))].sort().map(state => (
+                                                <option key={state} value={state}>{state}</option>
+                                            ))}
+                                        </select>
+                                        {productCodeFilter && (
+                                            <button
+                                                className="px-3 py-2 bg-red-100 text-red-600 rounded hover:bg-red-200 text-sm font-bold"
+                                                title="Retirer le filtre"
+                                                onClick={() => {
+                                                    setProductCodeFilter('');
+                                                    setProductCodeSearch('');
+                                                }}
+                                            >
+                                                <i className="fa fa-times"></i>
+                                            </button>
+                                        )}
+                                    </div>
+                                    {showProductCodeSuggestions && (
+                                        <div className="absolute left-0 right-0 bg-white border rounded shadow z-20 max-h-60 overflow-y-auto mt-1">
+                                            {(() => {
+                                                const searchLower = (productCodeSearch || '').toLowerCase();
+                                                const uniqueCodes = [...new Set(inventory.filter(s => {
+                                                    if (productCodeStateFilter && s.state !== productCodeStateFilter) return false;
+                                                    return Boolean(s.productCode);
+                                                }).map(s => s.productCode))]
+                                                    .filter(code => {
+                                                        if (!searchLower) return true;
+                                                        // Recherche par mot-clé dans tous les champs des items de ce code
+                                                        if (code.toLowerCase().includes(searchLower)) return true;
+                                                        const items = inventory.filter(s => s.productCode === code);
+                                                        return items.some(s => {
+                                                            try {
+                                                                return String(s.wood || '').toLowerCase().includes(searchLower) ||
+                                                                    String(s.description || '').toLowerCase().includes(searchLower) ||
+                                                                    String(s.grade || '').toLowerCase().includes(searchLower) ||
+                                                                    String(s.stockNo || '').toLowerCase().includes(searchLower) ||
+                                                                    String(s.state || '').toLowerCase().includes(searchLower) ||
+                                                                    String(s.location || '').toLowerCase().includes(searchLower) ||
+                                                                    String(s.unite || '').toLowerCase().includes(searchLower) ||
+                                                                    String(s.epaisseur || '').toLowerCase().includes(searchLower) ||
+                                                                    String(s.largeur || '').toLowerCase().includes(searchLower);
+                                                            } catch(e) { return false; }
+                                                        });
+                                                    })
+                                                    .sort();
+                                                if (uniqueCodes.length === 0) {
+                                                    return <div className="p-3 text-gray-400 text-sm">Aucun code produit trouvé</div>;
+                                                }
+                                                return uniqueCodes.slice(0, 30).map(code => {
+                                                    const items = inventory.filter(s => s.productCode === code);
+                                                    const totalQty = items.reduce((sum, s) => sum + (parseFloat(s.qty) || 0), 0);
+                                                    const wood = items[0]?.wood || '';
+                                                    const desc = items[0]?.description || '';
+                                                    return (
+                                                        <div
+                                                            key={code}
+                                                            className={`p-3 hover:bg-purple-50 cursor-pointer border-b last:border-b-0 ${productCodeFilter === code ? 'bg-purple-100' : ''}`}
+                                                            onClick={() => {
+                                                                setProductCodeFilter(code);
+                                                                const displayText = desc ? `${desc} (${code})` : code;
+                                                                setProductCodeSearch(displayText);
+                                                                setShowProductCodeSuggestions(false);
+                                                                // Focus sur la quantité voulue
+                                                                setTimeout(() => {
+                                                                    if (wantedQtyRef.current) wantedQtyRef.current.focus();
+                                                                }, 100);
+                                                            }}
+                                                        >
+                                                            <div className="flex justify-between items-center">
+                                                                <span className="font-bold text-purple-700">{code}</span>
+                                                                <span className="text-xs bg-gray-100 px-2 py-0.5 rounded">{items.length} stock(s) — {totalQty} PC</span>
+                                                            </div>
+                                                            {desc && <div className="text-sm text-gray-600 mt-0.5">{desc}</div>}
+                                                            {wood && <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded mt-1 inline-block">{wood}</span>}
+                                                        </div>
+                                                    );
+                                                });
+                                            })()}
+                                        </div>
+                                    )}
+                                </div>
+                                {productCodeFilter && (
+                                    <div className="mt-2 text-sm text-purple-700 font-semibold">
+                                        <i className="fa fa-filter mr-1"></i>
+                                        Produit sélectionné: <span className="bg-purple-200 px-2 py-0.5 rounded">{(() => {
+                                            const items = inventory.filter(s => s.productCode === productCodeFilter);
+                                            const desc = items[0]?.description || '';
+                                            return desc ? `${desc} (${productCodeFilter})` : productCodeFilter;
+                                        })()}</span>
+                                        {(() => {
+                                            const items = inventory.filter(s => s.productCode === productCodeFilter);
+                                            const unite = items[0]?.unite || '';
+                                            return unite ? <span className="ml-2 bg-purple-300 text-purple-900 px-2 py-0.5 rounded">Unité: {unite}</span> : null;
+                                        })()}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Quantité voulue */}
+                            {productCodeFilter && (
+                                <div className="border-2 border-orange-200 bg-orange-50 p-3 rounded">
+                                    <label className="block text-base font-semibold mb-1">Quantité voulue {(() => {
+                                        const items = inventory.filter(s => s.productCode === productCodeFilter);
+                                        const unite = items[0]?.unite || '';
+                                        return unite ? <span className="text-orange-600 font-bold">({unite})</span> : null;
+                                    })()}</label>
+                                    <input 
+                                        ref={wantedQtyRef}
+                                        className="w-full border p-3 rounded text-base" 
+                                        type="number" 
+                                        placeholder={(() => {
+                                            const items = inventory.filter(s => s.productCode === productCodeFilter);
+                                            const unite = items[0]?.unite || '';
+                                            return unite ? `Quantité à produire en ${unite}...` : 'Quantité à produire...';
+                                        })()}
+                                        value={newStock.wantedQty || ''} 
+                                        onChange={e => setNewStock({ ...newStock, wantedQty: e.target.value })} 
+                                    />
+                                </div>
+                            )}
+
                             {/* Date requise */}
                             <div>
-                                <label className="block text-base font-semibold mb-1">2. Date requise</label>
-                                <input className="w-full border p-3 rounded text-base" type="date" value={newStock.date} onChange={e => setNewStock({ ...newStock, date: e.target.value })} />
+                                <label className="block text-base font-semibold mb-1">3. Date requise <span className="text-red-500">*</span></label>
+                                <input ref={dateInputRef} className={`w-full border p-3 rounded text-base ${!newStock.date ? 'border-red-300 bg-red-50' : 'border-green-300 bg-green-50'}`} type="date" value={newStock.date} onChange={e => setNewStock({ ...newStock, date: e.target.value })} />
+                                {!newStock.date && <div className="text-xs text-red-500 mt-1"><i className="fa fa-exclamation-circle mr-1"></i>La date requise est obligatoire</div>}
                             </div>
                             
                             {/* Recherche de stock */}
                             <div className="border-2 border-green-200 bg-green-50 p-3 rounded">
-                                <label className="block text-base font-semibold mb-2">3. Sélectionner le(s) stock(s)</label>
+                                <label className="block text-base font-semibold mb-2">4. Sélectionner le(s) stock(s)</label>
                             {/* Champ No. stock avec recherche par mot-clé */}
                             <div className="relative">
                                 <div className="flex gap-2 mb-2">
@@ -2177,19 +2410,6 @@ const ProductionView = ({ t, productionData, assignStation, updateJobStatus, del
                                         onFocus={() => setShowSuggestions(true)}
                                         autoComplete="off"
                                     />
-                                    <select
-                                        className="border p-3 rounded text-base min-w-[150px]"
-                                        value={stockStateFilter || ''}
-                                        onChange={e => {
-                                            setStockStateFilter(e.target.value);
-                                            setShowSuggestions(true);
-                                        }}
-                                    >
-                                        <option value="">Tous les états</option>
-                                        {[...new Set(inventory.map(s => s.state).filter(Boolean))].sort().map(state => (
-                                            <option key={state} value={state}>{state}</option>
-                                        ))}
-                                    </select>
                                     <button
                                         className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
                                         title="Afficher les résultats"
@@ -2204,8 +2424,8 @@ const ProductionView = ({ t, productionData, assignStation, updateJobStatus, del
                                         {(() => {
                                             const searchLower = (stockSearch || '').toLowerCase();
                                             const filtered = inventory.filter(s => {
-                                                // Filtre par état si sélectionné
-                                                if (stockStateFilter && s.state !== stockStateFilter) return false;
+                                                // Exclure les stocks avec le même code produit que celui voulu (option 2)
+                                                if (productCodeFilter && s.productCode === productCodeFilter) return false;
                                                 // Filtre par mot-clé
                                                 if (!searchLower) return true;
                                                 return (
@@ -2236,7 +2456,11 @@ const ProductionView = ({ t, productionData, assignStation, updateJobStatus, del
                                                             grade: s.grade || '',
                                                             qty: s.qty,
                                                             location: s.location,
-                                                            state: s.state || ''
+                                                            state: s.state || '',
+                                                            description: s.description || '',
+                                                            largeur: s.largeur || '',
+                                                            epaisseur: s.epaisseur || '',
+                                                            unite: s.unite || ''
                                                         });
                                                         setStockSearch(s.stockNo);
                                                         setShowSuggestions(false);
@@ -2263,11 +2487,17 @@ const ProductionView = ({ t, productionData, assignStation, updateJobStatus, del
                                 )}
                             </div>
                             {/* Champ Quantité modifiable */}
+                            {newStock.description && (
+                                <div className="p-3 bg-blue-50 border border-blue-200 rounded">
+                                    <div className="text-sm font-semibold text-blue-700 mb-1"><i className="fa fa-info-circle mr-1"></i>Description</div>
+                                    <div className="text-base text-gray-800">{newStock.description}</div>
+                                </div>
+                            )}
                             <div>
-                                <label className="block text-base mb-1 font-medium">Quantité à transformer</label>
+                                <label className="block text-base mb-1 font-medium">Inventaire alloué {newStock.unite ? <span className="text-blue-600 font-bold">({newStock.unite})</span> : '(PC)'}</label>
                                 <input 
                                     className="w-full border p-3 rounded text-base" 
-                                    placeholder="Quantité" 
+                                    placeholder={newStock.unite ? `Quantité en ${newStock.unite}` : 'Quantité'} 
                                     type="number" 
                                     value={newStock.qty} 
                                     onChange={e => setNewStock({ ...newStock, qty: e.target.value })} 
@@ -2318,7 +2548,9 @@ const ProductionView = ({ t, productionData, assignStation, updateJobStatus, del
                                             grade: newStock.grade || '',
                                             qty: Number(newStock.qty),
                                             location: newStock.location,
-                                            state: newStock.state
+                                            state: newStock.state,
+                                            largeur: newStock.largeur || '',
+                                            epaisseur: newStock.epaisseur || ''
                                         };
                                         setSelectedStocks([...selectedStocks, stockToAdd]);
                                         // Réinitialiser le formulaire
@@ -2386,12 +2618,80 @@ const ProductionView = ({ t, productionData, assignStation, updateJobStatus, del
                                 setSelectedStocks([]);
                                 setStockSearch('');
                                 setStockStateFilter('');
+                                setProductCodeFilter('');
+                                setProductCodeSearch('');
+                                setProductCodeStateFilter('');
+                                setEditingProductionId(null);
                                 setNewStock({ client: 'Prod. Inventaire', isInventoryProd: true, wood: '', grade: '', qty: '', processes: [], date: '', location: '', state: '', txn: '', stockNo: '' });
                             }}>Annuler</button>
                             <button 
                                 className="px-6 py-3 bg-[#51aff7] text-white rounded text-base font-medium hover:bg-blue-600 disabled:opacity-50"
-                                disabled={(selectedStocks.length === 0 && !newStock.stockNo) || newStock.processes.length === 0}
+                                disabled={(selectedStocks.length === 0 && !newStock.stockNo) || newStock.processes.length === 0 || !newStock.date}
                                 onClick={() => {
+                                    // MODE MODIFICATION: mettre à jour la production existante
+                                    if (editingProductionId) {
+                                        const stocksToProcess = [...selectedStocks];
+                                        if (newStock.stockNo && newStock.wood && newStock.qty) {
+                                            stocksToProcess.push({
+                                                stockNo: newStock.stockNo,
+                                                wood: newStock.wood,
+                                                grade: newStock.grade || '',
+                                                qty: Number(newStock.qty),
+                                                location: newStock.location,
+                                                state: newStock.state
+                                            });
+                                        }
+                                        
+                                        const totalQty = stocksToProcess.reduce((sum, s) => sum + Number(s.qty), 0);
+                                        const stockNumbers = stocksToProcess.map(s => s.stockNo).join(', ');
+                                        const woodType = stocksToProcess[0]?.wood || newStock.wood || '';
+                                        const grade = stocksToProcess[0]?.grade || '';
+                                        
+                                        const extras = {
+                                            wood: woodType,
+                                            grade: grade,
+                                            qty: newStock.wantedQty ? Number(newStock.wantedQty) : totalQty,
+                                            inventoryAllocated: totalQty,
+                                            process: newStock.processes.length > 0 ? newStock.processes[0] : '',
+                                            date: newStock.date || '',
+                                            stockNo: stockNumbers,
+                                            stockDetails: stocksToProcess,
+                                            width: stocksToProcess[0]?.largeur || '',
+                                            thickness: stocksToProcess[0]?.epaisseur || '',
+                                            targetProductCode: productCodeFilter || '',
+                                            targetProductInfo: (() => {
+                                                if (!productCodeFilter) return null;
+                                                const items = inventory.filter(s => s.productCode === productCodeFilter);
+                                                if (items.length === 0) return null;
+                                                const item = items[0];
+                                                return {
+                                                    description: item.description || '',
+                                                    wood: item.wood || '',
+                                                    epaisseur: item.epaisseur || '',
+                                                    largeur: item.largeur || '',
+                                                    grade: item.grade || '',
+                                                    unite: item.unite || ''
+                                                };
+                                            })(),
+                                            steps: newStock.processes.length > 1 ? newStock.processes : (newStock.processes.length === 1 ? newStock.processes : undefined),
+                                            stepIndex: newStock.processes.length > 1 ? 0 : undefined
+                                        };
+                                        
+                                        updateJobStatus(editingProductionId, 'planning', 0, null, null, extras);
+                                        
+                                        setShowAddStock(false);
+                                        setSelectedStocks([]);
+                                        setStockSearch('');
+                                        setStockStateFilter('');
+                                        setProductCodeFilter('');
+                                        setProductCodeSearch('');
+                                        setProductCodeStateFilter('');
+                                        setEditingProductionId(null);
+                                        setNewStock({ client: 'Prod. Inventaire', isInventoryProd: true, wood: '', qty: '', processes: [], date: '', location: '', state: '', txn: '', stockNo: '' });
+                                        return;
+                                    }
+                                    
+                                    // MODE CRÉATION: créer une nouvelle production
                                     // Ajouter le stock en cours s'il n'est pas vide
                                     const stocksToProcess = [...selectedStocks];
                                     if (newStock.stockNo && newStock.wood && newStock.qty) {
@@ -2451,11 +2751,29 @@ const ProductionView = ({ t, productionData, assignStation, updateJobStatus, del
                                             txn,
                                             wood: woodType,
                                             grade: grade,
-                                            qty: totalQty,
+                                            qty: newStock.wantedQty ? Number(newStock.wantedQty) : totalQty,
+                                            inventoryAllocated: totalQty,
                                             process: newStock.processes.length > 0 ? newStock.processes[0] : '',
                                             date: newStock.date || '',
                                             stockNo: stockNumbers, // Liste des numéros de stock
                                             stockDetails: stocks, // Détails complets des stocks
+                                            width: stocks[0]?.largeur || '',
+                                            thickness: stocks[0]?.epaisseur || '',
+                                            targetProductCode: productCodeFilter || '', // Code produit voulu (option 2)
+                                            targetProductInfo: (() => {
+                                                if (!productCodeFilter) return null;
+                                                const items = (typeof inventory !== 'undefined' ? inventory : []).filter(s => s.productCode === productCodeFilter);
+                                                if (items.length === 0) return null;
+                                                const item = items[0];
+                                                return {
+                                                    description: item.description || '',
+                                                    wood: item.wood || '',
+                                                    epaisseur: item.epaisseur || '',
+                                                    largeur: item.largeur || '',
+                                                    grade: item.grade || '',
+                                                    unite: item.unite || ''
+                                                };
+                                            })(),
                                             status: 'planning',
                                             progress: 0
                                         };
@@ -2484,10 +2802,14 @@ const ProductionView = ({ t, productionData, assignStation, updateJobStatus, del
                                     setSelectedStocks([]);
                                     setStockSearch('');
                                     setStockStateFilter('');
+                                    setProductCodeFilter('');
+                                    setProductCodeSearch('');
+                                    setProductCodeStateFilter('');
+                                    setEditingProductionId(null);
                                     setNewStock({ client: 'Prod. Inventaire', isInventoryProd: true, wood: '', qty: '', processes: [], date: '', location: '', state: '', txn: '', stockNo: '' });
                                 }}
                             >
-                                Créer les productions
+                                {editingProductionId ? 'Modifier la production' : 'Créer les productions'}
                             </button>
                         </div>
                     </div>
@@ -2511,7 +2833,7 @@ const ProductionView = ({ t, productionData, assignStation, updateJobStatus, del
                     {/* Bouton Ajouter un stock */}
                     {!isRawWood && (
                         <button className="ml-4 px-4 py-2 bg-[#51aff7] text-white rounded shadow hover:bg-blue-600 transition" onClick={() => setShowAddStock(true)}>
-                            <i className="fa-solid fa-plus mr-2"></i> Ajouter un produit à transformer
+                            <i className="fa-solid fa-plus mr-2"></i> Créer une production
                         </button>
                     )}
                 </div>
@@ -2556,6 +2878,8 @@ const DataEntryView = ({ t, addBatch, setActiveTab, customProcesses = [], woodTr
         wood: '',
         grade: '',
         date: '',
+        width: '',
+        thickness: '',
         stainColor: '',
         paintColor: ''
     });
@@ -2626,7 +2950,7 @@ const DataEntryView = ({ t, addBatch, setActiveTab, customProcesses = [], woodTr
         // Use timeout to ensure state propagation before switch
         setTimeout(() => setActiveTab('production'), 50);
         
-        setFormData({ client: '', txn: '', qty: '', wood: '', grade: '', date: '', stainColor: '', paintColor: '' });
+        setFormData({ client: '', txn: '', qty: '', wood: '', grade: '', date: '', width: '', thickness: '', stainColor: '', paintColor: '' });
         setSteps([]);
     };
 
@@ -2700,6 +3024,14 @@ const DataEntryView = ({ t, addBatch, setActiveTab, customProcesses = [], woodTr
                     <div>
                         <label className={labelClass}>Grade</label>
                         <input name="grade" type="text" value={formData.grade} onChange={handleChange} className={inputClass} placeholder="Ex: Select, Authentic, Naturel..." />
+                    </div>
+                    <div>
+                        <label className={labelClass}>Largeur (pouces)</label>
+                        <input name="width" type="number" step="0.01" value={formData.width} onChange={handleChange} className={inputClass} placeholder="Ex: 3.5" />
+                    </div>
+                    <div>
+                        <label className={labelClass}>Épaisseur (pouces)</label>
+                        <input name="thickness" type="number" step="0.01" value={formData.thickness} onChange={handleChange} className={inputClass} placeholder="Ex: 0.75" />
                     </div>
 
                     <div className="md:col-span-2">
@@ -2970,7 +3302,7 @@ const InventoryView = ({ t, inventory, setInventory }) => {
             searchPanel: { visible: true, width: 240, placeholder: 'Rechercher...' },
             headerFilter: { visible: true },
             editing: {
-                mode: 'row',
+                mode: 'cell',
                 allowUpdating: true,
                 allowDeleting: true,
                 allowAdding: true,
@@ -2984,7 +3316,7 @@ const InventoryView = ({ t, inventory, setInventory }) => {
                     addRow: t.addStock
                 }
             },
-            paging: { pageSize: 20 },
+            paging: { pageSize: 50 },
             pager: {
                 visible: true,
                 showPageSizeSelector: true,
@@ -3822,7 +4154,22 @@ const generateNotesFromLogs = (logs, existingNotes = '') => {
     return noteLines.join('\n');
 };
 
-const WorkerStationView = ({ t, stationId, productionData, updateJobStatus, stationConfig, inventory, deductFromInventory, addToInventory, adjustInventory, generateProductionTag, generatePalletLabel, generateProductCode }) => {
+const WorkerStationView = ({ t, stationId, productionData, updateJobStatus, stationConfig, inventory, deductFromInventory, addToInventory, adjustInventory, generateProductionTag, generatePalletLabel, generateProductCode, customProcesses = [], woodTreatments = [] }) => {
+    // Helper to resolve process display name
+    const getProcessName = (processId) => {
+        if (!processId) return 'N/A';
+        // Check translations first (standard processes)
+        if (t[processId]) return t[processId];
+        // Check custom processes
+        const custom = customProcesses.find(p => p.id === processId);
+        if (custom) return custom.label;
+        // Check wood treatments
+        const treatment = woodTreatments.find(p => p.id === processId);
+        if (treatment) return treatment.label;
+        // Fallback: return the ID itself
+        return processId;
+    };
+
     // Refs for DevExtreme widgets
     const formRef = useRef(null);
     const queueListRef = useRef(null);
@@ -4075,19 +4422,44 @@ const WorkerStationView = ({ t, stationId, productionData, updateJobStatus, stat
 
     // Fonction pour démarrer un job avec validation de largeur
     const handleStartJob = (jobData) => {
-        const width = parseFloat(jobData.width) || 0;
+        // Chercher la largeur dans width, ou dans stockDetails[0].largeur, ou dans l'inventaire
+        let width = parseFloat(jobData.width) || 0;
+        let thickness = parseFloat(jobData.thickness) || 0;
+        
+        // Fallback 1: chercher dans les stockDetails si présents
+        if (width === 0 && jobData.stockDetails && jobData.stockDetails.length > 0) {
+            width = parseFloat(jobData.stockDetails[0].largeur) || 0;
+        }
+        if (thickness === 0 && jobData.stockDetails && jobData.stockDetails.length > 0) {
+            thickness = parseFloat(jobData.stockDetails[0].epaisseur) || 0;
+        }
+        
+        // Fallback 2: chercher dans l'inventaire par numéro de stock
+        if (width === 0 && jobData.stockNo && inventory && inventory.length > 0) {
+            // stockNo peut contenir plusieurs numéros séparés par des virgules
+            const firstStockNo = jobData.stockNo.split(',')[0].trim();
+            const invItem = inventory.find(inv => inv.stockNo === firstStockNo);
+            if (invItem) {
+                width = parseFloat(invItem.largeur) || 0;
+                if (thickness === 0) thickness = parseFloat(invItem.epaisseur) || 0;
+            }
+        }
         
         if (width === 0) {
             DevExpress.ui.dialog.custom({
-                title: "Largeur requise",
+                title: "Informations requises",
                 messageHtml: `<div style="margin: 20px 0;">
-                    <p style="margin-bottom: 12px; color: #dc2626; font-weight: bold;">Veuillez confirmer la largeur du produit avant de démarrer.</p>
+                    <p style="margin-bottom: 12px; color: #dc2626; font-weight: bold;">Veuillez confirmer les dimensions du produit avant de démarrer.</p>
                     <p style="margin-bottom: 12px; color: #666;">Client: <strong>${jobData.client || 'N/A'}</strong></p>
                     <p style="margin-bottom: 12px; color: #666;">Produit: <strong>${jobData.wood || 'N/A'}</strong></p>
                     <label style="display: block; margin-bottom: 8px; font-weight: bold;">Largeur (pouces):</label>
                     <input type="number" id="widthInputStart" value="" min="0" step="0.01"
-                           style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 16px;" 
+                           style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 16px; margin-bottom: 16px;" 
                            placeholder="Entrez la largeur en pouces" />
+                    <label style="display: block; margin-bottom: 8px; font-weight: bold;">Épaisseur (pouces):</label>
+                    <input type="number" id="thicknessInputStart" value="${thickness > 0 ? thickness : ''}" min="0" step="0.01"
+                           style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 16px;" 
+                           placeholder="Entrez l'épaisseur en pouces (optionnel)" />
                 </div>`,
                 buttons: [
                     {
@@ -4099,19 +4471,21 @@ const WorkerStationView = ({ t, stationId, productionData, updateJobStatus, stat
                         onClick: () => {
                             const inputVal = document.getElementById('widthInputStart').value;
                             const widthValue = parseFloat(inputVal) || 0;
+                            const thicknessVal = document.getElementById('thicknessInputStart').value;
+                            const thicknessValue = parseFloat(thicknessVal) || 0;
                             
                             if (widthValue <= 0) {
                                 alert("Veuillez entrer une largeur valide.");
                                 return false;
                             }
                             
-                            // Démarrer le job avec la largeur
+                            // Démarrer le job avec la largeur et l'épaisseur
                             requireAuth((u) => {
                                 const startLog = { user: u, action: 'START', qty: 0, timestamp: Date.now() };
                                 const updatedNotes = generateNotesFromLogs([startLog], jobData.notes || '');
-                                updateJobStatus(jobData.id, 'running', 0, updatedNotes, startLog, { 
-                                    station: stationId, width: widthValue, logs: [startLog] 
-                                });
+                                const extras = { station: stationId, width: widthValue, logs: [startLog] };
+                                if (thicknessValue > 0) extras.thickness = thicknessValue;
+                                updateJobStatus(jobData.id, 'running', 0, updatedNotes, startLog, extras);
                             });
                             
                             return true;
@@ -4120,13 +4494,14 @@ const WorkerStationView = ({ t, stationId, productionData, updateJobStatus, stat
                 ]
             }).show();
         } else {
-            // Largeur déjà présente, démarrer normalement
+            // Largeur déjà présente, démarrer normalement avec width/thickness
             requireAuth((u) => {
                 const startLog = { user: u, action: 'START', qty: 0, timestamp: Date.now() };
                 const updatedNotes = generateNotesFromLogs([startLog], jobData.notes || '');
-                updateJobStatus(jobData.id, 'running', 0, updatedNotes, startLog, { 
-                    station: stationId, logs: [startLog] 
-                });
+                const extras = { station: stationId, logs: [startLog] };
+                if (width > 0) extras.width = width;
+                if (thickness > 0) extras.thickness = thickness;
+                updateJobStatus(jobData.id, 'running', 0, updatedNotes, startLog, extras);
             });
         }
     };
@@ -4158,7 +4533,7 @@ const WorkerStationView = ({ t, stationId, productionData, updateJobStatus, stat
         }
         
         // Retirer la quantité du total
-        const newProducedQty = Math.max(0, (activeJob.producedQty || 0) - qtyToRemove);
+        const newProducedQty = Math.max(0, (parseFloat(activeJob.producedQty) || 0) - qtyToRemove);
         
         // Retirer le log de la liste
         const newLogs = activeJob.logs.filter(log => log.timestamp !== lastQtyLog.timestamp);
@@ -4178,20 +4553,34 @@ const WorkerStationView = ({ t, stationId, productionData, updateJobStatus, stat
     const handleActionClick = (action) => {
         if (!activeJob) return;
         
+        if (action === 'pauseTimer') {
+            requireAuth((userName) => {
+                const pauseLog = {
+                    user: userName, action: 'PAUSE', qty: 0, timestamp: Date.now()
+                };
+                const allLogs = [...(activeJob.logs || []), pauseLog];
+                const updatedNotes = generateNotesFromLogs(allLogs, jobParams.jobNotes);
+                updateJobStatus(activeJob.id, 'paused', activeJob.producedQty, updatedNotes, pauseLog, { ...jobParams });
+            });
+            return;
+        }
+        
         if (action === 'complete') {
             // Prompt for quantity before completing
-            const currentQty = activeJob.producedQty || 0;
+            const currentQty = parseFloat(activeJob.producedQty) || 0;
             const width = parseFloat(activeJob.width) || 0;
+            const thickness = parseFloat(activeJob.thickness) || 0;
             
-            // Calculer la quantité planifiée incluant l'inventaire ajouté
+            // Quantité planifiée (même valeur que la case bleue)
             const baseQty = parseFloat(activeJob.qty) || 0;
             const logs = activeJob.logs || [];
             const stockUsedFromLogs = logs
                 .filter(log => log.action === 'STOCK_USED')
                 .reduce((sum, log) => sum + (parseFloat(log.qty) || 0), 0);
-            const totalPlannedPC = baseQty + stockUsedFromLogs;
-            const plannedPL = width > 0 ? totalPlannedPC / (width / 12) : totalPlannedPC;
-            const remainingQty = Math.max(0, plannedPL - currentQty);
+            const totalPlanned = baseQty + stockUsedFromLogs;
+            
+            // Restante = planifiée - produite
+            const remainingQty = Math.max(0, totalPlanned - currentQty);
             
             DevExpress.ui.dialog.custom({
                 title: "Terminer le travail",
@@ -4203,7 +4592,7 @@ const WorkerStationView = ({ t, stationId, productionData, updateJobStatus, stat
                     '<div style="margin-bottom: 16px; padding: 12px; background-color: #f9fafb; border-radius: 6px; border: 2px solid #e5e7eb;">' +
                         '<label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin-bottom: 8px;">' +
                             '<input type="checkbox" id="closePalletCheckComplete" style="width: 18px; height: 18px; cursor: pointer;" />' +
-                            '<span style="font-weight: bold; color: #1f2937; font-size: 15px;">Fermer une palette</span>' +
+                            '<span style="font-weight: bold; color: #1f2937; font-size: 15px;">Ajout. qté palette</span>' +
                         '</label>' +
                         '<div id="palletSectionComplete" style="display: none; margin-left: 26px; margin-top: 12px;">' +
                             '<p style="font-size: 13px; color: #059669; margin-bottom: 12px; font-style: italic;">' +
@@ -4211,7 +4600,26 @@ const WorkerStationView = ({ t, stationId, productionData, updateJobStatus, stat
                             '</p>' +
                             '<label style="display: block; margin-bottom: 6px; font-size: 14px; font-weight: bold; color: #4b5563;">Quantité de la palette (PL):</label>' +
                             '<input type="number" id="palletQtyInputComplete" value="' + remainingQty.toFixed(2) + '" min="0" step="0.01"' +
-                                   'style="width: 100%; padding: 8px; border: 2px solid #3b82f6; border-radius: 4px; font-size: 16px;" />' +
+                                   'style="width: 100%; padding: 8px; border: 2px solid #3b82f6; border-radius: 4px; font-size: 16px; margin-bottom: 12px;" />' +
+                            
+                            // Champs largeur/épaisseur pour Baker
+                            (activeJob.process === 'procBaker' ? 
+                            '<div style="margin-bottom: 12px; padding: 10px; background-color: #fef3c7; border-radius: 6px; border: 1px solid #fbbf24;">' +
+                                '<p style="font-size: 13px; font-weight: bold; color: #92400e; margin-bottom: 8px;"><i class="fa-solid fa-ruler-combined"></i> Confirmer les dimensions</p>' +
+                                '<div style="display: flex; gap: 12px;">' +
+                                    '<div style="flex: 1;">' +
+                                        '<label style="display: block; margin-bottom: 4px; font-size: 13px; font-weight: bold; color: #4b5563;">Largeur (po):</label>' +
+                                        '<input type="number" id="palletWidthInputComplete" value="' + (width > 0 ? width : '') + '" min="0" step="0.01"' +
+                                               'style="width: 100%; padding: 8px; border: 2px solid #f59e0b; border-radius: 4px; font-size: 16px;" placeholder="Largeur" />' +
+                                    '</div>' +
+                                    '<div style="flex: 1;">' +
+                                        '<label style="display: block; margin-bottom: 4px; font-size: 13px; font-weight: bold; color: #4b5563;">Épaisseur (po):</label>' +
+                                        '<input type="number" id="palletThicknessInputComplete" value="' + (thickness > 0 ? thickness : '') + '" min="0" step="0.01"' +
+                                               'style="width: 100%; padding: 8px; border: 2px solid #f59e0b; border-radius: 4px; font-size: 16px;" placeholder="Épaisseur" />' +
+                                    '</div>' +
+                                '</div>' +
+                            '</div>' : '') +
+                            
                         '</div>' +
                     '</div>' +
                     
@@ -4251,6 +4659,20 @@ const WorkerStationView = ({ t, stationId, productionData, updateJobStatus, stat
                             const newGrade = document.getElementById('gradeSelectComplete').value;
                             const reclassifyQty = parseFloat(document.getElementById('reclassifyQtyInputComplete').value) || 0;
                             
+                            // Lire les dimensions confirmées (Baker)
+                            let confirmedWidthComplete = parseFloat(activeJob.width) || 0;
+                            let confirmedThicknessComplete = parseFloat(activeJob.thickness) || 0;
+                            if (closePallet && activeJob.process === 'procBaker') {
+                                const wInput = document.getElementById('palletWidthInputComplete');
+                                const tInput = document.getElementById('palletThicknessInputComplete');
+                                if (wInput) confirmedWidthComplete = parseFloat(wInput.value) || 0;
+                                if (tInput) confirmedThicknessComplete = parseFloat(tInput.value) || 0;
+                                if (confirmedWidthComplete <= 0) {
+                                    alert("Veuillez entrer une largeur valide.");
+                                    return false;
+                                }
+                            }
+                            
                             // Validation
                             if (closePallet && palletQty <= 0) {
                                 alert("Veuillez entrer une quantité valide pour la palette à fermer.");
@@ -4267,7 +4689,7 @@ const WorkerStationView = ({ t, stationId, productionData, updateJobStatus, stat
                             const totalQty = currentQty + palletQtyToAdd;
                             
                             // Calculer la quantité planifiée actuelle incluant inventaire
-                            const width = parseFloat(activeJob.width) || 0;
+                            const widthForCalc = confirmedWidthComplete > 0 ? confirmedWidthComplete : (parseFloat(activeJob.width) || 0);
                             const baseQty = parseFloat(activeJob.qty) || 0;
                             const logs = activeJob.logs || [];
                             const stockUsedFromLogs = logs
@@ -4276,7 +4698,7 @@ const WorkerStationView = ({ t, stationId, productionData, updateJobStatus, stat
                             const totalInventoryPC = baseQty + stockUsedFromLogs;
                             
                             // Convertir la quantité produite en PC
-                            const producedPC = width > 0 ? totalQty * (width / 12) : totalQty;
+                            const producedPC = widthForCalc > 0 ? totalQty * (widthForCalc / 12) : totalQty;
                             
                             // Vérifier si on dépasse l'inventaire utilisé
                             if (producedPC > totalInventoryPC) {
@@ -4291,7 +4713,7 @@ const WorkerStationView = ({ t, stationId, productionData, updateJobStatus, stat
                             }
                             
                             const totalPlannedPC = totalInventoryPC;
-                            const plannedPL = width > 0 ? totalPlannedPC / (width / 12) : totalPlannedPC;
+                            const plannedPL = widthForCalc > 0 ? totalPlannedPC / (widthForCalc / 12) : totalPlannedPC;
                             
                             // Demander l'authentification de l'employé
                             requireAuth((userName) => {
@@ -4303,12 +4725,15 @@ const WorkerStationView = ({ t, stationId, productionData, updateJobStatus, stat
                                 
                                 // Ajouter le log de fermeture de palette si activé
                                 if (closePallet) {
-                                    extraLogs.push({
+                                    const palletLogComplete = {
                                         user: userName,
                                         action: 'PALLET_CLOSED',
                                         qty: palletQty,
                                         timestamp: Date.now()
-                                    });
+                                    };
+                                    if (confirmedWidthComplete > 0) palletLogComplete.width = confirmedWidthComplete;
+                                    if (confirmedThicknessComplete > 0) palletLogComplete.thickness = confirmedThicknessComplete;
+                                    extraLogs.push(palletLogComplete);
                                 }
                                 
                                 // Ajouter le log de reclassement si activé
@@ -4326,7 +4751,13 @@ const WorkerStationView = ({ t, stationId, productionData, updateJobStatus, stat
                                 const allLogs = [...(activeJob.logs || []), completeLog, ...extraLogs];
                                 const updatedNotes = generateNotesFromLogs(allLogs, jobParams.jobNotes);
                                 
-                                updateJobStatus(activeJob.id, 'completed', totalQty, updatedNotes, null, { ...jobParams, qty: newQty, logs: allLogs });
+                                updateJobStatus(activeJob.id, 'completed', totalQty, updatedNotes, null, { 
+                                    ...jobParams, 
+                                    qty: newQty, 
+                                    logs: allLogs,
+                                    ...(confirmedWidthComplete > 0 ? { width: confirmedWidthComplete } : {}),
+                                    ...(confirmedThicknessComplete > 0 ? { thickness: confirmedThicknessComplete } : {})
+                                });
                                 
                                 // Demander si on veut générer un tag avec localisation
                                 setTimeout(() => {
@@ -4343,11 +4774,15 @@ const WorkerStationView = ({ t, stationId, productionData, updateJobStatus, stat
                                             {
                                                 text: "Oui, imprimer",
                                                 onClick: () => {
-                                                    // Demander la localisation d'entreposage
+                                                    // Demander la localisation et le tally
                                                     DevExpress.ui.dialog.custom({
-                                                        title: "Localisation d'entreposage",
+                                                        title: "Détails de l'étiquette",
                                                         messageHtml: `<div style="margin: 20px 0;">
-                                                            <label style="display: block; margin-bottom: 8px; font-weight: bold;">Entrez la localisation :</label>
+                                                            <label style="display: block; margin-bottom: 4px; font-size: 13px; font-weight: bold; color: #4b5563;">Liste de Tally:</label>
+                                                            <textarea id="finishTallyInput" rows="3" 
+                                                                style="width: 100%; padding: 6px; border: 1px solid #93c5fd; border-radius: 4px; font-size: 13px; font-family: monospace; resize: vertical; margin-bottom: 12px;" 
+                                                                placeholder="Ex: 8x4, 10x6, 12x8..."></textarea>
+                                                            <label style="display: block; margin-bottom: 4px; font-size: 13px; font-weight: bold; color: #4b5563;">Localisation:</label>
                                                             <input type="text" id="storageLocation" placeholder="Ex: A-12, B-5, C-23..."
                                                                    style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 16px;" />
                                                         </div>`,
@@ -4360,7 +4795,8 @@ const WorkerStationView = ({ t, stationId, productionData, updateJobStatus, stat
                                                                 text: "Imprimer",
                                                                 onClick: () => {
                                                                     const location = document.getElementById('storageLocation').value.trim();
-                                                                    generateProductionTag(activeJob, location);
+                                                                    const tally = document.getElementById('finishTallyInput').value.trim();
+                                                                    generateProductionTag(activeJob, location, tally);
                                                                     return true;
                                                                 }
                                                             }
@@ -4397,7 +4833,7 @@ const WorkerStationView = ({ t, stationId, productionData, updateJobStatus, stat
         }
         else if (action === 'pause') {
             // Demander le NIP d'abord, puis ouvrir la fenêtre d'options
-            const currentQty = activeJob.producedQty || 0;
+            const currentQty = parseFloat(activeJob.producedQty) || 0;
             const width = parseFloat(activeJob.width) || 0;
             
             // Calculer les quantités accumulées non-imprimées depuis les logs
@@ -4431,7 +4867,7 @@ const WorkerStationView = ({ t, stationId, productionData, updateJobStatus, stat
                 
                 // Après authentification, ouvrir le dialogue d'options
                 DevExpress.ui.dialog.custom({
-                    title: "Mettre en pause",
+                    title: "Ajouter de la production",
                     messageHtml: '<div style="margin: 10px 0; max-height: 60vh; overflow-y: auto; padding-right: 8px;">' +
                         '<p style="margin-bottom: 10px; color: #374151; font-size: 13px;">Employé: <strong>' + userName + '</strong></p>' +
                         '<p style="margin-bottom: 16px; color: #666;">Quantité déjà produite: <strong>' + currentQty.toFixed(2) + ' PL</strong></p>' +
@@ -4442,7 +4878,7 @@ const WorkerStationView = ({ t, stationId, productionData, updateJobStatus, stat
                         '<div style="margin-bottom: 16px; padding: 12px; background-color: #f9fafb; border-radius: 6px; border: 2px solid #e5e7eb;">' +
                             '<label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin-bottom: 8px;">' +
                                 '<input type="checkbox" id="closePalletCheck" style="width: 18px; height: 18px; cursor: pointer;" />' +
-                                '<span style="font-weight: bold; color: #1f2937; font-size: 15px;">Fermer une palette</span>' +
+                                '<span style="font-weight: bold; color: #1f2937; font-size: 15px;">Ajout. qté palette</span>' +
                             '</label>' +
                             '<div id="palletSection" style="display: none; margin-left: 26px; margin-top: 12px;">' +
                                 '<p style="font-size: 13px; color: #059669; margin-bottom: 12px; font-style: italic;">' +
@@ -4452,6 +4888,24 @@ const WorkerStationView = ({ t, stationId, productionData, updateJobStatus, stat
                                 '<label style="display: block; margin-bottom: 6px; font-size: 14px; font-weight: bold; color: #4b5563;">Quantité de la palette (PL):</label>' +
                                 '<input type="number" id="palletQtyInput" value="0" min="0" step="0.01"' +
                                        'style="width: 100%; padding: 8px; border: 2px solid #3b82f6; border-radius: 4px; font-size: 16px; margin-bottom: 12px;" />' +
+                                
+                                // Champs largeur/épaisseur pour Baker
+                                (activeJob.process === 'procBaker' ? 
+                                '<div style="margin-bottom: 12px; padding: 10px; background-color: #fef3c7; border-radius: 6px; border: 1px solid #fbbf24;">' +
+                                    '<p style="font-size: 13px; font-weight: bold; color: #92400e; margin-bottom: 8px;"><i class="fa-solid fa-ruler-combined"></i> Confirmer les dimensions</p>' +
+                                    '<div style="display: flex; gap: 12px;">' +
+                                        '<div style="flex: 1;">' +
+                                            '<label style="display: block; margin-bottom: 4px; font-size: 13px; font-weight: bold; color: #4b5563;">Largeur (po):</label>' +
+                                            '<input type="number" id="palletWidthInput" value="' + (parseFloat(activeJob.width) || '') + '" min="0" step="0.01"' +
+                                                   'style="width: 100%; padding: 8px; border: 2px solid #f59e0b; border-radius: 4px; font-size: 16px;" placeholder="Largeur" />' +
+                                        '</div>' +
+                                        '<div style="flex: 1;">' +
+                                            '<label style="display: block; margin-bottom: 4px; font-size: 13px; font-weight: bold; color: #4b5563;">Épaisseur (po):</label>' +
+                                            '<input type="number" id="palletThicknessInput" value="' + (parseFloat(activeJob.thickness) || '') + '" min="0" step="0.01"' +
+                                                   'style="width: 100%; padding: 8px; border: 2px solid #f59e0b; border-radius: 4px; font-size: 16px;" placeholder="Épaisseur" />' +
+                                        '</div>' +
+                                    '</div>' +
+                                '</div>' : '') +
                                 
                                 '<!-- Option inventaire + étiquette pour palette -->' +
                                 '<div style="margin-top: 8px; padding: 10px; background-color: #eff6ff; border-radius: 6px; border: 1px solid #bfdbfe;">' +
@@ -4540,6 +4994,20 @@ const WorkerStationView = ({ t, stationId, productionData, updateJobStatus, stat
                                 const reclassifyTally = reclassifyPrint ? (document.getElementById('reclassifyTallyInput').value.trim()) : '';
                                 const reclassifyLoc = reclassifyPrint ? (document.getElementById('reclassifyLocationInput').value.trim() || 'N/A') : '';
                                 
+                                // Lire les dimensions confirmées (Baker)
+                                let confirmedWidth = parseFloat(activeJob.width) || 0;
+                                let confirmedThickness = parseFloat(activeJob.thickness) || 0;
+                                if (closePallet && activeJob.process === 'procBaker') {
+                                    const wInput = document.getElementById('palletWidthInput');
+                                    const tInput = document.getElementById('palletThicknessInput');
+                                    if (wInput) confirmedWidth = parseFloat(wInput.value) || 0;
+                                    if (tInput) confirmedThickness = parseFloat(tInput.value) || 0;
+                                    if (confirmedWidth <= 0) {
+                                        alert("Veuillez entrer une largeur valide.");
+                                        return false;
+                                    }
+                                }
+                                
                                 // Validation
                                 if (closePallet && palletQty <= 0) {
                                     alert("Veuillez entrer une quantité valide pour la palette à fermer.");
@@ -4551,15 +5019,10 @@ const WorkerStationView = ({ t, stationId, productionData, updateJobStatus, stat
                                     return false;
                                 }
                                 
-                                // Si aucune action sélectionnée, pause simple
+                                // Si aucune action sélectionnée, fermer simplement
                                 if (!closePallet && !reclassify) {
-                                    const pauseLog = {
-                                        user: userName, action: 'PAUSE', qty: 0, timestamp: Date.now()
-                                    };
-                                    const allLogs = [...(activeJob.logs || []), pauseLog];
-                                    const updatedNotes = generateNotesFromLogs(allLogs, jobParams.jobNotes);
-                                    updateJobStatus(activeJob.id, 'paused', currentQty, updatedNotes, pauseLog, { ...jobParams });
-                                    return true;
+                                    DevExpress.ui.notify('Veuillez sélectionner au moins une option (fermer palette ou reclasser).', 'warning', 3000);
+                                    return false;
                                 }
                                 
                                 // La quantité de la palette fermée s'ajoute à la quantité produite
@@ -4567,7 +5030,7 @@ const WorkerStationView = ({ t, stationId, productionData, updateJobStatus, stat
                                 const totalQty = currentQty + palletQtyToAdd;
                                 
                                 // Calculer l'inventaire utilisé
-                                const widthVal = parseFloat(activeJob.width) || 0;
+                                const widthVal = confirmedWidth > 0 ? confirmedWidth : (parseFloat(activeJob.width) || 0);
                                 const baseQty = parseFloat(activeJob.qty) || 0;
                                 const logs = activeJob.logs || [];
                                 const stockUsedFromLogs = logs
@@ -4590,22 +5053,20 @@ const WorkerStationView = ({ t, stationId, productionData, updateJobStatus, stat
                                     newQty = producedPC;
                                 }
                                 
-                                // Le log de pause enregistre la quantité de la palette
-                                const pauseLog = {
-                                    user: userName, action: 'PAUSE', qty: palletQtyToAdd, timestamp: Date.now()
-                                };
-                                
                                 const extraLogs = [];
                                 
                                 // Ajouter le log de fermeture de palette si activé (pour traçabilité)
                                 if (closePallet) {
-                                    extraLogs.push({
+                                    const palletLog = {
                                         user: userName,
                                         action: 'PALLET_CLOSED',
                                         qty: palletQty,
                                         printed: palletPrint, // marquer si imprimé
                                         timestamp: Date.now()
-                                    });
+                                    };
+                                    if (confirmedWidth > 0) palletLog.width = confirmedWidth;
+                                    if (confirmedThickness > 0) palletLog.thickness = confirmedThickness;
+                                    extraLogs.push(palletLog);
                                 }
                                 
                                 // Ajouter le log de reclassement si activé (ne change pas la qté produite)
@@ -4640,12 +5101,14 @@ const WorkerStationView = ({ t, stationId, productionData, updateJobStatus, stat
                                 }
                                 
                                 // Créer les logs complets pour générer les notes
-                                const allLogs = [...updatedLogs, pauseLog, ...extraLogs];
+                                const allLogs = [...updatedLogs, ...extraLogs];
                                 const updatedNotes = generateNotesFromLogs(allLogs, jobParams.jobNotes);
                                 
-                                // Mettre à jour le statut avec le log de pause et la quantité totale produite
-                                // Passer les logs mis à jour (avec printed flags) — allLogs contient déjà pauseLog + extraLogs
-                                updateJobStatus(activeJob.id, 'paused', totalQty, updatedNotes, null, { ...jobParams, qty: newQty, logs: allLogs });
+                                // Mettre à jour le statut — le job reste en 'running' (le compteur continue)
+                                const extraParams = { ...jobParams, qty: newQty, logs: allLogs };
+                                if (confirmedWidth > 0) extraParams.width = confirmedWidth;
+                                if (confirmedThickness > 0) extraParams.thickness = confirmedThickness;
+                                updateJobStatus(activeJob.id, 'running', totalQty, updatedNotes, null, extraParams);
                                 
                                 // Traiter impression étiquette pour palette
                                 if (closePallet && palletQty > 0 && palletPrint) {
@@ -4666,13 +5129,13 @@ const WorkerStationView = ({ t, stationId, productionData, updateJobStatus, stat
                                         
                                         const palletGrade = reclassify ? newGrade : (activeJob.grade || 'Standard');
                                         const palletJobData = { ...activeJob, grade: palletGrade, producedQty: totalPalletQtyForLabel };
-                                        const productCode = generateProductCode(palletJobData);
+                                        const productCode = activeJob.targetProductCode || generateProductCode(palletJobData);
                                         
                                         const widthPC = parseFloat(activeJob.width) || 0;
                                         const qtyPC = widthPC > 0 ? totalPalletQtyForLabel * (widthPC / 12) : totalPalletQtyForLabel;
                                         
                                         if (typeof addToInventory === 'function') {
-                                            addToInventory(stockNo, activeJob.wood || 'N/A', palletGrade, activeJob.client || 'N/A', Math.round(qtyPC), palletLoc, t[activeJob.process] || activeJob.process || 'Fini');
+                                            addToInventory(stockNo, activeJob.wood || 'N/A', palletGrade, activeJob.client || 'N/A', Math.round(qtyPC), palletLoc, getProcessName(activeJob.process), productCode);
                                         }
                                         
                                         const palletData = {
@@ -4680,7 +5143,8 @@ const WorkerStationView = ({ t, stationId, productionData, updateJobStatus, stat
                                             wood: activeJob.wood || 'N/A', grade: palletGrade, producedQty: totalPalletQtyForLabel,
                                             process: activeJob.process || '', steps: activeJob.steps || [],
                                             width: activeJob.width || 'N/A', coverage: activeJob.coverage || 'N/A',
-                                            customStockNo: stockNo, tallyList: palletTally, productCode: productCode
+                                            customStockNo: stockNo, tallyList: palletTally, productCode: productCode,
+                                            targetProductCode: activeJob.targetProductCode || ''
                                         };
                                         generatePalletLabel(palletData, palletLoc);
                                         DevExpress.ui.notify('Stock ' + stockNo + ' créé — ' + totalPalletQtyForLabel.toFixed(2) + ' PL transférés à l\'inventaire', 'success', 4000);
@@ -4706,13 +5170,13 @@ const WorkerStationView = ({ t, stationId, productionData, updateJobStatus, stat
                                         const stockNo = String(nextNum);
                                         
                                         const reclassJobData = { ...activeJob, grade: newGrade, producedQty: totalReclassQtyForLabel };
-                                        const productCode = generateProductCode(reclassJobData);
+                                        const productCode = activeJob.targetProductCode || generateProductCode(reclassJobData);
                                         
                                         const widthPC = parseFloat(activeJob.width) || 0;
                                         const qtyPC = widthPC > 0 ? totalReclassQtyForLabel * (widthPC / 12) : totalReclassQtyForLabel;
                                         
                                         if (typeof addToInventory === 'function') {
-                                            addToInventory(stockNo, activeJob.wood || 'N/A', newGrade, activeJob.client || 'N/A', Math.round(qtyPC), reclassifyLoc, t[activeJob.process] || activeJob.process || 'Reclassé');
+                                            addToInventory(stockNo, activeJob.wood || 'N/A', newGrade, activeJob.client || 'N/A', Math.round(qtyPC), reclassifyLoc, getProcessName(activeJob.process), productCode);
                                         }
                                         
                                         const reclassData = {
@@ -4720,7 +5184,8 @@ const WorkerStationView = ({ t, stationId, productionData, updateJobStatus, stat
                                             wood: activeJob.wood || 'N/A', grade: newGrade, producedQty: totalReclassQtyForLabel,
                                             process: activeJob.process || '', steps: activeJob.steps || [],
                                             width: activeJob.width || 'N/A', coverage: activeJob.coverage || 'N/A',
-                                            customStockNo: stockNo, tallyList: reclassifyTally, productCode: productCode
+                                            customStockNo: stockNo, tallyList: reclassifyTally, productCode: productCode,
+                                            targetProductCode: activeJob.targetProductCode || ''
                                         };
                                         generatePalletLabel(reclassData, reclassifyLoc);
                                         DevExpress.ui.notify('Stock ' + stockNo + ' créé — ' + totalReclassQtyForLabel.toFixed(2) + ' PL reclassés transférés à l\'inventaire', 'success', 4000);
@@ -4836,7 +5301,8 @@ const WorkerStationView = ({ t, stationId, productionData, updateJobStatus, stat
                 const prod = document.createElement('div');
                 prod.className = 'text-xs text-gray-700';
                 const gradeText = data.grade ? ' (' + data.grade + ')' : '';
-                prod.textContent = (data.wood || '') + gradeText + ' - ' + (data.qty || '') + ' pc';
+                const processName = getProcessName(data.process);
+                prod.textContent = processName + ' - ' + (data.wood || '') + gradeText + ' - ' + (data.qty || '') + ' pc';
                 container.appendChild(prod);
                 // Boutons actions
                 const actions = document.createElement('div');
@@ -5483,13 +5949,15 @@ const WorkerStationView = ({ t, stationId, productionData, updateJobStatus, stat
                                                 DevExpress.ui.notify('Quantité invalide', 'warning', 2000);
                                                 return;
                                             }
-                                            // Ajouter au log du job
+                                            // Ajouter au log du job (STOCK_USED pour que ça compte dans Qté inventaire utilisé)
                                             if (activeJobRef.current) {
-                                                updateJobStatus(activeJobRef.current.id, 'running', {
-                                                    logs: [...(activeJobRef.current.logs || []), {
-                                                        action: 'MATERIAL_USED',
+                                                const job = activeJobRef.current;
+                                                updateJobStatus(job.id, job.status, job.producedQty, job.notes, null, {
+                                                    logs: [...(job.logs || []), {
+                                                        action: 'STOCK_USED',
                                                         timestamp: Date.now(),
                                                         user: 'Opérateur',
+                                                        stockNo: 'N/A',
                                                         description: `${nonInventoryName} (non inventorié)`,
                                                         qty: qty
                                                     }]
@@ -5599,8 +6067,9 @@ const WorkerStationView = ({ t, stationId, productionData, updateJobStatus, stat
                                                         deductFromInventory(selectedMaterial.stockNo, qty);
                                                         // Ajouter au log du job
                                                         if (activeJobRef.current) {
-                                                            updateJobStatus(activeJobRef.current.id, 'running', {
-                                                                logs: [...(activeJobRef.current.logs || []), {
+                                                            const job = activeJobRef.current;
+                                                            updateJobStatus(job.id, job.status, job.producedQty, job.notes, null, {
+                                                                logs: [...(job.logs || []), {
                                                                     action: 'STOCK_USED',
                                                                     timestamp: Date.now(),
                                                                     user: 'Opérateur',
@@ -5664,7 +6133,7 @@ const WorkerStationView = ({ t, stationId, productionData, updateJobStatus, stat
                             <div>
                                 <h2 className="text-xl font-bold text-gray-700">{t.currentJob}</h2>
                                 {activeJob && (
-                                    <div className="text-2xl font-bold text-[#51aff7] mt-2">{t[activeJob.process] || activeJob.process}</div>
+                                    <div className="text-2xl font-bold text-[#51aff7] mt-2">{getProcessName(activeJob.process)}</div>
                                 )}
                             </div>
                             {activeJob && (
@@ -5691,74 +6160,72 @@ const WorkerStationView = ({ t, stationId, productionData, updateJobStatus, stat
                                         <div className="text-3xl font-bold text-gray-800">{activeJob.wood || 'N/A'}{activeJob.grade ? ` (${activeJob.grade})` : ''}</div>
                                     </div>
                                 </div>
+                                {/* Affichage du code produit voulu */}
+                                {activeJob.targetProductCode && (
+                                    <div className="mt-4 p-4 bg-purple-50 border-2 border-purple-200 rounded-lg">
+                                        <div className="text-sm text-purple-600 uppercase font-bold mb-2">Produit Voulu</div>
+                                        <div className="text-2xl font-bold text-purple-700">{activeJob.targetProductCode}</div>
+                                        {activeJob.targetProductInfo && (
+                                            <div className="mt-2 space-y-1">
+                                                {activeJob.targetProductInfo.description && (
+                                                    <div className="text-base text-gray-700"><span className="font-semibold text-purple-600">Description:</span> {activeJob.targetProductInfo.description}</div>
+                                                )}
+                                                {activeJob.targetProductInfo.wood && (
+                                                    <div className="text-base text-gray-700"><span className="font-semibold text-purple-600">Type / Essence:</span> {activeJob.targetProductInfo.wood}{activeJob.targetProductInfo.grade ? ` (${activeJob.targetProductInfo.grade})` : ''}</div>
+                                                )}
+                                                {(activeJob.targetProductInfo.epaisseur || activeJob.targetProductInfo.largeur) && (
+                                                    <div className="text-base text-gray-700">
+                                                        <span className="font-semibold text-purple-600">Dimensions:</span>{' '}
+                                                        {activeJob.targetProductInfo.epaisseur ? `Ép: ${activeJob.targetProductInfo.epaisseur}` : ''}
+                                                        {activeJob.targetProductInfo.epaisseur && activeJob.targetProductInfo.largeur ? ' × ' : ''}
+                                                        {activeJob.targetProductInfo.largeur ? `Larg: ${activeJob.targetProductInfo.largeur}` : ''}
+                                                    </div>
+                                                )}
+                                                {activeJob.targetProductInfo.unite && (
+                                                    <div className="text-base text-gray-700"><span className="font-semibold text-purple-600">Unité de mesure:</span> {activeJob.targetProductInfo.unite}</div>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
 
                                 {/* Additional Quantities Display */}
-                                <div style={{display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '1rem'}}>
-                                    <div style={{backgroundColor: '#fef9c3', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #fde047'}}>
-                                        <div style={{fontSize: '0.75rem', color: '#6b7280', fontWeight: 'bold', marginBottom: '0.25rem', textTransform: 'uppercase'}}>Quantités</div>
-                                        <div style={{fontSize: '1.5rem', fontWeight: 'bold', color: '#ca8a04'}}>{(() => {
-                                            const width = parseFloat(jobParams.width || activeJob.width) || 0;
-                                            console.log('DEBUG Case Jaune - producedQty:', producedQty, 'width:', width);
-                                            const pcProduced = width > 0 ? (producedQty * (width / 12)).toFixed(2) : producedQty.toFixed(2);
-                                            console.log('DEBUG Case Jaune - pcProduced:', pcProduced);
-                                            
-                                            // Calculer la quantité planifiée (même calcul que case mauve)
-                                            // activeJob.qty contient déjà les stockDetails initiaux, on ajoute seulement les stocks manuels
-                                            const baseQty = parseFloat(activeJob.qty) || 0;
-                                            const logs = activeJob.logs || [];
-                                            const stockUsedFromLogs = logs
-                                                .filter(log => log.action === 'STOCK_USED')
-                                                .reduce((sum, log) => sum + (parseFloat(log.qty) || 0), 0);
-                                            const pcPlanned = baseQty + stockUsedFromLogs;
-                                            
-                                            return `${pcProduced} / ${pcPlanned.toFixed(2)} pc`;
-                                        })()}</div>
-                                        <div style={{fontSize: '0.75rem', color: '#6b7280'}}>Produite / Planifiée</div>
-                                    </div>
+                                <div style={{display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem'}}>
                                     <div style={{backgroundColor: '#f0fdf4', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #bbf7d0'}}>
                                         <div style={{fontSize: '0.75rem', color: '#6b7280', fontWeight: 'bold', marginBottom: '0.25rem', textTransform: 'uppercase'}}>Qté Produite</div>
                                         <div style={{fontSize: '1.5rem', fontWeight: 'bold', color: '#15803d'}}>{producedQty.toFixed(2)}</div>
                                         <div style={{fontSize: '0.75rem', color: '#6b7280'}}>pieds linéaires</div>
                                     </div>
                                     <div style={{backgroundColor: '#eff6ff', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #bfdbfe'}}>
-                                        <div style={{fontSize: '0.75rem', color: '#6b7280', fontWeight: 'bold', marginBottom: '0.25rem', textTransform: 'uppercase'}}>Qté PL Planifiée</div>
+                                        <div style={{fontSize: '0.75rem', color: '#6b7280', fontWeight: 'bold', marginBottom: '0.25rem', textTransform: 'uppercase'}}>Qté Planifiée</div>
                                         <div style={{fontSize: '1.5rem', fontWeight: 'bold', color: '#1d4ed8'}}>{(() => {
-                                            const width = parseFloat(jobParams.width || activeJob.width) || 0;
-                                            
-                                            // Calculer la quantité planifiée (même calcul que case mauve)
-                                            // activeJob.qty contient déjà les stockDetails initiaux, on ajoute seulement les stocks manuels
+                                            // Utiliser directement la quantité voulue du tableau de production
                                             const baseQty = parseFloat(activeJob.qty) || 0;
                                             const logs = activeJob.logs || [];
                                             const stockUsedFromLogs = logs
                                                 .filter(log => log.action === 'STOCK_USED')
                                                 .reduce((sum, log) => sum + (parseFloat(log.qty) || 0), 0);
                                             const qty = baseQty + stockUsedFromLogs;
-                                            
-                                            if (width > 0) {
-                                                const widthInFeet = width / 12;
-                                                const result = qty / widthInFeet;
-                                                return result.toFixed(2);
-                                            }
                                             return qty.toFixed(2);
                                         })()}</div>
-                                        <div style={{fontSize: '0.75rem', color: '#6b7280'}}>pieds linéaires</div>
+                                        <div style={{fontSize: '0.75rem', color: '#6b7280'}}>{(() => {
+                                            const info = activeJob.targetProductInfo;
+                                            if (info && info.unite) return info.unite;
+                                            return 'PC';
+                                        })()}</div>
                                     </div>
                                     <div style={{backgroundColor: '#f3e8ff', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #d8b4fe'}}>
                                         <div style={{fontSize: '0.75rem', color: '#6b7280', fontWeight: 'bold', marginBottom: '0.25rem', textTransform: 'uppercase'}}>Qte inventaire utilisé</div>
                                         <div style={{fontSize: '1.5rem', fontWeight: 'bold', color: '#7c3aed'}}>{(() => {
-                                            // Quantité prédéterminée du tableau de production (contient déjà les stockDetails initiaux)
-                                            const baseQty = parseFloat(activeJob.qty) || 0;
-                                            
-                                            // Compter les stocks ajoutés via les logs
-                                            const logs = activeJob.logs || [];
-                                            const stockUsedFromLogs = logs
-                                                .filter(log => log.action === 'STOCK_USED')
-                                                .reduce((sum, log) => sum + (parseFloat(log.qty) || 0), 0);
-                                            
-                                            const totalStock = baseQty + stockUsedFromLogs;
-                                            return totalStock.toFixed(2);
+                                            // Utiliser la même logique que "Inventaire alloué" du tableau de production
+                                            if (activeJob.inventoryAllocated !== undefined) return parseFloat(activeJob.inventoryAllocated).toFixed(2);
+                                            const stockDetails = activeJob.stockDetails || [];
+                                            if (stockDetails.length > 0) {
+                                                return stockDetails.reduce((sum, s) => sum + (Number(s.qty) || 0), 0).toFixed(2);
+                                            }
+                                            return (parseFloat(activeJob.qty) || 0).toFixed(2);
                                         })()}</div>
-                                        <div style={{fontSize: '0.75rem', color: '#6b7280'}}>pieds carrés</div>
+                                        <div style={{fontSize: '0.75rem', color: '#6b7280'}}>{(activeJob.targetProductInfo && activeJob.targetProductInfo.unite) ? activeJob.targetProductInfo.unite : 'PC'}</div>
                                     </div>
                                     {activeJob.qtyPMP && (
                                         <div style={{backgroundColor: '#faf5ff', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #e9d5ff'}}>
@@ -5782,12 +6249,20 @@ const WorkerStationView = ({ t, stationId, productionData, updateJobStatus, stat
                                     </div>
                                     <div className="flex gap-2">
                                         {activeJob.status === 'running' ? (
+                                            <>
                                              <button 
                                                 onClick={() => handleActionClick('pause')}
                                                 className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-4 rounded-xl shadow-lg transition"
                                              >
-                                                <i className="fa-solid fa-pause mr-2"></i> {t.pauseJob}
+                                                <i className="fa-solid fa-plus mr-2"></i> {t.pauseJob}
                                              </button>
+                                             <button 
+                                                onClick={() => handleActionClick('pauseTimer')}
+                                                className="flex-1 bg-gray-500 hover:bg-gray-600 text-white font-bold py-4 rounded-xl shadow-lg transition"
+                                             >
+                                                <i className="fa-solid fa-pause mr-2"></i> {t.pauseTimerJob}
+                                             </button>
+                                            </>
                                         ) : (
                                             <button 
                                                 onClick={() => requireAuth((userName) => {
@@ -6275,7 +6750,7 @@ const App = () => {
         });
     };
 
-    const addToInventory = (stockNo, wood, grade, client, qty, location, state) => {
+    const addToInventory = (stockNo, wood, grade, client, qty, location, state, productCode) => {
         setInventory(prev => {
             const newItem = {
                 stockNo: stockNo,
@@ -6284,7 +6759,8 @@ const App = () => {
                 client: client,
                 qty: parseFloat(qty) || 0,
                 location: location || '',
-                state: state || ''
+                state: state || '',
+                productCode: productCode || ''
             };
             const updated = [...prev, newItem];
             localStorage.setItem('inventory', JSON.stringify(updated));
@@ -6355,7 +6831,7 @@ const App = () => {
 
     const generatePalletLabel = (job, storageLocation = '') => {
         const stockNo = job.customStockNo || ('STK-' + Date.now().toString().slice(-6));
-        const productCode = job.productCode || generateProductCode(job);
+        const productCode = job.targetProductCode || job.productCode || generateProductCode(job);
         const orderNumber = job.txn || job.id;
         const barcodeSVG = generateBarcodeSVG(stockNo);
         const width = job.width || 'N/A';
@@ -6463,12 +6939,23 @@ const App = () => {
         printWindow.document.close();
     };
 
-    const generateProductionTag = (job, storageLocation = '') => {
-        // Utiliser le numéro de stock personnalisé si fourni, sinon générer un nouveau
-        const newStockNo = job.customStockNo || ('STK-' + Date.now().toString().slice(-6));
+    const generateProductionTag = (job, storageLocation = '', tallyList = '') => {
+        // Générer le prochain numéro de stock séquentiel (commence à 10000)
+        let newStockNo = job.customStockNo;
+        if (!newStockNo) {
+            let nextNum = 10000;
+            const existingNums = inventory
+                .map(item => parseInt(item.stockNo, 10))
+                .filter(n => !isNaN(n));
+            if (existingNums.length > 0) {
+                const maxNum = Math.max(...existingNums);
+                nextNum = maxNum < 10000 ? 10000 : maxNum + 1;
+            }
+            newStockNo = String(nextNum);
+        }
         
-        // Générer le code produit
-        const productCode = generateProductCode(job);
+        // Utiliser le code du produit voulu si disponible, sinon générer
+        const productCode = job.targetProductCode || generateProductCode(job);
         
         // Ajouter à l'inventaire seulement si pas de numéro de stock personnalisé
         // (car dans ce cas, l'ajout a déjà été fait lors de la fermeture de la palette)
@@ -6476,7 +6963,7 @@ const App = () => {
             const processState = job.process ? (t[job.process] || job.process) : 'N/A';
             const qtyPL = job.producedQty || 0;
             const jobGrade = job.grade || '';
-            addToInventory(newStockNo, job.wood, jobGrade, job.client, qtyPL, storageLocation, processState);
+            addToInventory(newStockNo, job.wood, jobGrade, job.client, qtyPL, storageLocation, processState, productCode);
         }
         
         // Générer le code-barres SVG pour le numéro de STOCK
@@ -6536,6 +7023,30 @@ const App = () => {
                 <div style="margin-bottom: 4px;">
                     <div style="font-size: 12px;"><strong>Quantité Produite:</strong> ${job.producedQty?.toFixed(2) || '0'} PL</div>
                 </div>
+                
+                ${(() => {
+                    if (!tallyList) return '';
+                    const tallyLines = tallyList.split('\n').filter(l => l.trim());
+                    if (tallyLines.length === 0) return '';
+                    return `
+                    <div style="margin-bottom: 6px; border-top: 1px solid #333; padding-top: 4px;">
+                        <div style="font-size: 11px; margin-bottom: 4px;"><strong>Liste de Tally:</strong></div>
+                        <table style="width: 100%; font-size: 10px; border-collapse: collapse;">
+                            <thead>
+                                <tr style="background-color: #f3f4f6;">
+                                    <th style="border: 1px solid #ccc; padding: 2px 4px; text-align: left;">#</th>
+                                    <th style="border: 1px solid #ccc; padding: 2px 4px; text-align: left;">Dimensions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${tallyLines.map((line, i) => 
+                                    '<tr><td style="border: 1px solid #ccc; padding: 2px 4px;">' + (i + 1) + '</td><td style="border: 1px solid #ccc; padding: 2px 4px;">' + line.trim() + '</td></tr>'
+                                ).join('')}
+                            </tbody>
+                        </table>
+                        <div style="font-size: 10px; color: #666; margin-top: 2px;"><strong>Total pièces:</strong> ${tallyLines.length}</div>
+                    </div>`;
+                })()}
                 
                 <div style="margin-top: 8px; text-align: center; font-size: 10px; color: #666;">
                     <div>Date: ${new Date().toLocaleDateString()}</div>
@@ -6680,7 +7191,7 @@ const App = () => {
             setActiveTab('production');
         };
     }
-    if(appMode !== 'admin') return <WorkerStationView t={t} stationId={appMode} productionData={productionData} updateJobStatus={updateJobStatus} stationConfig={stationConfig} inventory={inventory} deductFromInventory={deductFromInventory} addToInventory={addToInventory} adjustInventory={adjustInventory} generateProductionTag={generateProductionTag} generatePalletLabel={generatePalletLabel} generateProductCode={generateProductCode} />;
+    if(appMode !== 'admin') return <WorkerStationView t={t} stationId={appMode} productionData={productionData} updateJobStatus={updateJobStatus} stationConfig={stationConfig} inventory={inventory} deductFromInventory={deductFromInventory} addToInventory={addToInventory} adjustInventory={adjustInventory} generateProductionTag={generateProductionTag} generatePalletLabel={generatePalletLabel} generateProductCode={generateProductCode} customProcesses={customProcesses} woodTreatments={woodTreatments} />;
 
     // Refresh event when returning to Production tab or Admin mode
     useEffect(() => {
