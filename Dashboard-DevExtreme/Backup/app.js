@@ -184,7 +184,7 @@ const translations = {
         production: "Production",
         inventory: "Inventaire",
         settings: "Paramètre",
-        dataEntry: "Saisie de Données",
+        dataEntry: "Facturation",
         rawWood: "Traitement bois brut",
         employeeEfficiency: "Efficacité Employés",
         // Header
@@ -317,7 +317,7 @@ const translations = {
         navDashboard: "Tableau de Bord",
         navProduction: "Production",
         navRawWood: "Traitement bois brut",
-        navDataEntry: "Saisie de Données",
+        navDataEntry: "Facturation",
         navSettings: "Paramètres",
         printLabel: "Imprimer Étiquette",
         labelRecipe: "Recette / Procédé",

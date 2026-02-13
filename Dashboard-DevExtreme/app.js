@@ -186,7 +186,7 @@ const translations = {
         production: "Production",
         inventory: "Inventaire",
         settings: "Paramètre",
-        dataEntry: "Saisie de Données",
+        dataEntry: "Facturation",
         rawWood: "Traitement bois brut",
         employeeEfficiency: "Efficacité Employés",
         // Header
@@ -321,7 +321,7 @@ const translations = {
         navDashboard: "Tableau de Bord",
         navProduction: "Production",
         navRawWood: "Traitement bois brut",
-        navDataEntry: "Saisie de Données",
+        navDataEntry: "Facturation",
         navSettings: "Paramètres",
         printLabel: "Imprimer Étiquette",
         labelRecipe: "Recette / Procédé",
@@ -2894,7 +2894,7 @@ const ProductionView = ({ t, productionData, assignStation, updateJobStatus, del
 };
 
 
-const DataEntryView = ({ t, addBatch, setActiveTab, customProcesses = [], woodTreatments = [], processParameters = {}, inventory = [] }) => {
+const DataEntryView = ({ t, addBatch, setActiveTab, customProcesses = [], woodTreatments = [], processParameters = {}, inventory = [], setInventory = () => {} }) => {
     // Saved invoices
     const [savedInvoices, setSavedInvoices] = useState(() => {
         const saved = localStorage.getItem('invoices');
@@ -2905,12 +2905,25 @@ const DataEntryView = ({ t, addBatch, setActiveTab, customProcesses = [], woodTr
     // Invoice number auto-generated
     const generateInvoiceNo = () => {
         const existing = savedInvoices.map(inv => {
-            const m = (inv.invoiceNo || '').match(/FAC-(\d+)/);
+            const m = (inv.invoiceNo || '').match(/^(\d+)$/);
             return m ? parseInt(m[1], 10) : 0;
         });
         const max = existing.length > 0 ? Math.max(...existing) : 0;
-        return 'FAC-' + String(max + 1).padStart(5, '0');
+        return String(Math.max(max + 1, 100)).padStart(6, '0');
     };
+
+    // Transaction number auto-generated
+    const generateTransactionNo = () => {
+        const existing = savedInvoices.map(inv => {
+            const m = (inv.transactionNo || '').match(/^(\d+)$/);
+            return m ? parseInt(m[1], 10) : 0;
+        });
+        const max = existing.length > 0 ? Math.max(...existing) : 0;
+        return String(Math.max(max + 1, 100)).padStart(6, '0');
+    };
+
+    const [transactionNo, setTransactionNo] = useState('');
+    const [docConfirmed, setDocConfirmed] = useState(false);
 
     // Client info
     const [clientInfo, setClientInfo] = useState({
@@ -2926,17 +2939,65 @@ const DataEntryView = ({ t, addBatch, setActiveTab, customProcesses = [], woodTr
         deliveryNotes: ''
     });
 
-    const [invoiceNo, setInvoiceNo] = useState(generateInvoiceNo);
+    const [clientDeliveryExpanded, setClientDeliveryExpanded] = useState(true);
+
+    const isClientFilled = clientInfo.name.trim() !== '';
+    const isDeliveryFilled = clientInfo.deliveryAddress.trim() !== '';
+
+    const [invoiceNo, setInvoiceNo] = useState('');
     const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split('T')[0]);
     const [invoiceNotes, setInvoiceNotes] = useState('');
+    const [editingInvoiceNo, setEditingInvoiceNo] = useState(null);
 
     // Invoice lines
-    const emptyLine = { stockNo: '', productCode: '', description: '', qtyVendu: '', qtyExp: '', um: 'PC', prix: '', escompte: '', statut: 'En attente' };
-    const [lines, setLines] = useState(() => Array.from({ length: 10 }, () => ({ ...emptyLine })));
+    const emptyLine = { stockNo: '', productCode: '', description: '', qtyVendu: '', qtyExp: '', um: 'PC', prix: '', escompte: '', statut: '', procedes: [] };
+    const [lines, setLines] = useState(() => Array.from({ length: 1 }, () => ({ ...emptyLine })));
 
     // Document type (Soumission, Bon de vente, Facture)
     const docTypeOptions = ['Soumission', 'Bon de vente', 'Facture'];
-    const [docType, setDocType] = useState('Facture');
+    const [docType, setDocType] = useState('');
+
+    // Order status
+    const orderStatusOptions = ['Commander', 'Production', 'Procédé', 'Préparer', 'Expédier'];
+    const [orderStatus, setOrderStatus] = useState('');
+
+    // Procédé selection modal state
+    const [procedeLineIndex, setProcedeLineIndex] = useState(null);
+    const [procedeSelection, setProcedeSelection] = useState([]);
+
+    // Recalculate inventory reservations whenever lines, savedInvoices, or docType change
+    useEffect(() => {
+        const reserveMap = {};
+        // Sum from saved invoices (Bon de vente or Facture only)
+        savedInvoices.forEach(inv => {
+            if (inv.docType === 'Bon de vente' || inv.docType === 'Facture') {
+                (inv.lines || []).forEach(l => {
+                    if (l.stockNo && l.lineStatut === 'R\u00e9serv\u00e9') {
+                        const qty = parseFloat(l.qtyVendu) || 0;
+                        reserveMap[l.stockNo] = (reserveMap[l.stockNo] || 0) + qty;
+                    }
+                });
+            }
+        });
+        // Sum from current working lines (if Bon de vente or Facture)
+        if (docType === 'Bon de vente' || docType === 'Facture') {
+            lines.forEach(l => {
+                if (l.stockNo && l.lineStatut === 'R\u00e9serv\u00e9') {
+                    const qty = parseFloat(l.qtyVendu) || 0;
+                    reserveMap[l.stockNo] = (reserveMap[l.stockNo] || 0) + qty;
+                }
+            });
+        }
+        // Update inventory with new reservations
+        setInventory(prev => {
+            const updated = prev.map(item => ({
+                ...item,
+                qtyReserve: reserveMap[item.stockNo] || 0
+            }));
+            localStorage.setItem('inventory', JSON.stringify(updated));
+            return updated;
+        });
+    }, [lines, savedInvoices, docType]);
 
     // Inventory search state per line
     const [activeLineSearch, setActiveLineSearch] = useState(null);
@@ -2948,19 +3009,77 @@ const DataEntryView = ({ t, addBatch, setActiveTab, customProcesses = [], woodTr
     const thClass = "px-2 py-2 text-left text-xs font-bold text-gray-600 uppercase tracking-wider bg-gray-100 border-b-2 border-gray-300";
 
     const updateLine = (index, field, value) => {
+        let updatedLine = null;
         setLines(prev => prev.map((line, i) => {
             if (i !== index) return line;
             const updated = { ...line, [field]: value };
-            // Auto-calc Qté restante
+            // Auto-calc Qté restante (only if available in inventory)
             const vendu = parseFloat(updated.qtyVendu) || 0;
             const exp = parseFloat(updated.qtyExp) || 0;
-            updated.qtyRes = Math.max(0, vendu - exp);
+            const invItem = inventory.find(item => item.stockNo === updated.stockNo);
+            const qtyDisponible = invItem ? invItem.qty : 0;
+            updated.qtyRes = qtyDisponible >= vendu ? Math.max(0, vendu - exp) : 0;
             // Auto-calc Prix vente
             const prix = parseFloat(updated.prix) || 0;
             const esc = parseFloat(updated.escompte) || 0;
             updated.prixVente = (prix * (1 - esc / 100) * vendu).toFixed(2);
+            // Auto-calc line status
+            if (updated.stockNo && vendu > 0) {
+                updated.lineStatut = qtyDisponible >= vendu ? 'R\u00e9serv\u00e9' : 'En attente';
+            } else {
+                updated.lineStatut = 'En attente';
+            }
+            updatedLine = updated;
             return updated;
         }));
+
+        // Auto-create production when "Production" is selected as action
+        if (field === 'statut' && value === 'Production') {
+            // Use setTimeout to ensure setLines has completed and updatedLine is captured
+            setTimeout(() => {
+                const line = updatedLine || lines[index];
+                if (!line || (!line.stockNo && !line.description)) {
+                    console.warn('Production non créée: ligne sans stock ni description');
+                    return;
+                }
+                const invItem = inventory.find(item => item.stockNo === line.stockNo);
+                const batch = {
+                    client: clientInfo.name || 'Facturation',
+                    txn: transactionNo || invoiceNo || '',
+                    wood: invItem ? (invItem.wood || '') : '',
+                    grade: invItem ? (invItem.grade || '') : '',
+                    qty: parseFloat(line.qtyVendu) || 0,
+                    process: (line.procedes && line.procedes.length > 0) ? line.procedes[0].id : '',
+                    date: invoiceDate || '',
+                    stockNo: line.stockNo || '',
+                    width: invItem ? (invItem.largeur || '') : '',
+                    thickness: invItem ? (invItem.epaisseur || '') : '',
+                    targetProductCode: line.productCode || '',
+                    targetProductInfo: invItem ? {
+                        description: invItem.description || '',
+                        wood: invItem.wood || '',
+                        epaisseur: invItem.epaisseur || '',
+                        largeur: invItem.largeur || '',
+                        grade: invItem.grade || '',
+                        unite: invItem.unite || ''
+                    } : null,
+                    status: 'planning',
+                    progress: 0,
+                    sourceDoc: docType,
+                    sourceInvoiceNo: invoiceNo,
+                    sourceTransactionNo: transactionNo
+                };
+                // Include procédés as production steps
+                if (line.procedes && line.procedes.length > 0) {
+                    batch.steps = line.procedes.map(p => p.id);
+                    if (line.procedes.length > 1) {
+                        batch.stepIndex = 0;
+                    }
+                }
+                addBatch(batch);
+                DevExpress.ui.notify('Production cr\u00e9\u00e9e pour ' + (line.description || line.stockNo), 'success', 3000);
+            }, 0);
+        }
     };
 
     const addLine = () => {
@@ -2973,10 +3092,9 @@ const DataEntryView = ({ t, addBatch, setActiveTab, customProcesses = [], woodTr
     };
 
     const selectInventoryForLine = (index, item) => {
-        updateLine(index, 'stockNo', item.stockNo);
         setLines(prev => prev.map((line, i) => {
             if (i !== index) return line;
-            return {
+            const updated = {
                 ...line,
                 stockNo: item.stockNo,
                 productCode: item.productCode || '',
@@ -2984,10 +3102,52 @@ const DataEntryView = ({ t, addBatch, setActiveTab, customProcesses = [], woodTr
                 um: item.unite || 'PC',
                 prix: ''
             };
+            const vendu = parseFloat(updated.qtyVendu) || 0;
+            const exp = parseFloat(updated.qtyExp) || 0;
+            const qtyDisponible = item.qty || 0;
+            updated.qtyRes = qtyDisponible >= vendu ? Math.max(0, vendu - exp) : 0;
+            if (updated.stockNo && vendu > 0) {
+                updated.lineStatut = qtyDisponible >= vendu ? 'R\u00e9serv\u00e9' : 'En attente';
+            } else {
+                updated.lineStatut = 'En attente';
+            }
+            return updated;
         }));
         setActiveLineSearch(null);
         setLineSearch('');
         setLineSearchFilter('');
+    };
+
+    const lookupInventoryForLine = (index, searchValue) => {
+        if (!searchValue.trim()) return;
+        const val = searchValue.trim().toLowerCase();
+        const found = inventory.find(item =>
+            (item.stockNo || '').toLowerCase() === val ||
+            (item.productCode || '').toLowerCase() === val
+        );
+        if (found) {
+            setLines(prev => prev.map((line, i) => {
+                if (i !== index) return line;
+                const updated = {
+                    ...line,
+                    stockNo: found.stockNo || searchValue,
+                    productCode: found.productCode || '',
+                    description: (found.description || found.wood || '') + (found.grade ? ' (' + found.grade + ')' : ''),
+                    um: found.unite || 'PC',
+                    prix: ''
+                };
+                const vendu = parseFloat(updated.qtyVendu) || 0;
+                const exp = parseFloat(updated.qtyExp) || 0;
+                const qtyDisponible = found.qty || 0;
+                updated.qtyRes = qtyDisponible >= vendu ? Math.max(0, vendu - exp) : 0;
+                if (updated.stockNo && vendu > 0) {
+                    updated.lineStatut = qtyDisponible >= vendu ? 'R\u00e9serv\u00e9' : 'En attente';
+                } else {
+                    updated.lineStatut = 'En attente';
+                }
+                return updated;
+            }));
+        }
     };
 
     // Totals
@@ -2997,6 +3157,14 @@ const DataEntryView = ({ t, addBatch, setActiveTab, customProcesses = [], woodTr
     const total = sousTotal + tps + tvq;
 
     const handleSaveInvoice = () => {
+        if (!docType) {
+            alert('Veuillez sélectionner un type de document.');
+            return;
+        }
+        if (!docConfirmed) {
+            alert('Veuillez confirmer le type de document avant de sauvegarder.');
+            return;
+        }
         if (!clientInfo.name) {
             alert('Veuillez entrer le nom du client.');
             return;
@@ -3007,7 +3175,9 @@ const DataEntryView = ({ t, addBatch, setActiveTab, customProcesses = [], woodTr
         }
         const invoice = {
             invoiceNo,
+            transactionNo,
             docType,
+            orderStatus,
             date: invoiceDate,
             client: { ...clientInfo },
             lines: lines.filter(l => l.stockNo || l.description),
@@ -3018,15 +3188,31 @@ const DataEntryView = ({ t, addBatch, setActiveTab, customProcesses = [], woodTr
             total: total.toFixed(2),
             createdAt: new Date().toISOString()
         };
-        setSavedInvoices(prev => [invoice, ...prev]);
-        DevExpress.ui.notify(docType + ' ' + invoiceNo + ' sauvegardée avec succès', 'success', 3000);
-        // Reset
+        if (editingInvoiceNo) {
+            // Update existing invoice — preserve original createdAt
+            setSavedInvoices(prev => prev.map(inv => {
+                if (inv.invoiceNo === editingInvoiceNo) {
+                    return { ...invoice, createdAt: inv.createdAt, updatedAt: new Date().toISOString() };
+                }
+                return inv;
+            }));
+            DevExpress.ui.notify(docType + ' ' + invoiceNo + ' mise \u00e0 jour avec succ\u00e8s', 'success', 3000);
+        } else {
+            // New invoice
+            setSavedInvoices(prev => [invoice, ...prev]);
+            DevExpress.ui.notify(docType + ' ' + invoiceNo + ' sauvegard\u00e9e avec succ\u00e8s', 'success', 3000);
+        }
+        // Reset (useEffect will automatically recalc reservations)
         setClientInfo({ name: '', address: '', city: '', postalCode: '', phone: '', email: '', deliveryAddress: '', deliveryCity: '', deliveryPostalCode: '', deliveryNotes: '' });
-        setLines(Array.from({ length: 10 }, () => ({ ...emptyLine })));
+        setLines(Array.from({ length: 1 }, () => ({ ...emptyLine })));
         setInvoiceNotes('');
-        setInvoiceNo(generateInvoiceNo());
+        setInvoiceNo('');
         setInvoiceDate(new Date().toISOString().split('T')[0]);
-        setDocType('Facture');
+        setDocType('');
+        setTransactionNo('');
+        setDocConfirmed(false);
+        setOrderStatus('');
+        setEditingInvoiceNo(null);
     };
 
     const handlePrintInvoice = () => {
@@ -3037,7 +3223,80 @@ const DataEntryView = ({ t, addBatch, setActiveTab, customProcesses = [], woodTr
     };
 
     return (
-        <div className="max-w-7xl mx-auto space-y-6 print:space-y-2 print:max-w-none">
+        <div className="max-w-full mx-auto space-y-6 print:space-y-2 print:max-w-none">
+            {/* Proc\u00e9d\u00e9 Selection Modal */}
+            {procedeLineIndex !== null && (() => {
+                const allProcs = [
+                    { id: 'procBaker', label: t.procBaker },
+                    { id: 'procMoulding', label: t.procMoulding },
+                    { id: 'procSanding1', label: t.procSanding1 },
+                    { id: 'procSanding2', label: t.procSanding2 },
+                    { id: 'procStaining', label: t.procStaining },
+                    { id: 'procBrushing', label: t.procBrushing },
+                    { id: 'procPolishing', label: t.procPolishing },
+                    { id: 'procOiling', label: t.procOiling },
+                    { id: 'procPainting', label: t.procPainting },
+                    ...customProcesses
+                ];
+                return (
+                    <div className="fixed inset-0 z-[90] bg-black/50 flex items-center justify-center print:hidden" onClick={(e) => { if (e.target === e.currentTarget) setProcedeLineIndex(null); }}>
+                        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg m-4 overflow-hidden">
+                            <div className="p-5 border-b bg-gray-50 flex justify-between items-center rounded-t-2xl">
+                                <h2 className="text-lg font-bold text-gray-800">
+                                    <i className="fa-solid fa-gears mr-2 text-indigo-500"></i>
+                                    S\u00e9lectionner les proc\u00e9d\u00e9s
+                                    <span className="ml-2 text-sm font-normal text-gray-500">(Ligne {procedeLineIndex + 1})</span>
+                                </h2>
+                                <button onClick={() => setProcedeLineIndex(null)} className="text-gray-400 hover:text-red-500 text-xl transition">
+                                    <i className="fa fa-times"></i>
+                                </button>
+                            </div>
+                            <div className="p-5 max-h-[60vh] overflow-y-auto">
+                                <div className="space-y-2">
+                                    {allProcs.map(proc => {
+                                        const isChecked = procedeSelection.some(s => s.id === proc.id);
+                                        return (
+                                            <label key={proc.id} className={"flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition " + (isChecked ? 'border-indigo-400 bg-indigo-50' : 'border-gray-200 hover:bg-gray-50')}>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={isChecked}
+                                                    onChange={() => {
+                                                        setProcedeSelection(prev =>
+                                                            isChecked
+                                                                ? prev.filter(s => s.id !== proc.id)
+                                                                : [...prev, { id: proc.id, label: proc.label }]
+                                                        );
+                                                    }}
+                                                    className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
+                                                />
+                                                <span className="font-semibold text-gray-700">{proc.label}</span>
+                                            </label>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                            <div className="p-4 border-t bg-gray-50 flex justify-end gap-3">
+                                <button onClick={() => setProcedeLineIndex(null)} className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition font-bold text-sm">
+                                    Annuler
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setLines(prev => prev.map((line, i) => {
+                                            if (i !== procedeLineIndex) return line;
+                                            return { ...line, statut: 'Proc\u00e9d\u00e9', procedes: procedeSelection };
+                                        }));
+                                        setProcedeLineIndex(null);
+                                    }}
+                                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition font-bold text-sm"
+                                    disabled={procedeSelection.length === 0}
+                                >
+                                    <i className="fa fa-check mr-2"></i>Confirmer ({procedeSelection.length})
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            })()}
             {/* Inventory Search Modal */}
             {activeLineSearch !== null && (
                 <div className="fixed inset-0 z-[80] bg-black/50 flex items-start justify-center pt-12 print:hidden" onClick={(e) => { if (e.target === e.currentTarget) setActiveLineSearch(null); }}>
@@ -3174,55 +3433,89 @@ const DataEntryView = ({ t, addBatch, setActiveTab, customProcesses = [], woodTr
 
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden print:shadow-none print:border-none">
                 {/* Invoice Header */}
-                <div className="bg-gray-800 text-white p-6 flex justify-between items-start print:bg-white print:text-black print:border-b-2 print:border-gray-800 print:pb-4">
-                    <div>
+                <div className="bg-gray-800 text-white px-6 py-3 flex flex-wrap items-center justify-between gap-3 print:bg-white print:text-black print:border-b-2 print:border-gray-800 print:pb-4">
+                    <div className="flex items-center gap-3">
                         <select
                             value={docType}
                             onChange={(e) => {
                                 const newType = e.target.value;
-                                if (newType !== docType) {
-                                    if (confirm(`Êtes-vous certain de vouloir changer le type de document à "${newType}" ?`)) {
+                                if (newType && newType !== docType) {
+                                    if (!docType || !docConfirmed || confirm(`Êtes-vous certain de vouloir changer le type de document à "${newType}" ?`)) {
                                         setDocType(newType);
+                                        setDocConfirmed(false);
+                                        // Generate invoice number only when switching to Bon de vente or Facture
+                                        if ((newType === 'Bon de vente' || newType === 'Facture') && !invoiceNo) {
+                                            setInvoiceNo(generateInvoiceNo());
+                                        }
+                                        if (newType === 'Soumission') {
+                                            setInvoiceNo('');
+                                        }
                                     } else {
                                         e.target.value = docType;
                                     }
                                 }
                             }}
-                            className="text-3xl font-black tracking-tight bg-gray-700 text-white rounded px-3 py-1 border-none cursor-pointer focus:ring-2 focus:ring-[#51aff7] focus:outline-none print:bg-white print:text-black print:border print:border-gray-300"
+                            disabled={docConfirmed}
+                            className="text-2xl font-black tracking-tight bg-gray-700 text-white rounded px-3 py-1 border-none cursor-pointer focus:ring-2 focus:ring-[#51aff7] focus:outline-none print:bg-white print:text-black print:border print:border-gray-300 disabled:opacity-60 disabled:cursor-not-allowed"
                         >
+                            <option value="" disabled>— SÉLECTIONNER —</option>
                             {docTypeOptions.map(opt => (
                                 <option key={opt} value={opt}>{opt.toUpperCase()}</option>
                             ))}
                         </select>
-                        <p className="text-gray-400 text-sm mt-1 print:text-gray-600">Surfagest Production</p>
+                        {docType && !docConfirmed && (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setDocConfirmed(true);
+                                    setTransactionNo(generateTransactionNo());
+                                }}
+                                className="px-4 py-1.5 bg-green-500 text-white font-bold rounded hover:bg-green-600 transition text-sm print:hidden"
+                            >
+                                <i className="fa fa-check mr-1"></i>Confirmer
+                            </button>
+                        )}
+                        <span className="text-gray-500 text-sm hidden md:inline">Surfagest Production</span>
                     </div>
-                    <div className="text-right">
-                        <div className="text-sm text-gray-400 print:text-gray-600">No. Facture</div>
-                        <input
-                            type="text"
-                            value={invoiceNo}
-                            onChange={(e) => setInvoiceNo(e.target.value)}
-                            className="bg-gray-700 text-white text-xl font-bold text-right rounded px-3 py-1 w-48 print:bg-white print:text-black print:border print:border-gray-300"
-                        />
-                        <div className="mt-2">
-                            <div className="text-sm text-gray-400 print:text-gray-600">Date</div>
+                    <div className="flex items-center gap-6">
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs text-gray-400 uppercase print:text-gray-600">Transaction</span>
+                            <span className="text-lg font-bold font-mono text-gray-300 print:text-gray-500">{transactionNo || '—'}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs text-gray-400 uppercase print:text-gray-600">Facture</span>
+                            <input
+                                type="text"
+                                value={invoiceNo}
+                                onChange={(e) => setInvoiceNo(e.target.value)}
+                                className="bg-gray-700 text-white text-lg font-bold text-right rounded px-2 py-1 w-32 print:bg-white print:text-black print:border print:border-gray-300"
+                                placeholder="—"
+                            />
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs text-gray-400 uppercase print:text-gray-600">Date</span>
                             <input
                                 type="date"
                                 value={invoiceDate}
                                 onChange={(e) => setInvoiceDate(e.target.value)}
-                                className="bg-gray-700 text-white text-right rounded px-3 py-1 w-48 print:bg-white print:text-black print:border print:border-gray-300"
+                                className="bg-gray-700 text-white rounded px-2 py-1 print:bg-white print:text-black print:border print:border-gray-300"
                             />
                         </div>
                     </div>
                 </div>
 
                 {/* Client + Delivery Info */}
-                <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6 border-b border-gray-200 print:p-4">
+                <div className={`p-6 grid grid-cols-1 md:grid-cols-2 gap-6 border-b border-gray-200 print:p-4 ${!docConfirmed ? 'opacity-40 pointer-events-none' : ''}`}>
                     {/* Client Info */}
                     <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                        <h3 className="text-sm font-bold text-blue-800 uppercase tracking-wider mb-3">
-                            <i className="fa-solid fa-user mr-2"></i>Information Client
-                        </h3>
+                        <div className="flex justify-between items-center mb-3 cursor-pointer" onClick={() => setClientDeliveryExpanded(!clientDeliveryExpanded)}>
+                            <h3 className="text-sm font-bold text-blue-800 uppercase tracking-wider">
+                                <i className="fa-solid fa-user mr-2"></i>Information Client
+                                {isClientFilled && !clientDeliveryExpanded && <span className="ml-2 text-xs font-normal normal-case text-blue-600">— {clientInfo.name}</span>}
+                            </h3>
+                            <i className={`fa-solid ${clientDeliveryExpanded ? 'fa-chevron-up' : 'fa-chevron-down'} text-blue-400 text-xs`}></i>
+                        </div>
+                        {clientDeliveryExpanded ? (
                         <div className="space-y-2">
                             <div>
                                 <label className={labelClass}>Nom / Entreprise <span className="text-red-500">*</span></label>
@@ -3253,27 +3546,42 @@ const DataEntryView = ({ t, addBatch, setActiveTab, customProcesses = [], woodTr
                                 </div>
                             </div>
                         </div>
+                        ) : (
+                        <div>
+                            <div>
+                                <label className={labelClass}>Nom / Entreprise</label>
+                                <input type="text" value={clientInfo.name} onChange={e => setClientInfo({...clientInfo, name: e.target.value})} className={inputClass} placeholder="Ex: Constructions ABC Inc." readOnly />
+                            </div>
+                        </div>
+                        )}
                     </div>
 
                     {/* Delivery Info */}
                     <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-                        <div className="flex justify-between items-center mb-3">
+                        <div className="flex justify-between items-center mb-3 cursor-pointer" onClick={() => setClientDeliveryExpanded(!clientDeliveryExpanded)}>
                             <h3 className="text-sm font-bold text-green-800 uppercase tracking-wider">
                                 <i className="fa-solid fa-truck mr-2"></i>Adresse de Livraison
+                                {isDeliveryFilled && !clientDeliveryExpanded && <span className="ml-2 text-xs font-normal normal-case text-green-600">— {clientInfo.deliveryAddress}</span>}
                             </h3>
-                            <button
-                                type="button"
-                                onClick={() => setClientInfo(prev => ({
-                                    ...prev,
-                                    deliveryAddress: prev.address,
-                                    deliveryCity: prev.city,
-                                    deliveryPostalCode: prev.postalCode
-                                }))}
-                                className="text-xs text-green-600 hover:text-green-800 font-bold underline"
-                            >
-                                <i className="fa fa-copy mr-1"></i>Même que client
-                            </button>
+                            <div className="flex items-center gap-2">
+                                {clientDeliveryExpanded && (
+                                <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); setClientInfo(prev => ({
+                                        ...prev,
+                                        deliveryAddress: prev.address,
+                                        deliveryCity: prev.city,
+                                        deliveryPostalCode: prev.postalCode
+                                    })); }}
+                                    className="text-xs text-green-600 hover:text-green-800 font-bold underline"
+                                >
+                                    <i className="fa fa-copy mr-1"></i>Même que client
+                                </button>
+                                )}
+                                <i className={`fa-solid ${clientDeliveryExpanded ? 'fa-chevron-up' : 'fa-chevron-down'} text-green-400 text-xs`}></i>
+                            </div>
                         </div>
+                        {clientDeliveryExpanded ? (
                         <div className="space-y-2">
                             <div>
                                 <label className={labelClass}>Adresse de livraison</label>
@@ -3294,11 +3602,19 @@ const DataEntryView = ({ t, addBatch, setActiveTab, customProcesses = [], woodTr
                                 <input type="text" value={clientInfo.deliveryNotes} onChange={e => setClientInfo({...clientInfo, deliveryNotes: e.target.value})} className={inputClass} placeholder="Ex: Quai #3, livrer avant 14h..." />
                             </div>
                         </div>
+                        ) : (
+                        <div>
+                            <div>
+                                <label className={labelClass}>Adresse de livraison</label>
+                                <input type="text" value={clientInfo.deliveryAddress} onChange={e => setClientInfo({...clientInfo, deliveryAddress: e.target.value})} className={inputClass} placeholder="456 Boulevard Industriel" readOnly />
+                            </div>
+                        </div>
+                        )}
                     </div>
                 </div>
 
                 {/* Invoice Lines Table */}
-                <div className="p-6 print:p-4">
+                <div className={`p-6 print:p-4 ${!docConfirmed ? 'opacity-40 pointer-events-none' : ''}`}>
                     <div className="flex justify-between items-center mb-3">
                         <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wider">
                             <i className="fa-solid fa-list mr-2"></i>Lignes de Facture
@@ -3312,7 +3628,7 @@ const DataEntryView = ({ t, addBatch, setActiveTab, customProcesses = [], woodTr
                         </button>
                     </div>
 
-                    <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                    <div className="overflow-x-auto border border-gray-200 rounded-lg" style={{minHeight: '555px'}}>
                         <table className="w-full text-sm">
                             <thead>
                                 <tr>
@@ -3325,11 +3641,12 @@ const DataEntryView = ({ t, addBatch, setActiveTab, customProcesses = [], woodTr
                                     <th className={thClass} style={{width: '90px'}}>Prix</th>
                                     <th className={thClass} style={{width: '70px'}}>Esc %</th>
                                     <th className={thClass} style={{width: '100px'}}>Prix vente</th>
+                                    <th className={thClass} style={{width: '120px'}}>Action</th>
                                     <th className={thClass} style={{width: '120px'}}>Statut</th>
                                     <th className={`${thClass} print:hidden`} style={{width: '40px'}}></th>
                                 </tr>
                             </thead>
-                            <tbody>
+                            <tbody onFocus={() => { if (clientDeliveryExpanded) setClientDeliveryExpanded(false); }}>
                                 {lines.map((line, idx) => (
                                     <tr key={idx} className="border-b border-gray-100 hover:bg-gray-50 transition">
                                         {/* Code / Stock with inventory search */}
@@ -3339,10 +3656,13 @@ const DataEntryView = ({ t, addBatch, setActiveTab, customProcesses = [], woodTr
                                                     type="text"
                                                     value={line.stockNo}
                                                     onChange={e => updateLine(idx, 'stockNo', e.target.value)}
-                                                    placeholder="No. stock..."
+                                                    onBlur={e => lookupInventoryForLine(idx, e.target.value)}
+                                                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); lookupInventoryForLine(idx, e.target.value); e.target.blur(); } }}
+                                                    placeholder="Code ou stock..."
+                                                    maxLength={40}
+                                                    size={20}
                                                     className="w-full p-1.5 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-blue-400 focus:outline-none"
                                                     autoComplete="off"
-                                                    readOnly
                                                 />
                                                 <button
                                                     type="button"
@@ -3388,14 +3708,44 @@ const DataEntryView = ({ t, addBatch, setActiveTab, customProcesses = [], woodTr
                                         <td className="px-2 py-1 text-right">
                                             <span className="font-bold text-sm text-gray-800">{line.prixVente ? '$' + line.prixVente : '—'}</span>
                                         </td>
-                                        {/* Statut */}
+                                        {/* Action */}
                                         <td className="px-2 py-1">
-                                            <select value={line.statut} onChange={e => updateLine(idx, 'statut', e.target.value)} className="w-full p-1.5 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-blue-400 focus:outline-none">
-                                                <option value="En attente">En attente</option>
-                                                <option value="Expédié">Expédié</option>
-                                                <option value="Partiel">Partiel</option>
-                                                <option value="Annulé">Annulé</option>
+                                            <select value={line.statut === 'Proc\u00e9d\u00e9' ? 'Proc\u00e9d\u00e9' : line.statut} onChange={e => {
+                                                const val = e.target.value;
+                                                if (val === 'Proc\u00e9d\u00e9') {
+                                                    setProcedeLineIndex(idx);
+                                                    setProcedeSelection(line.procedes || []);
+                                                } else {
+                                                    updateLine(idx, 'statut', val);
+                                                }
+                                            }} className="w-full p-1.5 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-blue-400 focus:outline-none">
+                                                <option value="">-- Action --</option>
+                                                {orderStatusOptions.map(opt => (
+                                                    <option key={opt} value={opt}>{opt}</option>
+                                                ))}
                                             </select>
+                                            {line.statut === 'Proc\u00e9d\u00e9' && line.procedes && line.procedes.length > 0 && (
+                                                <div className="mt-1 flex flex-wrap gap-1 items-center">
+                                                    {line.procedes.map((p, pi) => (
+                                                        <span key={pi} className="inline-block px-1.5 py-0.5 bg-indigo-100 text-indigo-700 rounded text-[10px] font-semibold">{p.label || p.id}</span>
+                                                    ))}
+                                                    <button type="button" onClick={() => { setProcedeLineIndex(idx); setProcedeSelection(line.procedes || []); }} className="text-indigo-500 hover:text-indigo-700 text-xs ml-1" title="Modifier les proc\u00e9d\u00e9s">
+                                                        <i className="fa fa-pen-to-square"></i>
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </td>
+                                        {/* Statut */}
+                                        <td className="px-2 py-1 text-center">
+                                            <span className={`inline-block px-2 py-1 rounded text-xs font-bold ${
+                                                line.lineStatut === 'R\u00e9serv\u00e9' ? 'bg-purple-100 text-purple-700' :
+                                                line.statut === 'Commander' ? 'bg-blue-100 text-blue-700' :
+                                                line.statut === 'Production' ? 'bg-yellow-100 text-yellow-700' :
+                                                line.statut === 'Proc\u00e9d\u00e9' ? 'bg-indigo-100 text-indigo-700' :
+                                                line.statut === 'Pr\u00e9parer' ? 'bg-orange-100 text-orange-700' :
+                                                line.statut === 'Exp\u00e9dier' ? 'bg-green-100 text-green-700' :
+                                                'bg-gray-100 text-gray-500'
+                                            }`}>{line.lineStatut || 'En attente'}</span>
                                         </td>
                                         {/* Delete */}
                                         <td className="px-1 py-1 text-center print:hidden">
@@ -3453,11 +3803,17 @@ const DataEntryView = ({ t, addBatch, setActiveTab, customProcesses = [], woodTr
                         <button
                             type="button"
                             onClick={() => {
+                                if (!confirm('Êtes-vous bien sûr de tout réinitialiser ?')) return;
                                 setClientInfo({ name: '', address: '', city: '', postalCode: '', phone: '', email: '', deliveryAddress: '', deliveryCity: '', deliveryPostalCode: '', deliveryNotes: '' });
-                                setLines(Array.from({ length: 10 }, () => ({ ...emptyLine })));
+                                setLines(Array.from({ length: 1 }, () => ({ ...emptyLine })));
                                 setInvoiceNotes('');
-                                setInvoiceNo(generateInvoiceNo());
-                                setDocType('Facture');
+                                setInvoiceNo('');
+                                setDocType('');
+                                setTransactionNo('');
+                                setDocConfirmed(false);
+                                setOrderStatus('');
+                                setClientDeliveryExpanded(true);
+                                setEditingInvoiceNo(null);
                             }}
                             className="px-5 py-2.5 bg-gray-200 text-gray-700 font-bold rounded-lg hover:bg-gray-300 transition"
                         >
@@ -3517,8 +3873,12 @@ const DataEntryView = ({ t, addBatch, setActiveTab, customProcesses = [], woodTr
                                                     setInvoiceDate(inv.date);
                                                     setClientInfo(inv.client || {});
                                                     setDocType(inv.docType || 'Facture');
-                                                    setLines(inv.lines && inv.lines.length > 0 ? inv.lines : Array.from({ length: 10 }, () => ({ ...emptyLine })));
+                                                    setDocConfirmed(true);
+                                                    setTransactionNo(inv.transactionNo || '');
+                                                    setOrderStatus(inv.orderStatus || '');
+                                                    setLines(inv.lines && inv.lines.length > 0 ? inv.lines : Array.from({ length: 1 }, () => ({ ...emptyLine })));
                                                     setInvoiceNotes(inv.notes || '');
+                                                    setEditingInvoiceNo(inv.invoiceNo);
                                                     window.scrollTo({ top: 0, behavior: 'smooth' });
                                                 }}
                                                 className="px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 text-xs font-bold mr-1"
@@ -3840,11 +4200,29 @@ const InventoryView = ({ t, inventory, setInventory }) => {
                 },
                 { 
                     dataField: 'qty', 
-                    caption: t.colQty, 
-                    width: 150, 
+                    caption: 'Qté en main', 
+                    width: 100, 
                     dataType: 'number', 
                     format: '#,##0',
                     validationRules: [{ type: 'required', message: 'Champ obligatoire' }]
+                },
+                { 
+                    dataField: 'qtyReserve', 
+                    caption: 'Réservé', 
+                    width: 100, 
+                    dataType: 'number', 
+                    format: '#,##0',
+                    allowEditing: false,
+                    calculateCellValue: (rowData) => rowData.qtyReserve || 0
+                },
+                { 
+                    dataField: 'qtyDisp', 
+                    caption: 'Qté disp', 
+                    width: 100, 
+                    dataType: 'number', 
+                    format: '#,##0',
+                    allowEditing: false,
+                    calculateCellValue: (rowData) => Math.max(0, (rowData.qty || 0) - (rowData.qtyReserve || 0))
                 },
                 { 
                     dataField: 'location', 
@@ -7719,7 +8097,7 @@ const App = () => {
                     {activeTab === 'production' && <ProductionView key="production" t={t} productionData={productionData} assignStation={assignStation} updateJobStatus={updateJobStatus} deleteBatch={deleteBatch} customProcesses={customProcesses} woodTreatments={woodTreatments} stationConfig={stationConfig} inventory={inventory} deductFromInventory={deductFromInventory} inventoryStates={inventoryStates} />}
                     {activeTab === 'inventory' && <InventoryView t={t} inventory={inventory} setInventory={setInventory} />}
                     {activeTab === 'rawWood' && <div className="p-12 text-center text-gray-400">Le tableau de traitement inventaire brut est désactivé.</div>}
-                    {activeTab === 'dataEntry' && <DataEntryView t={t} addBatch={addBatch} setActiveTab={setActiveTab} customProcesses={customProcesses} woodTreatments={woodTreatments} processParameters={processParameters} inventory={inventory} />}
+                    {activeTab === 'dataEntry' && <DataEntryView t={t} addBatch={addBatch} setActiveTab={setActiveTab} customProcesses={customProcesses} woodTreatments={woodTreatments} processParameters={processParameters} inventory={inventory} setInventory={setInventory} />}
                     {activeTab === 'employeeEfficiency' && <EmployeeEfficiencyView t={t} productionData={productionData} />}
                     {activeTab === 'settings' && <SettingsView t={t} appMode={appMode} setAppMode={setAppMode} stationConfig={stationConfig} setStationConfig={setStationConfig} customProcesses={customProcesses} setCustomProcesses={setCustomProcesses} woodTreatments={woodTreatments} setWoodTreatments={setWoodTreatments} inventoryStates={inventoryStates} setInventoryStates={setInventoryStates} processCodes={processCodes} setProcessCodes={setProcessCodes} processParameters={processParameters} setProcessParameters={setProcessParameters} />}
                 </main>
