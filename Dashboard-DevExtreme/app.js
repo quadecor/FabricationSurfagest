@@ -2894,6 +2894,275 @@ const ProductionView = ({ t, productionData, assignStation, updateJobStatus, del
 };
 
 
+// --- Invoice Grid Component (DevExtreme DataGrid with search/filter) ---
+const InvoiceGrid = ({ savedInvoices, setSavedInvoices, setInvoiceNo, setInvoiceDate, setClientInfo, setDocType, setDocConfirmed, setTransactionNo, setOrderStatus, setLines, setInvoiceNotes, setEditingInvoiceNo, emptyLine }) => {
+    const gridRef = useRef(null);
+    const gridInstance = useRef(null);
+
+    // Flatten invoices for DataGrid: add searchable fields at top level
+    const dataSource = React.useMemo(() => {
+        return savedInvoices.map((inv, idx) => ({
+            ...inv,
+            _idx: idx,
+            clientName: inv.client?.name || 'N/A',
+            clientPhone: inv.client?.phone || '',
+            clientEmail: inv.client?.email || '',
+            clientCity: inv.client?.city || '',
+            lineCount: inv.lines?.length || 0,
+            totalNum: parseFloat(inv.total) || 0,
+            lineDescriptions: (inv.lines || []).map(l => l.description || '').filter(Boolean).join(', '),
+            lineStockNos: (inv.lines || []).map(l => l.stockNo || '').filter(Boolean).join(', '),
+            allText: [
+                inv.invoiceNo, inv.transactionNo, inv.docType, inv.date,
+                inv.client?.name, inv.client?.phone, inv.client?.email, inv.client?.city,
+                inv.notes,
+                ...(inv.lines || []).map(l => [l.stockNo, l.description, l.productCode].join(' '))
+            ].filter(Boolean).join(' ').toLowerCase()
+        }));
+    }, [savedInvoices]);
+
+    useEffect(() => {
+        if (!gridRef.current) return;
+
+        if (gridInstance.current) {
+            gridInstance.current.option('dataSource', dataSource);
+            return;
+        }
+
+        gridInstance.current = new DevExpress.ui.dxDataGrid(gridRef.current, {
+            dataSource: dataSource,
+            keyExpr: 'invoiceNo',
+            showBorders: true,
+            columnAutoWidth: true,
+            rowAlternationEnabled: true,
+            hoverStateEnabled: true,
+            wordWrapEnabled: false,
+            height: 500,
+            filterRow: { visible: true },
+            searchPanel: { visible: true, width: 300, placeholder: 'Rechercher par nom, no., mot-clé...' },
+            headerFilter: { visible: true },
+            filterPanel: { visible: true },
+            paging: { pageSize: 15 },
+            pager: {
+                visible: true,
+                showPageSizeSelector: true,
+                allowedPageSizes: [10, 15, 30, 50],
+                showInfo: true
+            },
+            sorting: { mode: 'multiple' },
+            columns: [
+                {
+                    dataField: 'invoiceNo',
+                    caption: 'No. Facture',
+                    width: 120,
+                    sortOrder: 'desc',
+                    cellTemplate: (container, options) => {
+                        const el = document.createElement('span');
+                        el.style.fontWeight = 'bold';
+                        el.style.color = '#51aff7';
+                        el.textContent = options.value || '';
+                        container.append(el);
+                    }
+                },
+                {
+                    dataField: 'transactionNo',
+                    caption: 'No. Transaction',
+                    width: 130
+                },
+                {
+                    dataField: 'docType',
+                    caption: 'Type',
+                    width: 130,
+                    headerFilter: {
+                        dataSource: [
+                            { text: 'Soumission', value: 'Soumission' },
+                            { text: 'Bon de vente', value: 'Bon de vente' },
+                            { text: 'Facture', value: 'Facture' }
+                        ]
+                    },
+                    cellTemplate: (container, options) => {
+                        const val = options.value || 'Facture';
+                        const el = document.createElement('span');
+                        let cls = 'bg-gray-100 text-gray-700';
+                        if (val === 'Soumission') cls = 'bg-yellow-100 text-yellow-700';
+                        else if (val === 'Bon de vente') cls = 'bg-blue-100 text-blue-700';
+                        else if (val === 'Facture') cls = 'bg-green-100 text-green-700';
+                        el.className = `px-2 py-1 rounded text-xs font-bold ${cls}`;
+                        el.textContent = val;
+                        container.append(el);
+                    }
+                },
+                {
+                    dataField: 'date',
+                    caption: 'Date',
+                    dataType: 'date',
+                    width: 110
+                },
+                {
+                    dataField: 'clientName',
+                    caption: 'Client',
+                    width: 200
+                },
+                {
+                    dataField: 'clientPhone',
+                    caption: 'Téléphone',
+                    width: 130,
+                    visible: false
+                },
+                {
+                    dataField: 'clientEmail',
+                    caption: 'Courriel',
+                    width: 180,
+                    visible: false
+                },
+                {
+                    dataField: 'clientCity',
+                    caption: 'Ville',
+                    width: 120,
+                    visible: false
+                },
+                {
+                    dataField: 'orderStatus',
+                    caption: 'Statut',
+                    width: 120,
+                    headerFilter: {
+                        dataSource: [
+                            { text: 'Commander', value: 'Commander' },
+                            { text: 'Production', value: 'Production' },
+                            { text: 'Procédé', value: 'Procédé' },
+                            { text: 'Préparer', value: 'Préparer' },
+                            { text: 'Expédier', value: 'Expédier' }
+                        ]
+                    }
+                },
+                {
+                    dataField: 'lineCount',
+                    caption: 'Lignes',
+                    dataType: 'number',
+                    width: 80,
+                    alignment: 'center'
+                },
+                {
+                    dataField: 'lineDescriptions',
+                    caption: 'Produits',
+                    width: 250,
+                    visible: false
+                },
+                {
+                    dataField: 'lineStockNos',
+                    caption: 'No. Stocks',
+                    width: 150,
+                    visible: false
+                },
+                {
+                    dataField: 'totalNum',
+                    caption: 'Total',
+                    dataType: 'number',
+                    format: { type: 'currency', precision: 2 },
+                    width: 120,
+                    alignment: 'right'
+                },
+                {
+                    caption: 'Actions',
+                    width: 160,
+                    alignment: 'center',
+                    allowFiltering: false,
+                    allowSorting: false,
+                    cellTemplate: (container, options) => {
+                        const inv = options.data;
+                        const wrapper = document.createElement('div');
+                        wrapper.className = 'flex gap-1 justify-center';
+
+                        const btnLoad = document.createElement('button');
+                        btnLoad.className = 'px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 text-xs font-bold';
+                        btnLoad.innerHTML = '<i class="fa fa-eye mr-1"></i>Charger';
+                        btnLoad.title = 'Charger cette facture';
+                        btnLoad.onclick = (e) => {
+                            e.stopPropagation();
+                            setInvoiceNo(inv.invoiceNo);
+                            setInvoiceDate(inv.date);
+                            setClientInfo(inv.client || {});
+                            setDocType(inv.docType || 'Facture');
+                            setDocConfirmed(true);
+                            setTransactionNo(inv.transactionNo || '');
+                            setOrderStatus(inv.orderStatus || '');
+                            setLines(inv.lines && inv.lines.length > 0 ? inv.lines : Array.from({ length: 1 }, () => ({ ...emptyLine })));
+                            setInvoiceNotes(inv.notes || '');
+                            setEditingInvoiceNo(inv.invoiceNo);
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                        };
+                        wrapper.appendChild(btnLoad);
+
+                        const btnPrint = document.createElement('button');
+                        btnPrint.className = 'px-2 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 text-xs font-bold';
+                        btnPrint.innerHTML = '<i class="fa fa-print"></i>';
+                        btnPrint.title = 'Imprimer';
+                        btnPrint.onclick = (e) => {
+                            e.stopPropagation();
+                            setInvoiceNo(inv.invoiceNo);
+                            setInvoiceDate(inv.date);
+                            setClientInfo(inv.client || {});
+                            setDocType(inv.docType || 'Facture');
+                            setDocConfirmed(true);
+                            setTransactionNo(inv.transactionNo || '');
+                            setOrderStatus(inv.orderStatus || '');
+                            setLines(inv.lines && inv.lines.length > 0 ? inv.lines : Array.from({ length: 1 }, () => ({ ...emptyLine })));
+                            setInvoiceNotes(inv.notes || '');
+                            setEditingInvoiceNo(inv.invoiceNo);
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                            setTimeout(() => {
+                                const oldTitle = document.title;
+                                document.title = inv.invoiceNo + '.pdf';
+                                window.print();
+                                setTimeout(() => document.title = oldTitle, 1000);
+                            }, 300);
+                        };
+                        wrapper.appendChild(btnPrint);
+
+                        const btnDelete = document.createElement('button');
+                        btnDelete.className = 'px-2 py-1 bg-red-100 text-red-600 rounded hover:bg-red-200 text-xs font-bold';
+                        btnDelete.innerHTML = '<i class="fa fa-trash"></i>';
+                        btnDelete.title = 'Supprimer';
+                        btnDelete.onclick = (e) => {
+                            e.stopPropagation();
+                            if (confirm('Supprimer la facture ' + inv.invoiceNo + ' ?')) {
+                                setSavedInvoices(prev => prev.filter(i => i.invoiceNo !== inv.invoiceNo));
+                            }
+                        };
+                        wrapper.appendChild(btnDelete);
+
+                        container.append(wrapper);
+                    }
+                }
+            ],
+            columnChooser: { enabled: true, mode: 'select', title: 'Colonnes visibles' },
+            export: { enabled: true, fileName: 'factures' },
+            summary: {
+                totalItems: [
+                    { column: 'totalNum', summaryType: 'sum', valueFormat: { type: 'currency', precision: 2 }, displayFormat: 'Total: {0}' },
+                    { column: 'invoiceNo', summaryType: 'count', displayFormat: '{0} facture(s)' }
+                ]
+            }
+        });
+
+        return () => {
+            if (gridInstance.current) {
+                gridInstance.current.dispose();
+                gridInstance.current = null;
+            }
+        };
+    }, []);
+
+    // Update data source when invoices change (after initial mount)
+    useEffect(() => {
+        if (gridInstance.current) {
+            gridInstance.current.option('dataSource', dataSource);
+        }
+    }, [dataSource]);
+
+    return <div ref={gridRef}></div>;
+};
+
 const DataEntryView = ({ t, addBatch, setActiveTab, customProcesses = [], woodTreatments = [], processParameters = {}, inventory = [], setInventory = () => {}, onDirtyChange = () => {}, onSaveRef = () => {} }) => {
     // Saved invoices
     const [savedInvoices, setSavedInvoices] = useState(() => {
@@ -2964,6 +3233,10 @@ const DataEntryView = ({ t, addBatch, setActiveTab, customProcesses = [], woodTr
     // Procédé selection modal state
     const [procedeLineIndex, setProcedeLineIndex] = useState(null);
     const [procedeSelection, setProcedeSelection] = useState([]);
+
+    // Saved invoices grid ref
+    const invoiceGridRef = useRef(null);
+    const invoiceGridInstance = useRef(null);
 
     // Track dirty state — notify parent when invoice has unsaved changes
     useEffect(() => {
@@ -3852,72 +4125,28 @@ const DataEntryView = ({ t, addBatch, setActiveTab, customProcesses = [], woodTr
                 </div>
             </div>
 
-            {/* Saved Invoices List */}
+            {/* Saved Invoices List - DevExtreme DataGrid */}
             {savedInvoices.length > 0 && (
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 print:hidden">
                     <h3 className="text-lg font-bold text-gray-800 mb-4">
                         <i className="fa-solid fa-folder-open mr-2 text-[#51aff7]"></i>
                         Factures sauvegardées ({savedInvoices.length})
                     </h3>
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                            <thead>
-                                <tr className="bg-gray-100 border-b">
-                                    <th className="p-3 text-left font-bold text-gray-600">No. Facture</th>
-                                    <th className="p-3 text-left font-bold text-gray-600">Type</th>
-                                    <th className="p-3 text-left font-bold text-gray-600">Date</th>
-                                    <th className="p-3 text-left font-bold text-gray-600">Client</th>
-                                    <th className="p-3 text-left font-bold text-gray-600">Lignes</th>
-                                    <th className="p-3 text-right font-bold text-gray-600">Total</th>
-                                    <th className="p-3 text-center font-bold text-gray-600">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {savedInvoices.map((inv, idx) => (
-                                    <tr key={idx} className="border-b hover:bg-gray-50 transition">
-                                        <td className="p-3 font-bold text-[#51aff7]">{inv.invoiceNo}</td>
-                                        <td className="p-3 text-gray-600">{inv.docType || 'Facture'}</td>
-                                        <td className="p-3 text-gray-600">{inv.date}</td>
-                                        <td className="p-3 font-semibold">{inv.client?.name || 'N/A'}</td>
-                                        <td className="p-3 text-gray-600">{inv.lines?.length || 0}</td>
-                                        <td className="p-3 text-right font-bold">${inv.total}</td>
-                                        <td className="p-3 text-center">
-                                            <button
-                                                onClick={() => {
-                                                    setInvoiceNo(inv.invoiceNo);
-                                                    setInvoiceDate(inv.date);
-                                                    setClientInfo(inv.client || {});
-                                                    setDocType(inv.docType || 'Facture');
-                                                    setDocConfirmed(true);
-                                                    setTransactionNo(inv.transactionNo || '');
-                                                    setOrderStatus(inv.orderStatus || '');
-                                                    setLines(inv.lines && inv.lines.length > 0 ? inv.lines : Array.from({ length: 1 }, () => ({ ...emptyLine })));
-                                                    setInvoiceNotes(inv.notes || '');
-                                                    setEditingInvoiceNo(inv.invoiceNo);
-                                                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                                                }}
-                                                className="px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 text-xs font-bold mr-1"
-                                                title="Charger cette facture"
-                                            >
-                                                <i className="fa fa-eye mr-1"></i>Charger
-                                            </button>
-                                            <button
-                                                onClick={() => {
-                                                    if (confirm('Supprimer la facture ' + inv.invoiceNo + ' ?')) {
-                                                        setSavedInvoices(prev => prev.filter((_, i) => i !== idx));
-                                                    }
-                                                }}
-                                                className="px-2 py-1 bg-red-100 text-red-600 rounded hover:bg-red-200 text-xs font-bold"
-                                                title="Supprimer"
-                                            >
-                                                <i className="fa fa-trash"></i>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                    <InvoiceGrid
+                        savedInvoices={savedInvoices}
+                        setSavedInvoices={setSavedInvoices}
+                        setInvoiceNo={setInvoiceNo}
+                        setInvoiceDate={setInvoiceDate}
+                        setClientInfo={setClientInfo}
+                        setDocType={setDocType}
+                        setDocConfirmed={setDocConfirmed}
+                        setTransactionNo={setTransactionNo}
+                        setOrderStatus={setOrderStatus}
+                        setLines={setLines}
+                        setInvoiceNotes={setInvoiceNotes}
+                        setEditingInvoiceNo={setEditingInvoiceNo}
+                        emptyLine={emptyLine}
+                    />
                 </div>
             )}
         </div>
