@@ -2894,7 +2894,7 @@ const ProductionView = ({ t, productionData, assignStation, updateJobStatus, del
 };
 
 
-const DataEntryView = ({ t, addBatch, setActiveTab, customProcesses = [], woodTreatments = [], processParameters = {}, inventory = [], setInventory = () => {} }) => {
+const DataEntryView = ({ t, addBatch, setActiveTab, customProcesses = [], woodTreatments = [], processParameters = {}, inventory = [], setInventory = () => {}, onDirtyChange = () => {}, onSaveRef = () => {} }) => {
     // Saved invoices
     const [savedInvoices, setSavedInvoices] = useState(() => {
         const saved = localStorage.getItem('invoices');
@@ -2965,7 +2965,21 @@ const DataEntryView = ({ t, addBatch, setActiveTab, customProcesses = [], woodTr
     const [procedeLineIndex, setProcedeLineIndex] = useState(null);
     const [procedeSelection, setProcedeSelection] = useState([]);
 
-    // Recalculate inventory reservations whenever lines, savedInvoices, or docType change
+    // Track dirty state — notify parent when invoice has unsaved changes
+    useEffect(() => {
+        const hasData = clientInfo.name.trim() !== '' || 
+                        lines.some(l => l.stockNo || l.description) || 
+                        invoiceNotes.trim() !== '' ||
+                        docType !== '';
+        onDirtyChange(hasData);
+    }, [clientInfo, lines, invoiceNotes, docType]);
+
+    // Expose save function to parent via ref callback
+    useEffect(() => {
+        onSaveRef(handleSaveInvoice);
+    });
+
+    // Recalculate inventory reservations
     useEffect(() => {
         const reserveMap = {};
         // Sum from saved invoices (Bon de vente or Facture only)
@@ -3213,6 +3227,7 @@ const DataEntryView = ({ t, addBatch, setActiveTab, customProcesses = [], woodTr
         setDocConfirmed(false);
         setOrderStatus('');
         setEditingInvoiceNo(null);
+        onDirtyChange(false);
     };
 
     const handlePrintInvoice = () => {
@@ -7241,6 +7256,23 @@ const App = () => {
     const [activeTab, setActiveTab] = useState('dashboard');
     const [lang, setLang] = useState('fr');
     const [subcontractModal, setSubcontractModal] = useState({ show: false, job: null });
+
+    // Track unsaved invoice changes
+    const invoiceDirtyRef = useRef(false);
+    const saveInvoiceRef = useRef(null);
+
+    const handleSetActiveTab = (newTab) => {
+        if (activeTab === 'dataEntry' && invoiceDirtyRef.current && newTab !== 'dataEntry') {
+            const result = window.confirm('Vous avez des changements non enregistrés dans la facturation.\n\nVoulez-vous sauvegarder avant de quitter ?');
+            if (result) {
+                if (saveInvoiceRef.current) {
+                    saveInvoiceRef.current();
+                }
+            }
+            invoiceDirtyRef.current = false;
+        }
+        setActiveTab(newTab);
+    };
     
     // Initialize App Mode from URL
     const [appMode, setAppMode] = useState(() => {
@@ -8034,7 +8066,7 @@ const App = () => {
             } catch (_) {}
             try { window.dispatchEvent(new CustomEvent('productionDataUpdated')); } catch (_) {}
             setAppMode('admin');
-            setActiveTab('production');
+            handleSetActiveTab('production');
         };
     }
     if(appMode !== 'admin') return <WorkerStationView t={t} stationId={appMode} productionData={productionData} updateJobStatus={updateJobStatus} stationConfig={stationConfig} inventory={inventory} deductFromInventory={deductFromInventory} addToInventory={addToInventory} adjustInventory={adjustInventory} generateProductionTag={generateProductionTag} generatePalletLabel={generatePalletLabel} generateProductCode={generateProductCode} customProcesses={customProcesses} woodTreatments={woodTreatments} />;
@@ -8078,7 +8110,7 @@ const App = () => {
                     }}
                 />
             )}
-            <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} t={t} />
+            <Sidebar activeTab={activeTab} setActiveTab={handleSetActiveTab} t={t} />
             <div className="flex-1 ml-64">
                 <Header t={t} lang={lang} setLang={setLang} />
                 <div className="absolute top-4 right-4 z-50">
@@ -8097,7 +8129,7 @@ const App = () => {
                     {activeTab === 'production' && <ProductionView key="production" t={t} productionData={productionData} assignStation={assignStation} updateJobStatus={updateJobStatus} deleteBatch={deleteBatch} customProcesses={customProcesses} woodTreatments={woodTreatments} stationConfig={stationConfig} inventory={inventory} deductFromInventory={deductFromInventory} inventoryStates={inventoryStates} />}
                     {activeTab === 'inventory' && <InventoryView t={t} inventory={inventory} setInventory={setInventory} />}
                     {activeTab === 'rawWood' && <div className="p-12 text-center text-gray-400">Le tableau de traitement inventaire brut est désactivé.</div>}
-                    {activeTab === 'dataEntry' && <DataEntryView t={t} addBatch={addBatch} setActiveTab={setActiveTab} customProcesses={customProcesses} woodTreatments={woodTreatments} processParameters={processParameters} inventory={inventory} setInventory={setInventory} />}
+                    {activeTab === 'dataEntry' && <DataEntryView t={t} addBatch={addBatch} setActiveTab={handleSetActiveTab} customProcesses={customProcesses} woodTreatments={woodTreatments} processParameters={processParameters} inventory={inventory} setInventory={setInventory} onDirtyChange={(dirty) => { invoiceDirtyRef.current = dirty; }} onSaveRef={(fn) => { saveInvoiceRef.current = fn; }} />}
                     {activeTab === 'employeeEfficiency' && <EmployeeEfficiencyView t={t} productionData={productionData} />}
                     {activeTab === 'settings' && <SettingsView t={t} appMode={appMode} setAppMode={setAppMode} stationConfig={stationConfig} setStationConfig={setStationConfig} customProcesses={customProcesses} setCustomProcesses={setCustomProcesses} woodTreatments={woodTreatments} setWoodTreatments={setWoodTreatments} inventoryStates={inventoryStates} setInventoryStates={setInventoryStates} processCodes={processCodes} setProcessCodes={setProcessCodes} processParameters={processParameters} setProcessParameters={setProcessParameters} />}
                 </main>
