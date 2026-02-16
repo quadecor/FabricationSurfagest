@@ -187,6 +187,7 @@ const translations = {
         inventory: "Inventaire",
         settings: "Paramètre",
         dataEntry: "Facturation",
+        horaire: "Horaire",
         rawWood: "Traitement bois brut",
         employeeEfficiency: "Efficacité Employés",
         // Header
@@ -1116,11 +1117,191 @@ const EmployeeEfficiencyView = ({ t, productionData }) => {
     );
 };
 
+// --- Horaire View (standalone page with dxScheduler) ---
+const HoraireView = ({ t }) => {
+    const categories = [
+        { id: 1, text: 'Installation', color: '#4CAF50' },
+        { id: 2, text: 'Livraison', color: '#2196F3' },
+        { id: 3, text: 'Cueillette', color: '#FF9800' },
+        { id: 4, text: 'RDV', color: '#9C27B0' }
+    ];
+    const [events, setEvents] = useState(() => {
+        try { return JSON.parse(localStorage.getItem('schedulerEvents') || '[]'); } catch { return []; }
+    });
+    const [filterCats, setFilterCats] = useState([1, 2, 3, 4]);
+    const schedulerContainerRef = useRef(null);
+    const schedulerInstanceRef = useRef(null);
+
+    // Refresh from localStorage periodically
+    useEffect(() => {
+        const interval = setInterval(() => {
+            try {
+                const fresh = JSON.parse(localStorage.getItem('schedulerEvents') || '[]');
+                setEvents(fresh);
+            } catch {}
+        }, 3000);
+        return () => clearInterval(interval);
+    }, []);
+
+    const now = new Date();
+    const totalToday = events.filter(ev => new Date(ev.startDate).toDateString() === now.toDateString()).length;
+    const totalThisWeek = events.filter(ev => {
+        const d = new Date(ev.startDate);
+        const weekEnd = new Date(now); weekEnd.setDate(weekEnd.getDate() + 7);
+        return d >= now && d <= weekEnd;
+    }).length;
+    const totalUpcoming = events.filter(ev => new Date(ev.startDate) >= now).length;
+
+    // Build / update scheduler
+    useEffect(() => {
+        if (!schedulerContainerRef.current) return;
+        const el = schedulerContainerRef.current;
+
+        if (schedulerInstanceRef.current) {
+            // Just update the data source
+            try {
+                const dsItems = events
+                    .filter(ev => filterCats.includes(ev.categoryId))
+                    .map(ev => ({ ...ev, id: ev.id || Date.now() + Math.random(), startDate: new Date(ev.startDate), endDate: new Date(ev.endDate) }));
+                schedulerInstanceRef.current.option('dataSource', new DevExpress.data.DataSource({
+                    store: new DevExpress.data.ArrayStore({ data: dsItems, key: 'id' })
+                }));
+            } catch {}
+            return;
+        }
+
+        const dsItems = events
+            .filter(ev => filterCats.includes(ev.categoryId))
+            .map(ev => ({ ...ev, id: ev.id || Date.now() + Math.random(), startDate: new Date(ev.startDate), endDate: new Date(ev.endDate) }));
+
+        try {
+            const scheduler = new DevExpress.ui.dxScheduler(el, {
+                dataSource: new DevExpress.data.DataSource({
+                    store: new DevExpress.data.ArrayStore({ data: dsItems, key: 'id' })
+                }),
+                views: [
+                    { type: 'day', name: 'Jour' },
+                    { type: 'week', name: 'Semaine' },
+                    { type: 'month', name: 'Mois' },
+                    { type: 'agenda', name: 'Agenda', agendaDuration: 30 }
+                ],
+                currentView: 'week',
+                currentDate: new Date(),
+                startDayHour: 6,
+                endDayHour: 20,
+                height: 'calc(100vh - 280px)',
+                editing: { allowAdding: false, allowUpdating: false, allowDeleting: false },
+                resources: [{
+                    fieldExpr: 'categoryId',
+                    dataSource: categories,
+                    label: 'Catégorie'
+                }],
+                appointmentTooltipTemplate: (data, container) => {
+                    const ev = data.appointmentData || data;
+                    const cat = categories.find(c => c.id === ev.categoryId);
+                    const startD = ev.startDate ? new Date(ev.startDate) : null;
+                    const endD = ev.endDate ? new Date(ev.endDate) : null;
+                    const fmt = (d) => d ? d.toLocaleDateString('fr-CA') + ' ' + d.toLocaleTimeString('fr-CA', { hour: '2-digit', minute: '2-digit' }) : '—';
+                    const html = `
+                        <div style="padding:12px;min-width:280px;">
+                            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                                ${cat ? `<span style="background:${cat.color}20;color:${cat.color};font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px;">${cat.text}</span>` : ''}
+                                <span style="font-weight:700;font-size:14px;color:#1f2937;">${ev.text || '—'}</span>
+                            </div>
+                            <div style="font-size:12px;color:#6b7280;line-height:1.8;">
+                                <div><i class="fa fa-clock" style="width:16px;color:#9ca3af;"></i> ${fmt(startD)} → ${fmt(endD)}</div>
+                                ${ev.noTransaction ? `<div><i class="fa fa-hashtag" style="width:16px;color:#9ca3af;"></i> Transaction: <strong>${ev.noTransaction}</strong></div>` : ''}
+                                ${ev.vendeur ? `<div><i class="fa fa-user" style="width:16px;color:#9ca3af;"></i> ${ev.vendeur}</div>` : ''}
+                                ${ev.adresseLivraison ? `<div><i class="fa fa-map-marker-alt" style="width:16px;color:#9ca3af;"></i> ${ev.adresseLivraison}</div>` : ''}
+                            </div>
+                        </div>`;
+                    $(container).html(html);
+                }
+            });
+            schedulerInstanceRef.current = scheduler;
+        } catch (err) {
+            console.error('HoraireView scheduler error:', err);
+        }
+
+        return () => {
+            if (schedulerInstanceRef.current) {
+                try { schedulerInstanceRef.current.dispose(); } catch {}
+                schedulerInstanceRef.current = null;
+            }
+        };
+    }, []);
+
+    // Update data when events or filters change (after mount)
+    useEffect(() => {
+        if (!schedulerInstanceRef.current) return;
+        try {
+            const dsItems = events
+                .filter(ev => filterCats.includes(ev.categoryId))
+                .map(ev => ({ ...ev, id: ev.id || Date.now() + Math.random(), startDate: new Date(ev.startDate), endDate: new Date(ev.endDate) }));
+            schedulerInstanceRef.current.option('dataSource', new DevExpress.data.DataSource({
+                store: new DevExpress.data.ArrayStore({ data: dsItems, key: 'id' })
+            }));
+        } catch {}
+    }, [events, filterCats]);
+
+    return (
+        <div>
+            <div className="flex items-center justify-between mb-4">
+                <h2 className="text-2xl font-bold text-gray-800">
+                    <i className="fa fa-calendar-alt mr-2 text-[#51aff7]"></i>Horaire
+                </h2>
+                <span className="text-sm text-gray-400">{events.length} entrée(s) au total</span>
+            </div>
+
+            {/* Stats + filters row */}
+            <div className="flex flex-wrap items-center gap-4 mb-4">
+                <div className="flex gap-3">
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 px-4 py-2 flex items-center gap-2">
+                        <i className="fa fa-calendar-day text-blue-500"></i>
+                        <span className="text-lg font-bold text-gray-800">{totalToday}</span>
+                        <span className="text-[10px] text-gray-400 uppercase">Aujourd'hui</span>
+                    </div>
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 px-4 py-2 flex items-center gap-2">
+                        <i className="fa fa-calendar-week text-green-500"></i>
+                        <span className="text-lg font-bold text-gray-800">{totalThisWeek}</span>
+                        <span className="text-[10px] text-gray-400 uppercase">7 jours</span>
+                    </div>
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 px-4 py-2 flex items-center gap-2">
+                        <i className="fa fa-clock text-purple-500"></i>
+                        <span className="text-lg font-bold text-gray-800">{totalUpcoming}</span>
+                        <span className="text-[10px] text-gray-400 uppercase">À venir</span>
+                    </div>
+                </div>
+                <div className="h-6 border-l border-gray-200"></div>
+                <div className="flex gap-2">
+                    {categories.map(cat => {
+                        const active = filterCats.includes(cat.id);
+                        const count = events.filter(ev => ev.categoryId === cat.id).length;
+                        return (
+                            <button key={cat.id} onClick={() => setFilterCats(prev => active ? prev.filter(c => c !== cat.id) : [...prev, cat.id])}
+                                className={`px-3 py-1.5 rounded-full text-xs font-bold transition border ${active ? 'text-white border-transparent' : 'bg-gray-100 text-gray-400 border-gray-200'}`}
+                                style={active ? { backgroundColor: cat.color } : {}}
+                            >
+                                {cat.text} ({count})
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
+
+            {/* DevExtreme Scheduler */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <div ref={schedulerContainerRef} style={{ minHeight: '500px' }}></div>
+            </div>
+        </div>
+    );
+};
+
 // Sidebar, Header, StatCard implementation (Simplified for size, assuming user has copy)
 const Sidebar = ({ activeTab, setActiveTab, t }) => (
     <aside className="w-64 bg-gray-900 text-white h-screen fixed left-0 top-0 p-4">
         <h1 className="text-xl font-bold mb-8">Dashboard</h1>
-        {['dashboard', 'production', 'inventory', 'dataEntry', 'employeeEfficiency', 'settings'].map(id => (
+        {['dashboard', 'production', 'inventory', 'dataEntry', 'horaire', 'employeeEfficiency', 'settings'].map(id => (
             <button key={id} onClick={() => setActiveTab(id)} className={`block w-full text-left p-3 rounded mb-2 ${activeTab === id ? 'bg-blue-600' : 'hover:bg-gray-800'}`}>
                 {t[id]}
             </button>
@@ -2895,7 +3076,7 @@ const ProductionView = ({ t, productionData, assignStation, updateJobStatus, del
 
 
 // --- Invoice Grid Component (DevExtreme DataGrid with search/filter) ---
-const InvoiceGrid = ({ savedInvoices, setSavedInvoices, setInvoiceNo, setInvoiceDate, setClientInfo, setDocType, setDocConfirmed, setTransactionNo, setOrderStatus, setLines, setInvoiceNotes, setEditingInvoiceNo, emptyLine }) => {
+const InvoiceGrid = ({ savedInvoices, setSavedInvoices, setInvoiceNo, setInvoiceDate, setClientInfo, setDocType, setDocConfirmed, setTransactionNo, setOrderStatus, setVendeur, setLines, setInvoiceNotes, setTxHistory, setEditingInvoiceNo, emptyLine, onLoadInvoice }) => {
     const gridRef = useRef(null);
     const gridInstance = useRef(null);
 
@@ -2908,6 +3089,7 @@ const InvoiceGrid = ({ savedInvoices, setSavedInvoices, setInvoiceNo, setInvoice
             clientPhone: inv.client?.phone || '',
             clientEmail: inv.client?.email || '',
             clientCity: inv.client?.city || '',
+            deliveryAddress: inv.client?.deliveryAddress || '',
             lineCount: inv.lines?.length || 0,
             totalNum: parseFloat(inv.total) || 0,
             lineDescriptions: (inv.lines || []).map(l => l.description || '').filter(Boolean).join(', '),
@@ -3022,17 +3204,38 @@ const InvoiceGrid = ({ savedInvoices, setSavedInvoices, setInvoiceNo, setInvoice
                     visible: false
                 },
                 {
-                    dataField: 'orderStatus',
+                    dataField: 'deliveryAddress',
+                    caption: 'Adresse de livraison',
+                    width: 200
+                },
+                {
+                    dataField: 'docStatut',
                     caption: 'Statut',
                     width: 120,
+                    calculateCellValue: (rowData) => {
+                        const type = rowData.docType || '';
+                        if (type === 'Bon de vente') return 'En cours';
+                        if (type === 'Soumission') return 'En attente';
+                        if (type === 'Facture') return 'Facturé';
+                        return '';
+                    },
                     headerFilter: {
                         dataSource: [
-                            { text: 'Commander', value: 'Commander' },
-                            { text: 'Production', value: 'Production' },
-                            { text: 'Procédé', value: 'Procédé' },
-                            { text: 'Préparer', value: 'Préparer' },
-                            { text: 'Expédier', value: 'Expédier' }
+                            { text: 'En cours', value: 'En cours' },
+                            { text: 'En attente', value: 'En attente' },
+                            { text: 'Facturé', value: 'Facturé' }
                         ]
+                    },
+                    cellTemplate: (container, options) => {
+                        const val = options.value || '';
+                        const el = document.createElement('span');
+                        let cls = 'bg-gray-100 text-gray-700';
+                        if (val === 'En cours') cls = 'bg-yellow-100 text-yellow-700';
+                        else if (val === 'En attente') cls = 'bg-green-100 text-green-700';
+                        else if (val === 'Facturé') cls = 'bg-red-100 text-red-700';
+                        el.className = `px-2 py-1 rounded text-xs font-bold ${cls}`;
+                        el.textContent = val;
+                        container.append(el);
                     }
                 },
                 {
@@ -3086,9 +3289,12 @@ const InvoiceGrid = ({ savedInvoices, setSavedInvoices, setInvoiceNo, setInvoice
                             setDocConfirmed(true);
                             setTransactionNo(inv.transactionNo || '');
                             setOrderStatus(inv.orderStatus || '');
+                            setVendeur(inv.vendeur || '');
                             setLines(inv.lines && inv.lines.length > 0 ? inv.lines : Array.from({ length: 1 }, () => ({ ...emptyLine })));
                             setInvoiceNotes(inv.notes || '');
+                            setTxHistory(inv.txHistory || []);
                             setEditingInvoiceNo(inv.invoiceNo);
+                            if (onLoadInvoice) onLoadInvoice();
                             window.scrollTo({ top: 0, behavior: 'smooth' });
                         };
                         wrapper.appendChild(btnLoad);
@@ -3106,8 +3312,10 @@ const InvoiceGrid = ({ savedInvoices, setSavedInvoices, setInvoiceNo, setInvoice
                             setDocConfirmed(true);
                             setTransactionNo(inv.transactionNo || '');
                             setOrderStatus(inv.orderStatus || '');
+                            setVendeur(inv.vendeur || '');
                             setLines(inv.lines && inv.lines.length > 0 ? inv.lines : Array.from({ length: 1 }, () => ({ ...emptyLine })));
                             setInvoiceNotes(inv.notes || '');
+                            setTxHistory(inv.txHistory || []);
                             setEditingInvoiceNo(inv.invoiceNo);
                             window.scrollTo({ top: 0, behavior: 'smooth' });
                             setTimeout(() => {
@@ -3230,12 +3438,269 @@ const DataEntryView = ({ t, addBatch, setActiveTab, customProcesses = [], woodTr
     const orderStatusOptions = ['Commander', 'Production', 'Procédé', 'Préparer', 'Expédier'];
     const [orderStatus, setOrderStatus] = useState('');
 
+    // Vendeur (salesperson)
+    const [vendeur, setVendeur] = useState('');
+
     // Procédé selection modal state
     const [procedeLineIndex, setProcedeLineIndex] = useState(null);
     const [procedeSelection, setProcedeSelection] = useState([]);
 
+    // Transfer soumission to bon de vente
+    const [showTransferModal, setShowTransferModal] = useState(false);
+
+    // Horaire / Scheduler state
+    const [showScheduler, setShowScheduler] = useState(false);
+    const [schedulerViewTab, setSchedulerViewTab] = useState('liste'); // 'liste' or 'calendrier'
+    const [editingEvent, setEditingEvent] = useState(null); // event being edited inline
+    const [schedulerFilterCats, setSchedulerFilterCats] = useState([1, 2, 3, 4]); // all categories active by default
+    const [schedulerEvents, setSchedulerEvents] = useState(() => {
+        try {
+            const raw = JSON.parse(localStorage.getItem('schedulerEvents') || '[]');
+            return raw.map((ev, i) => ({ ...ev, id: ev.id || (Date.now() + i) }));
+        } catch { return []; }
+    });
+    const schedulerRef = useRef(null);
+    const schedulerContainerRef = useRef(null);
+
+    const schedulerCategories = [
+        { id: 1, text: 'Installation', color: '#4CAF50' },
+        { id: 2, text: 'Livraison', color: '#2196F3' },
+        { id: 3, text: 'Cueillette', color: '#FF9800' },
+        { id: 4, text: 'RDV', color: '#9C27B0' }
+    ];
+
+    useEffect(() => {
+        if (schedulerEvents.length > 0) {
+            localStorage.setItem('schedulerEvents', JSON.stringify(schedulerEvents));
+        }
+    }, [schedulerEvents]);
+
+    // --- Transaction History / Audit Trail ---
+    const [txHistory, setTxHistory] = useState([]);
+    const [showHistorique, setShowHistorique] = useState(false);
+
+    const logAction = (action, detail) => {
+        setTxHistory(prev => [...prev, {
+            date: new Date().toLocaleDateString('fr-CA'),
+            heure: new Date().toLocaleTimeString('fr-CA', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+            usager: vendeur || 'Système',
+            action,
+            detail: detail || ''
+        }]);
+    };
+
+    useEffect(() => {
+        if (!showScheduler || schedulerViewTab !== 'calendrier' || !schedulerContainerRef.current) return;
+        // Destroy previous instance
+        if (schedulerRef.current) {
+            try { schedulerRef.current.dispose(); } catch (_) {}
+            schedulerRef.current = null;
+        }
+        const el = schedulerContainerRef.current;
+        const txLabel = (transactionNo || invoiceNo || 'Sans num\u00e9ro');
+        const clientLabel = clientInfo.name || 'Client non sp\u00e9cifi\u00e9';
+        const deliveryAddr = [clientInfo.deliveryAddress, clientInfo.deliveryCity, clientInfo.deliveryPostalCode].filter(Boolean).join(', ') || [clientInfo.address, clientInfo.city, clientInfo.postalCode].filter(Boolean).join(', ') || '';
+        const vendeurLabel = vendeur || '';
+
+        try {
+        const dsItems = schedulerEvents
+            .filter(ev => schedulerFilterCats.includes(ev.categoryId))
+            .map(ev => ({
+                ...ev,
+                id: ev.id || Date.now() + Math.random(),
+                startDate: new Date(ev.startDate),
+                endDate: new Date(ev.endDate)
+            }));
+        const scheduler = new DevExpress.ui.dxScheduler(el, {
+            dataSource: new DevExpress.data.DataSource({
+                store: new DevExpress.data.ArrayStore({
+                    data: dsItems,
+                    key: 'id'
+                })
+            }),
+            views: ['day', 'week', 'month', 'agenda'],
+            currentView: 'week',
+            currentDate: new Date(),
+            startDayHour: 6,
+            endDayHour: 20,
+            height: '100%',
+            editing: { allowAdding: true, allowUpdating: true, allowDeleting: true },
+            resources: [{
+                fieldExpr: 'categoryId',
+                dataSource: schedulerCategories,
+                label: 'Cat\u00e9gorie'
+            }],
+            onAppointmentFormOpening: (e) => {
+                var form = e.form;
+                var apptData = e.appointmentData;
+                var isNew = !apptData.text;
+
+                // Pre-fill appointment data for new appointments
+                if (isNew) {
+                    apptData.text = clientLabel + ' - ' + txLabel;
+                    apptData.noTransaction = txLabel;
+                    apptData.adresseLivraison = deliveryAddr;
+                    apptData.vendeur = vendeurLabel;
+                    apptData.description = 'Transaction: ' + txLabel + '\nClient: ' + clientLabel + (deliveryAddr ? '\nAdresse: ' + deliveryAddr : '') + (vendeurLabel ? '\nVendeur: ' + vendeurLabel : '');
+                }
+
+                // Also set on the form's own formData reference
+                var formData = form.option('formData');
+                if (isNew && formData) {
+                    formData.text = apptData.text;
+                    formData.description = apptData.description;
+                    formData.noTransaction = apptData.noTransaction;
+                    formData.adresseLivraison = apptData.adresseLivraison;
+                    formData.vendeur = apptData.vendeur;
+                }
+
+                // Add custom fields to the form
+                var items = form.option('items');
+                var alreadyAdded = false;
+                for (var gi = 0; gi < items.length; gi++) {
+                    if (items[gi] && items[gi].items) {
+                        for (var ii = 0; ii < items[gi].items.length; ii++) {
+                            if (items[gi].items[ii].dataField === 'categoryId') {
+                                alreadyAdded = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (alreadyAdded) break;
+                }
+                if (!alreadyAdded) {
+                    for (var g = 0; g < items.length; g++) {
+                        if (items[g] && items[g].items) {
+                            items[g].items.push(
+                                {
+                                    dataField: 'categoryId',
+                                    editorType: 'dxSelectBox',
+                                    editorOptions: {
+                                        dataSource: schedulerCategories,
+                                        valueExpr: 'id',
+                                        displayExpr: 'text'
+                                    },
+                                    label: { text: 'Cat\u00e9gorie' }
+                                },
+                                {
+                                    dataField: 'noTransaction',
+                                    editorType: 'dxTextBox',
+                                    editorOptions: { placeholder: 'No de transaction' },
+                                    label: { text: 'No Transaction' }
+                                },
+                                {
+                                    dataField: 'adresseLivraison',
+                                    editorType: 'dxTextBox',
+                                    editorOptions: { placeholder: 'Adresse de livraison' },
+                                    label: { text: 'Adresse livraison' }
+                                },
+                                {
+                                    dataField: 'vendeur',
+                                    editorType: 'dxTextBox',
+                                    editorOptions: { placeholder: 'Nom du vendeur / repr\u00e9sentant' },
+                                    label: { text: 'Vendeur' }
+                                }
+                            );
+                            form.option('items', items);
+                            break;
+                        }
+                    }
+                }
+
+                // Force update all editors with the correct values after form rebuild
+                setTimeout(function() {
+                    try {
+                        var textEd = form.getEditor('text');
+                        if (textEd) textEd.option('value', apptData.text || '');
+                        var descEd = form.getEditor('description');
+                        if (descEd) descEd.option('value', apptData.description || '');
+                        var txEd = form.getEditor('noTransaction');
+                        if (txEd) txEd.option('value', apptData.noTransaction || '');
+                        var addrEd = form.getEditor('adresseLivraison');
+                        if (addrEd) addrEd.option('value', apptData.adresseLivraison || '');
+                        var vendEd = form.getEditor('vendeur');
+                        if (vendEd) vendEd.option('value', apptData.vendeur || '');
+                    } catch(err) { console.error('Scheduler form update error:', err); }
+                }, 300);
+            },
+            onAppointmentAdded: (e) => {
+                setSchedulerEvents(prev => {
+                    const updated = [...prev, { ...e.appointmentData, id: Date.now() }];
+                    localStorage.setItem('schedulerEvents', JSON.stringify(updated));
+                    return updated;
+                });
+            },
+            onAppointmentUpdated: (e) => {
+                setSchedulerEvents(prev => {
+                    const updated = prev.map(ev => {
+                        if (ev.id === e.appointmentData.id ||
+                            (ev.startDate === e.appointmentData.startDate && ev.text === e.appointmentData.text)) {
+                            return { ...e.appointmentData };
+                        }
+                        return ev;
+                    });
+                    localStorage.setItem('schedulerEvents', JSON.stringify(updated));
+                    return updated;
+                });
+            },
+            onAppointmentDeleted: (e) => {
+                setSchedulerEvents(prev => {
+                    const updated = prev.filter(ev => ev.id !== e.appointmentData.id);
+                    localStorage.setItem('schedulerEvents', JSON.stringify(updated));
+                    return updated;
+                });
+            }
+        });
+        schedulerRef.current = scheduler;
+        } catch (err) {
+            console.error('Scheduler init error:', err);
+        }
+        return () => {
+            if (schedulerRef.current) {
+                try { schedulerRef.current.dispose(); } catch (_) {}
+                schedulerRef.current = null;
+            }
+        };
+    }, [showScheduler, schedulerViewTab, schedulerFilterCats]);
+
+    // Facturation tab state
+    const [facturationTab, setFacturationTab] = useState('factures');
+
+    // Inventory detail modal
+    const [viewInventoryItem, setViewInventoryItem] = useState(null);
+
+    // Bon de préparation (expedition) modal state
+    const [showBonPrep, setShowBonPrep] = useState(false);
+    const [bonPrepDate, setBonPrepDate] = useState(new Date().toISOString().split('T')[0]);
+    const [bonPrepLines, setBonPrepLines] = useState([]);
+    const [bonPrepUser, setBonPrepUser] = useState('');
+
+    // --- Commandes d'achat (purchase orders) ---
+    const [commandes, setCommandes] = useState(() => {
+        const saved = localStorage.getItem('commandesAchat');
+        return saved ? JSON.parse(saved) : [];
+    });
+    useEffect(() => { localStorage.setItem('commandesAchat', JSON.stringify(commandes)); }, [commandes]);
+
+    // Bon de commande modal state
+    const [showBonCommande, setShowBonCommande] = useState(false);
+    const [bonCommandeLines, setBonCommandeLines] = useState([]);
+    const [bonCommandeVendor, setBonCommandeVendor] = useState('');
+    const [bonCommandeUser, setBonCommandeUser] = useState('');
+    const [bonCommandeNotes, setBonCommandeNotes] = useState("Veuillez svp inclure ce bon de commande avec la facture.\nRespecter les standards de qualité Surfagest.\nEmballage sécuritaire requis pour le transport de retour.");
+
+    // Fournisseurs disponibles
+    const fournisseurs = [
+        { name: "SOUS-TRAITANT GÉNÉRAL", attention: "Production", address: "123 Rue Industriel, QC", email: "production@soustraitant.com" },
+        { name: "ATELIER BOIS PRO", attention: "Jean-Pierre", address: "456 Av du Bois, QC", email: "jp@atelierboispro.com" },
+        { name: "PEINTURE EXPERT INC", attention: "Service commande", address: "789 Boul. Couleur, QC", email: "commandes@peintureexpert.com" },
+        { name: "QUINCAILLERIE INDUSTRIELLE", attention: "Département vente", address: "321 Rue Commerce, QC", email: "ventes@quincaillerie.com" },
+        { name: "BOIS FRANC SÉLECT", attention: "Service des ventes", address: "555 Boul. du Bois, QC", email: "ventes@boisfranc.com" }
+    ];
+
     // Saved invoices grid ref
     const invoiceGridRef = useRef(null);
+    const docTypeSelectRef = useRef(null);
     const invoiceGridInstance = useRef(null);
 
     // Track dirty state — notify parent when invoice has unsaved changes
@@ -3259,7 +3724,7 @@ const DataEntryView = ({ t, addBatch, setActiveTab, customProcesses = [], woodTr
         savedInvoices.forEach(inv => {
             if (inv.docType === 'Bon de vente' || inv.docType === 'Facture') {
                 (inv.lines || []).forEach(l => {
-                    if (l.stockNo && l.lineStatut === 'R\u00e9serv\u00e9') {
+                    if (l.stockNo && (l.lineStatut === 'Réservé' || l.lineStatut === 'En Commande' || l.lineStatut === 'Commandé')) {
                         const qty = parseFloat(l.qtyVendu) || 0;
                         reserveMap[l.stockNo] = (reserveMap[l.stockNo] || 0) + qty;
                     }
@@ -3269,27 +3734,95 @@ const DataEntryView = ({ t, addBatch, setActiveTab, customProcesses = [], woodTr
         // Sum from current working lines (if Bon de vente or Facture)
         if (docType === 'Bon de vente' || docType === 'Facture') {
             lines.forEach(l => {
-                if (l.stockNo && l.lineStatut === 'R\u00e9serv\u00e9') {
+                if (l.stockNo && (l.lineStatut === 'Réservé' || l.lineStatut === 'En Commande' || l.lineStatut === 'Commandé')) {
                     const qty = parseFloat(l.qtyVendu) || 0;
                     reserveMap[l.stockNo] = (reserveMap[l.stockNo] || 0) + qty;
                 }
             });
         }
-        // Update inventory with new reservations
+        // Compute qtyComm from commandes (pending/ordered, subtract already received)
+        const commandeMap = {};
+        commandes.forEach(cmd => {
+            if (cmd.stockNo && cmd.statut !== 'Reçu') {
+                const remaining = Math.max(0, (parseFloat(cmd.qtyCommande) || 0) - (parseFloat(cmd.qtyRecue) || 0));
+                commandeMap[cmd.stockNo] = (commandeMap[cmd.stockNo] || 0) + remaining;
+            }
+        });
+
+        // Update inventory with reservations and commandes
         setInventory(prev => {
             const updated = prev.map(item => ({
                 ...item,
-                qtyReserve: reserveMap[item.stockNo] || 0
+                qtyReserve: reserveMap[item.stockNo] || 0,
+                qtyComm: commandeMap[item.stockNo] || 0
             }));
             localStorage.setItem('inventory', JSON.stringify(updated));
             return updated;
         });
-    }, [lines, savedInvoices, docType]);
+    }, [lines, savedInvoices, docType, commandes]);
 
     // Inventory search state per line
     const [activeLineSearch, setActiveLineSearch] = useState(null);
     const [lineSearch, setLineSearch] = useState('');
     const [lineSearchFilter, setLineSearchFilter] = useState('');
+    const [selectedInventoryItems, setSelectedInventoryItems] = useState([]);
+
+    const toggleInventorySelection = (item) => {
+        setSelectedInventoryItems(prev => {
+            const exists = prev.find(i => i.stockNo === item.stockNo);
+            if (exists) return prev.filter(i => i.stockNo !== item.stockNo);
+            return [...prev, item];
+        });
+    };
+
+    const importSelectedItems = () => {
+        if (selectedInventoryItems.length === 0) return;
+        setLines(prev => {
+            // Remove empty lines at the end
+            let cleaned = [...prev];
+            while (cleaned.length > 1 && !cleaned[cleaned.length - 1].stockNo && !cleaned[cleaned.length - 1].description) {
+                cleaned.pop();
+            }
+            // If only one empty line exists, replace it with the first selected item
+            const newLines = selectedInventoryItems.map(item => {
+                const invItem = inventory.find(i => i.stockNo === item.stockNo);
+                return {
+                    ...emptyLine,
+                    stockNo: item.stockNo,
+                    productCode: item.productCode || '',
+                    description: (item.description || item.wood || '') + (item.grade ? ' (' + item.grade + ')' : ''),
+                    um: item.unite || 'PC',
+                    prix: '',
+                    qtyVendu: '',
+                    lineStatut: 'En attente'
+                };
+            });
+            if (cleaned.length === 1 && !cleaned[0].stockNo && !cleaned[0].description) {
+                return newLines;
+            }
+            return [...cleaned, ...newLines];
+        });
+        setSelectedInventoryItems([]);
+        setActiveLineSearch(null);
+        setLineSearch('');
+        setLineSearchFilter('');
+        DevExpress.ui.notify(selectedInventoryItems.length + ' produit(s) importé(s)', 'success', 2000);
+    };
+
+    // --- Enter key navigation: move to next input/select in the invoice form ---
+    const handleInvoiceKeyDown = (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            const form = e.target.closest('.invoice-form-container');
+            if (!form) return;
+            const focusable = Array.from(form.querySelectorAll('input:not([type=checkbox]):not([type=hidden]):not([readonly]):not(:disabled), select:not(:disabled), textarea:not(:disabled)'));
+            const currentIndex = focusable.indexOf(e.target);
+            if (currentIndex >= 0 && currentIndex < focusable.length - 1) {
+                focusable[currentIndex + 1].focus();
+                if (focusable[currentIndex + 1].select) focusable[currentIndex + 1].select();
+            }
+        }
+    };
 
     const inputClass = "w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-[#51aff7] focus:border-transparent transition text-sm";
     const labelClass = "block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide";
@@ -3304,15 +3837,33 @@ const DataEntryView = ({ t, addBatch, setActiveTab, customProcesses = [], woodTr
             const vendu = parseFloat(updated.qtyVendu) || 0;
             const exp = parseFloat(updated.qtyExp) || 0;
             const invItem = inventory.find(item => item.stockNo === updated.stockNo);
-            const qtyDisponible = invItem ? invItem.qty : 0;
+            const qtyEnMain = invItem ? (invItem.qty || 0) : 0;
+            const qtyEnComm = invItem ? (invItem.qtyComm || 0) : 0;
+            const qtyDejaRes = invItem ? (invItem.qtyReserve || 0) : 0;
+            const qtyDisponible = Math.max(0, qtyEnMain + qtyEnComm - qtyDejaRes);
             updated.qtyRes = qtyDisponible >= vendu ? Math.max(0, vendu - exp) : 0;
             // Auto-calc Prix vente
             const prix = parseFloat(updated.prix) || 0;
             const esc = parseFloat(updated.escompte) || 0;
             updated.prixVente = (prix * (1 - esc / 100) * vendu).toFixed(2);
             // Auto-calc line status
-            if (updated.stockNo && vendu > 0) {
-                updated.lineStatut = qtyDisponible >= vendu ? 'R\u00e9serv\u00e9' : 'En attente';
+            if (updated.lineStatut === 'Commandé' || updated.lineStatut === 'Exp. (Commandé)' || updated.lineStatut === 'Expédié') {
+                // Preserve confirmed/expedited statuses — don't recalculate
+                updated.qtyRes = Math.max(0, vendu - exp);
+            } else if (updated.statut === 'Commander') {
+                updated.lineStatut = 'En Commande';
+                // En Commande: la qté reste réservée car couverte par la commande
+                updated.qtyRes = Math.max(0, vendu - exp);
+            } else if (updated.stockNo && vendu > 0) {
+                if (qtyDisponible >= vendu) {
+                    updated.lineStatut = 'R\u00e9serv\u00e9';
+                } else {
+                    // Qté insuffisante: retirer le numéro de stock pour ne pas le sauvegarder
+                    updated.qtyRes = 0;
+                    updated.lineStatut = 'Insuffisant';
+                    updated.stockNo = '';
+                    DevExpress.ui.notify('Quantit\u00e9 insuffisante en inventaire (' + qtyDisponible + ' disponible, en main: ' + qtyEnMain + ', en comm.: ' + qtyEnComm + ', r\u00e9s.: ' + qtyDejaRes + ')', 'warning', 3000);
+                }
             } else {
                 updated.lineStatut = 'En attente';
             }
@@ -3371,11 +3922,27 @@ const DataEntryView = ({ t, addBatch, setActiveTab, customProcesses = [], woodTr
 
     const addLine = () => {
         setLines(prev => [...prev, { ...emptyLine }]);
+        logAction('Ajout ligne', `Ligne ${lines.length + 1} ajoutée`);
     };
 
     const removeLine = (index) => {
         if (lines.length <= 1) return;
-        setLines(prev => prev.filter((_, i) => i !== index));
+        const line = lines[index];
+        const desc = line.description || line.stockNo || `Ligne ${index + 1}`;
+        DevExpress.ui.dialog.confirm(
+            `<div style="text-align:center;padding:10px 0;">
+                <i class="fa fa-exclamation-triangle" style="font-size:32px;color:#ef4444;margin-bottom:10px;display:block;"></i>
+                <span style="font-size:15px;">Voulez-vous vraiment supprimer cette ligne?</span><br/>
+                <strong style="color:#374151;">${desc}</strong>
+            </div>`,
+            'Confirmation de suppression'
+        ).then((confirmed) => {
+            if (confirmed) {
+                setLines(prev => prev.filter((_, i) => i !== index));
+                logAction('Suppression ligne', `Ligne ${index + 1} supprimée — ${desc}`);
+                DevExpress.ui.notify('Ligne supprimée', 'info', 2000);
+            }
+        });
     };
 
     const selectInventoryForLine = (index, item) => {
@@ -3391,15 +3958,23 @@ const DataEntryView = ({ t, addBatch, setActiveTab, customProcesses = [], woodTr
             };
             const vendu = parseFloat(updated.qtyVendu) || 0;
             const exp = parseFloat(updated.qtyExp) || 0;
-            const qtyDisponible = item.qty || 0;
+            const qtyDisponible = Math.max(0, (item.qty || 0) + (item.qtyComm || 0) - (item.qtyReserve || 0));
             updated.qtyRes = qtyDisponible >= vendu ? Math.max(0, vendu - exp) : 0;
             if (updated.stockNo && vendu > 0) {
-                updated.lineStatut = qtyDisponible >= vendu ? 'R\u00e9serv\u00e9' : 'En attente';
+                if (qtyDisponible >= vendu) {
+                    updated.lineStatut = 'R\u00e9serv\u00e9';
+                } else {
+                    updated.lineStatut = 'Insuffisant';
+                    updated.qtyRes = 0;
+                    updated.stockNo = '';
+                    DevExpress.ui.notify('Quantit\u00e9 insuffisante en inventaire (' + qtyDisponible + ' disponible)', 'warning', 3000);
+                }
             } else {
                 updated.lineStatut = 'En attente';
             }
             return updated;
         }));
+        logAction('Sélection produit', `Ligne ${index + 1} — Stock: ${item.stockNo}, ${(item.description || item.wood || '')}`);
         setActiveLineSearch(null);
         setLineSearch('');
         setLineSearchFilter('');
@@ -3425,10 +4000,17 @@ const DataEntryView = ({ t, addBatch, setActiveTab, customProcesses = [], woodTr
                 };
                 const vendu = parseFloat(updated.qtyVendu) || 0;
                 const exp = parseFloat(updated.qtyExp) || 0;
-                const qtyDisponible = found.qty || 0;
+                const qtyDisponible = Math.max(0, (found.qty || 0) + (found.qtyComm || 0) - (found.qtyReserve || 0));
                 updated.qtyRes = qtyDisponible >= vendu ? Math.max(0, vendu - exp) : 0;
                 if (updated.stockNo && vendu > 0) {
-                    updated.lineStatut = qtyDisponible >= vendu ? 'R\u00e9serv\u00e9' : 'En attente';
+                    if (qtyDisponible >= vendu) {
+                        updated.lineStatut = 'R\u00e9serv\u00e9';
+                    } else {
+                        updated.lineStatut = 'Insuffisant';
+                        updated.qtyRes = 0;
+                        updated.stockNo = '';
+                        DevExpress.ui.notify('Quantit\u00e9 insuffisante en inventaire (' + qtyDisponible + ' disponible)', 'warning', 3000);
+                    }
                 } else {
                     updated.lineStatut = 'En attente';
                 }
@@ -3442,6 +4024,76 @@ const DataEntryView = ({ t, addBatch, setActiveTab, customProcesses = [], woodTr
     const tps = sousTotal * 0.05;
     const tvq = sousTotal * 0.09975;
     const total = sousTotal + tps + tvq;
+
+    // Auto-save: save automatically when form has data
+    const autoSaveTimerRef = useRef(null);
+    useEffect(() => {
+        // Only auto-save when document is confirmed and has minimum data
+        if (!docConfirmed || !docType || !clientInfo.name.trim()) return;
+        if (lines.every(l => !l.stockNo && !l.description)) return;
+
+        if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+        autoSaveTimerRef.current = setTimeout(() => {
+            // Auto-generate numbers if not set
+            let currentInvoiceNo = invoiceNo;
+            let currentTransactionNo = transactionNo;
+            if (!currentInvoiceNo && docType === 'Facture') {
+                currentInvoiceNo = generateInvoiceNo();
+                setInvoiceNo(currentInvoiceNo);
+            }
+            if (!currentTransactionNo) {
+                currentTransactionNo = generateTransactionNo();
+                setTransactionNo(currentTransactionNo);
+            }
+
+            const st = lines.reduce((sum, l) => sum + (parseFloat(l.prixVente) || 0), 0);
+            const t1 = st * 0.05;
+            const t2 = st * 0.09975;
+            const tot = st + t1 + t2;
+
+            const invoice = {
+                invoiceNo: currentInvoiceNo,
+                transactionNo: currentTransactionNo,
+                docType,
+                orderStatus,
+                vendeur,
+                date: invoiceDate,
+                client: { ...clientInfo },
+                lines: lines.filter(l => l.stockNo || l.description),
+                notes: invoiceNotes,
+                txHistory: txHistory,
+                sousTotal: st.toFixed(2),
+                tps: t1.toFixed(2),
+                tvq: t2.toFixed(2),
+                total: tot.toFixed(2),
+                createdAt: new Date().toISOString()
+            };
+
+            if (editingInvoiceNo) {
+                setSavedInvoices(prev => prev.map(inv => {
+                    if (inv.invoiceNo === editingInvoiceNo || (editingInvoiceNo === currentTransactionNo && inv.transactionNo === currentTransactionNo)) {
+                        return { ...invoice, createdAt: inv.createdAt, updatedAt: new Date().toISOString() };
+                    }
+                    return inv;
+                }));
+            } else {
+                // Check if already saved with same transactionNo (avoid duplicates)
+                setSavedInvoices(prev => {
+                    const existing = prev.find(inv => inv.transactionNo === currentTransactionNo);
+                    if (existing) {
+                        return prev.map(inv => inv.transactionNo === currentTransactionNo
+                            ? { ...invoice, createdAt: inv.createdAt, updatedAt: new Date().toISOString() }
+                            : inv
+                        );
+                    }
+                    return [invoice, ...prev];
+                });
+                setEditingInvoiceNo(currentInvoiceNo || currentTransactionNo);
+            }
+        }, 1500);
+
+        return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current); };
+    }, [lines, clientInfo, invoiceNotes, docType, orderStatus, invoiceDate, docConfirmed]);
 
     const handleSaveInvoice = () => {
         if (!docType) {
@@ -3465,29 +4117,41 @@ const DataEntryView = ({ t, addBatch, setActiveTab, customProcesses = [], woodTr
             transactionNo,
             docType,
             orderStatus,
+            vendeur,
             date: invoiceDate,
             client: { ...clientInfo },
             lines: lines.filter(l => l.stockNo || l.description),
             notes: invoiceNotes,
+            txHistory: txHistory,
             sousTotal: sousTotal.toFixed(2),
             tps: tps.toFixed(2),
             tvq: tvq.toFixed(2),
             total: total.toFixed(2),
             createdAt: new Date().toISOString()
         };
+        logAction('Sauvegarde', `${docType} ${invoiceNo || transactionNo} sauvegardée`);
         if (editingInvoiceNo) {
             // Update existing invoice — preserve original createdAt
             setSavedInvoices(prev => prev.map(inv => {
-                if (inv.invoiceNo === editingInvoiceNo) {
+                if (inv.invoiceNo === editingInvoiceNo || (editingInvoiceNo === transactionNo && inv.transactionNo === transactionNo)) {
                     return { ...invoice, createdAt: inv.createdAt, updatedAt: new Date().toISOString() };
                 }
                 return inv;
             }));
-            DevExpress.ui.notify(docType + ' ' + invoiceNo + ' mise \u00e0 jour avec succ\u00e8s', 'success', 3000);
+            DevExpress.ui.notify(docType + ' ' + (invoiceNo || transactionNo) + ' mise \u00e0 jour avec succ\u00e8s', 'success', 3000);
         } else {
-            // New invoice
-            setSavedInvoices(prev => [invoice, ...prev]);
-            DevExpress.ui.notify(docType + ' ' + invoiceNo + ' sauvegard\u00e9e avec succ\u00e8s', 'success', 3000);
+            // New invoice — check for duplicates by transactionNo
+            setSavedInvoices(prev => {
+                const existing = prev.find(inv => inv.transactionNo === transactionNo);
+                if (existing) {
+                    return prev.map(inv => inv.transactionNo === transactionNo
+                        ? { ...invoice, createdAt: inv.createdAt, updatedAt: new Date().toISOString() }
+                        : inv
+                    );
+                }
+                return [invoice, ...prev];
+            });
+            DevExpress.ui.notify(docType + ' ' + (invoiceNo || transactionNo) + ' sauvegard\u00e9e avec succ\u00e8s', 'success', 3000);
         }
         // Reset (useEffect will automatically recalc reservations)
         setClientInfo({ name: '', address: '', city: '', postalCode: '', phone: '', email: '', deliveryAddress: '', deliveryCity: '', deliveryPostalCode: '', deliveryNotes: '' });
@@ -3499,7 +4163,9 @@ const DataEntryView = ({ t, addBatch, setActiveTab, customProcesses = [], woodTr
         setTransactionNo('');
         setDocConfirmed(false);
         setOrderStatus('');
+        setVendeur('');
         setEditingInvoiceNo(null);
+        setTxHistory([]);
         onDirtyChange(false);
     };
 
@@ -3510,8 +4176,865 @@ const DataEntryView = ({ t, addBatch, setActiveTab, customProcesses = [], woodTr
         setTimeout(() => document.title = oldTitle, 1000);
     };
 
+    // --- Expédier: open bon de préparation modal ---
+    const handleExpedier = (lineIndexes) => {
+        const expedLines = lineIndexes.map(i => ({ ...lines[i], _idx: i })).filter(l => l.stockNo || l.description);
+        if (expedLines.length === 0) {
+            DevExpress.ui.notify('Aucune ligne avec produit à expédier', 'warning', 2000);
+            return;
+        }
+        setBonPrepLines(expedLines);
+        setBonPrepDate(new Date().toISOString().split('T')[0]);
+        setBonPrepUser('');
+        setShowBonPrep(true);
+    };
+
+    const confirmBonPreparation = () => {
+        if (!bonPrepUser.trim()) {
+            DevExpress.ui.notify('Veuillez entrer le nom de l\'usager', 'warning', 2000);
+            return;
+        }
+        // Update line statuses to Expédier, set qtyExp, calc qtyRes, uncheck
+        // Si la ligne était "Commander", marquer comme "Expédié (En Commande)" pour suivi
+        const idxSet = new Set(bonPrepLines.map(l => l._idx));
+        const commanderLines = [];
+        const stockLines = [];
+        setLines(prev => prev.map((line, i) => {
+            if (!idxSet.has(i)) return line;
+            const vendu = parseFloat(line.qtyVendu) || 0;
+            const exp = vendu;
+            const wasCommander = line.statut === 'Commander' || line.lineStatut === 'En Commande' || line.lineStatut === 'Commandé';
+            if (wasCommander) {
+                commanderLines.push(line);
+            } else {
+                stockLines.push(line);
+            }
+            return {
+                ...line,
+                statut: 'Expédier',
+                lineStatut: wasCommander ? 'Exp. (Commandé)' : 'Expédié',
+                qtyExp: exp,
+                qtyRes: 0,
+                checked: false,
+                expedieDate: bonPrepDate,
+                expedieUser: bonPrepUser
+            };
+        }));
+
+        // Déduire les quantités expédiées de l'inventaire
+        // Sauf si la ligne était "Commander" (En Commande) — la réception couvrira le rebalancement
+        setInventory(prev => {
+            const updated = [...prev];
+            bonPrepLines.forEach(bLine => {
+                if (!bLine.stockNo) return;
+                // Ne pas déduire si la ligne était en commande (la réception rééquilibrera)
+                if (bLine.statut === 'Commander' || bLine.lineStatut === 'En Commande' || bLine.lineStatut === 'Commandé') return;
+                const qtyToDeduct = parseFloat(bLine.qtyVendu) || 0;
+                if (qtyToDeduct <= 0) return;
+                const idx = updated.findIndex(item => item.stockNo === bLine.stockNo);
+                if (idx >= 0) {
+                    updated[idx] = { ...updated[idx], qty: Math.max(0, (updated[idx].qty || 0) - qtyToDeduct) };
+                }
+            });
+            return updated;
+        });
+
+        // Notifier si des lignes en commande
+        if (commanderLines.length > 0) {
+            DevExpress.ui.notify(`${commanderLines.length} ligne(s) en commande — inventaire non déduit, sera ajusté à la réception`, 'info', 4000);
+        }
+
+        // Print the bon de préparation
+        printBonPreparation();
+    };
+
+    const printBonPreparation = () => {
+        const now = new Date();
+        const heure = now.toLocaleTimeString('fr-CA', { hour: '2-digit', minute: '2-digit' });
+        const dateFormatted = new Date(bonPrepDate).toLocaleDateString('fr-CA', { year: 'numeric', month: 'long', day: 'numeric' });
+
+        const linesHtml = bonPrepLines.map((l, i) => `
+            <tr style="border-bottom:1px solid #e5e7eb;">
+                <td style="padding:8px 12px;text-align:center;font-weight:bold;">${i + 1}</td>
+                <td style="padding:8px 12px;font-weight:600;">${l.stockNo || ''}</td>
+                <td style="padding:8px 12px;">${l.description || ''}</td>
+                <td style="padding:8px 12px;text-align:center;font-weight:bold;">${l.qtyVendu || 0}</td>
+                <td style="padding:8px 12px;text-align:center;">${l.um || 'PC'}</td>
+                <td style="padding:8px 12px;text-align:center;font-weight:bold;color:#2563eb;">${l.qtyExp || l.qtyVendu || 0}</td>
+            </tr>
+        `).join('');
+
+        const html = `
+            <html>
+            <head>
+                <title>Bon de Préparation - ${invoiceNo || transactionNo}</title>
+                <style>
+                    @page { size: letter; margin: 15mm; }
+                    body { font-family: 'Segoe UI', Arial, sans-serif; color: #1f2937; margin: 0; padding: 20px; }
+                    .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #51aff7; padding-bottom: 16px; margin-bottom: 20px; }
+                    .header-left h1 { margin: 0; font-size: 24px; color: #1f2937; }
+                    .header-left p { margin: 2px 0; font-size: 12px; color: #6b7280; }
+                    .header-right { text-align: right; }
+                    .header-right h2 { margin: 0; font-size: 28px; font-weight: 900; color: #51aff7; text-transform: uppercase; }
+                    .meta { display: flex; gap: 40px; margin-bottom: 20px; }
+                    .meta-box { background: #f3f4f6; border-radius: 8px; padding: 12px 16px; flex: 1; }
+                    .meta-box label { display: block; font-size: 10px; text-transform: uppercase; color: #6b7280; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 4px; }
+                    .meta-box span { font-size: 15px; font-weight: 700; color: #111827; }
+                    .client-box { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 14px 18px; margin-bottom: 20px; }
+                    .client-box h3 { margin: 0 0 6px; font-size: 11px; text-transform: uppercase; color: #1d4ed8; font-weight: 700; letter-spacing: 0.5px; }
+                    .client-box p { margin: 2px 0; font-size: 13px; }
+                    table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+                    th { background: #51aff7; color: #fff; font-size: 11px; text-transform: uppercase; padding: 10px 12px; text-align: left; font-weight: 700; letter-spacing: 0.5px; }
+                    td { font-size: 13px; }
+                    tr:nth-child(even) { background: #f9fafb; }
+                    .footer { display: flex; justify-content: space-between; border-top: 2px solid #e5e7eb; padding-top: 16px; margin-top: 20px; }
+                    .footer-box { border: 1px solid #d1d5db; border-radius: 8px; padding: 12px 16px; width: 45%; }
+                    .footer-box label { display: block; font-size: 10px; text-transform: uppercase; color: #6b7280; font-weight: 700; margin-bottom: 8px; }
+                    .signature-line { border-bottom: 1px solid #9ca3af; height: 40px; }
+                    .stamp { text-align: center; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 12px; margin-top: 20px; }
+                    .stamp p { margin: 2px 0; font-size: 12px; color: #15803d; font-weight: 600; }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <div class="header-left">
+                        <h1>Surfagest</h1>
+                        <p>123 Rue de l'Industrie</p>
+                        <p>Saint-Georges, QC G5Y 5C3</p>
+                        <p>Tél: (418) 555-0123</p>
+                    </div>
+                    <div class="header-right">
+                        <h2>Bon de Préparation</h2>
+                        <p style="font-size:13px;color:#374151;margin:4px 0;">
+                            ${docType || 'Document'} #<strong>${invoiceNo || '—'}</strong>
+                        </p>
+                        <p style="font-size:12px;color:#6b7280;">Transaction: ${transactionNo || '—'}</p>
+                    </div>
+                </div>
+
+                <div class="meta">
+                    <div class="meta-box">
+                        <label>Date d'expédition</label>
+                        <span>${dateFormatted}</span>
+                    </div>
+                    <div class="meta-box">
+                        <label>Heure d'impression</label>
+                        <span>${heure}</span>
+                    </div>
+                    <div class="meta-box">
+                        <label>Préparé par</label>
+                        <span>${bonPrepUser}</span>
+                    </div>
+                </div>
+
+                <div class="client-box">
+                    <h3><i class="fa-solid fa-user"></i> Client</h3>
+                    <p style="font-weight:700;font-size:15px;">${clientInfo.name || '—'}</p>
+                    ${clientInfo.address ? `<p>${clientInfo.address}</p>` : ''}
+                    ${clientInfo.city || clientInfo.postalCode ? `<p>${clientInfo.city || ''} ${clientInfo.postalCode || ''}</p>` : ''}
+                    ${clientInfo.phone ? `<p>Tél: ${clientInfo.phone}</p>` : ''}
+                </div>
+
+                ${clientInfo.deliveryAddress ? `
+                <div class="client-box" style="background:#f0fdf4;border-color:#bbf7d0;">
+                    <h3 style="color:#15803d;">Adresse de livraison</h3>
+                    <p style="font-weight:700;">${clientInfo.deliveryAddress}</p>
+                    ${clientInfo.deliveryCity || clientInfo.deliveryPostalCode ? `<p>${clientInfo.deliveryCity || ''} ${clientInfo.deliveryPostalCode || ''}</p>` : ''}
+                    ${clientInfo.deliveryNotes ? `<p style="font-style:italic;color:#6b7280;">${clientInfo.deliveryNotes}</p>` : ''}
+                </div>
+                ` : ''}
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width:40px;text-align:center;">#</th>
+                            <th style="width:140px;">Code / Stock</th>
+                            <th>Description</th>
+                            <th style="width:80px;text-align:center;">Qté vendu</th>
+                            <th style="width:60px;text-align:center;">UM</th>
+                            <th style="width:80px;text-align:center;">Qté à exp.</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${linesHtml}
+                    </tbody>
+                </table>
+
+                ${invoiceNotes ? `<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:12px 16px;margin-bottom:16px;"><p style="font-size:11px;text-transform:uppercase;color:#92400e;font-weight:700;margin:0 0 4px;">Notes</p><p style="font-size:13px;margin:0;color:#78350f;">${invoiceNotes}</p></div>` : ''}
+
+                <div class="footer">
+                    <div class="footer-box">
+                        <label>Vérifié par</label>
+                        <div class="signature-line"></div>
+                    </div>
+                    <div class="footer-box">
+                        <label>Reçu par (client)</label>
+                        <div class="signature-line"></div>
+                    </div>
+                </div>
+
+                <div class="stamp">
+                    <p>Imprimé le ${now.toLocaleDateString('fr-CA')} à ${heure} par ${bonPrepUser}</p>
+                </div>
+            </body>
+            </html>
+        `;
+
+        const printWindow = window.open('', '_blank', 'width=900,height=700');
+        printWindow.document.write(html);
+        printWindow.document.close();
+        printWindow.onload = () => {
+            printWindow.print();
+        };
+
+        setShowBonPrep(false);
+        bonPrepLines.forEach(bl => logAction('Expédition', `${bl.description} — Qté: ${bl.qtyVendu}, Stock: ${bl.stockNo || 'N/A'}, Préparé par: ${bonPrepUser}`));
+        DevExpress.ui.notify('Bon de préparation généré — statut mis à jour', 'success', 3000);
+    };
+
+    // --- Annuler commande: remettre la ligne en état modifiable ---
+    const handleAnnulerCommander = (lineIndex) => {
+        const line = lines[lineIndex];
+        if (!line) return;
+
+        // Check if bon de commande already confirmed for this line
+        const relatedCmd = commandes.find(c =>
+            c.stockNo === line.stockNo &&
+            c.sourceTransaction === (transactionNo || '') &&
+            (c.statut === 'Confirmé' || c.statut === 'Reçu')
+        );
+        if (relatedCmd) {
+            DevExpress.ui.notify('Impossible d\'annuler: le bon de commande a d\u00e9j\u00e0 \u00e9t\u00e9 confirm\u00e9', 'error', 3000);
+            return;
+        }
+
+        // Remove related commande records (En attente or Envoyé au bureau)
+        setCommandes(prev => prev.filter(c => {
+            if (c.sourceTransaction !== (transactionNo || '')) return true;
+            if (c.stockNo !== line.stockNo && c.description !== line.description) return true;
+            if (c.statut === 'Confirmé' || c.statut === 'Reçu') return true;
+            return false;
+        }));
+
+        // Reset line status
+        setLines(prev => prev.map((l, i) => {
+            if (i !== lineIndex) return l;
+            const updated = { ...l, statut: '', lineStatut: 'En attente', qtyRes: 0, stockNo: '' };
+            return updated;
+        }));
+        logAction('Annulation commande', `Ligne ${lineIndex + 1} — ${line.description || line.stockNo || 'N/A'} — commande annulée`);
+        DevExpress.ui.notify('Commande annulée — ligne remise en édition', 'info', 3000);
+    };
+
+    // --- Commandes d'achat: import lines marked "Commander" ---
+    const handleCommander = (lineIndexes) => {
+        const cmdLines = lineIndexes.map(i => ({ ...lines[i], _idx: i })).filter(l => l.stockNo || l.description);
+        if (cmdLines.length === 0) {
+            DevExpress.ui.notify('Aucune ligne avec produit à commander', 'warning', 2000);
+            return;
+        }
+
+        // Update statut on lines
+        setLines(prev => prev.map((line, i) => {
+            if (!lineIndexes.includes(i)) return line;
+            return {
+                ...line,
+                statut: 'Commander',
+                lineStatut: 'En Commande',
+                checked: false
+            };
+        }));
+        // Add to commandes queue (no stock creation yet — happens at bon de commande confirmation)
+        const newCommandes = cmdLines.map(l => {
+            const invItem = l.stockNo ? inventory.find(item => item.stockNo === l.stockNo) : null;
+            return {
+                id: 'CMD-' + Date.now().toString().slice(-6) + '-' + Math.random().toString(36).slice(2, 5),
+                stockNo: l.stockNo || '',
+                productCode: l.productCode || '',
+                description: l.description || '',
+                qtyCommande: parseFloat(l.qtyVendu) || 0,
+                qtyRecue: 0,
+                um: l.um || invItem?.unite || 'PC',
+                prix: l.prix || '',
+                coutant: invItem?.coutant || '',
+                fournisseur: invItem?.fournisseur || '',
+                // Carry over all inventory fields
+                wood: invItem?.wood || '',
+                grade: invItem?.grade || '',
+                largeur: invItem?.largeur || '',
+                epaisseur: invItem?.epaisseur || '',
+                location: invItem?.location || '',
+                state: invItem?.state || '',
+                categorie: invItem?.categorie || '',
+                prixDetail: invItem?.prixDetail || '',
+                specs: invItem?.specs || '',
+                sourceInvoice: invoiceNo || '',
+                sourceTransaction: transactionNo || '',
+                sourceClient: clientInfo.name || '',
+                dateCreation: new Date().toISOString(),
+                dateReceptionPrevue: '',
+                dateReceptionReelle: '',
+                noteSuivi: '',
+                statut: 'En attente',
+                poNumber: '',
+                sentToBureau: false
+            };
+        });
+        setCommandes(prev => [...prev, ...newCommandes]);
+        newCommandes.forEach(c => logAction('Commander', `${c.description} — Qté: ${c.qtyCommande}, Stock: ${c.stockNo || 'N/A'}`));
+        DevExpress.ui.notify(`${newCommandes.length} ligne(s) ajoutée(s) aux commandes d'achat`, 'success', 3000);
+    };
+
+    // Create bon de commande from selected commande lines
+    const handleCreateBonCommande = (selectedIds, vendor, mode) => {
+        const selectedLines = commandes.filter(c => selectedIds.includes(c.id));
+        if (selectedLines.length === 0) return;
+
+        const poNum = 'PO-' + Date.now().toString().slice(-8);
+
+        if (mode === 'bureau') {
+            // Send to bureau de commande — mark as pending
+            setCommandes(prev => prev.map(c => {
+                if (!selectedIds.includes(c.id)) return c;
+                return { ...c, statut: 'Envoyé au bureau', fournisseur: vendor, poNumber: poNum, sentToBureau: true };
+            }));
+            DevExpress.ui.notify(`${selectedLines.length} ligne(s) envoyée(s) au bureau de commande`, 'info', 3000);
+            return;
+        }
+
+        // Direct: open bon de commande modal for print
+        setBonCommandeLines(selectedLines.map(l => ({ ...l, fournisseur: vendor })));
+        setBonCommandeVendor(vendor);
+        setBonCommandeUser('');
+        setShowBonCommande(true);
+    };
+
+    const confirmBonCommande = () => {
+        if (!bonCommandeUser.trim()) {
+            DevExpress.ui.notify("Veuillez entrer le nom de l'usager", 'warning', 2000);
+            return;
+        }
+        const poNum = 'PO-' + Date.now().toString().slice(-8);
+        const ids = bonCommandeLines.map(l => l.id);
+        // Build map of updated fields from modal lines (coûtant, date réception, note suivi)
+        const lineUpdates = {};
+        bonCommandeLines.forEach(l => {
+            lineUpdates[l.id] = {
+                coutant: l.coutant || '',
+                dateReceptionPrevue: l.dateReceptionPrevue || '',
+                noteSuivi: l.noteSuivi || ''
+            };
+        });
+        // Update commandes status
+        setCommandes(prev => prev.map(c => {
+            if (!ids.includes(c.id)) return c;
+            return {
+                ...c,
+                statut: 'Commandé',
+                fournisseur: bonCommandeVendor,
+                poNumber: poNum,
+                commandePar: bonCommandeUser,
+                dateCommande: new Date().toISOString(),
+                ...(lineUpdates[c.id] || {})
+            };
+        }));
+        // --- Create inventory items for lines without existing stock (on confirmation) ---
+        let nextNum = 10000;
+        const existingNums = inventory.map(item => parseInt(item.stockNo, 10)).filter(n => !isNaN(n));
+        if (existingNums.length > 0) {
+            nextNum = Math.max(...existingNums) + 1;
+            if (nextNum < 10000) nextNum = 10000;
+        }
+        const newInventoryItems = [];
+        const stockNoMap = {}; // maps commande id -> new stockNo
+        const coutantUpdates = {};
+
+        bonCommandeLines.forEach(l => {
+            const existsInInventory = l.stockNo && inventory.find(item => item.stockNo === l.stockNo);
+            if (!existsInInventory) {
+                // No existing inventory item — create one with next available number
+                const newStockNo = String(nextNum++);
+                newInventoryItems.push({
+                    stockNo: newStockNo,
+                    productCode: l.productCode || '',
+                    description: l.description || '',
+                    wood: l.wood || '',
+                    grade: l.grade || '',
+                    unite: l.um || 'PC',
+                    largeur: l.largeur || '',
+                    epaisseur: l.epaisseur || '',
+                    qty: 0,
+                    location: l.location || '',
+                    state: l.state || '',
+                    categorie: l.categorie || '',
+                    prixDetail: l.prixDetail || '',
+                    specs: l.specs || '',
+                    coutant: l.coutant || '',
+                    fournisseur: bonCommandeVendor || l.fournisseur || '',
+                    dateAdded: new Date().toISOString()
+                });
+                stockNoMap[l.id] = newStockNo;
+            }
+            // Propagate coûtant to existing or new inventory items
+            if (l.coutant) {
+                const sNo = stockNoMap[l.id] || l.stockNo;
+                if (sNo) coutantUpdates[sNo] = l.coutant;
+            }
+        });
+
+        // Add new inventory items & update coûtant on existing ones
+        if (newInventoryItems.length > 0 || Object.keys(coutantUpdates).length > 0) {
+            setInventory(prev => {
+                let updated = [...prev, ...newInventoryItems];
+                if (Object.keys(coutantUpdates).length > 0) {
+                    updated = updated.map(item => {
+                        if (coutantUpdates[item.stockNo] !== undefined) {
+                            return { ...item, coutant: coutantUpdates[item.stockNo] };
+                        }
+                        return item;
+                    });
+                }
+                localStorage.setItem('inventory', JSON.stringify(updated));
+                return updated;
+            });
+        }
+
+        // Update commande records with newly assigned stockNo
+        if (Object.keys(stockNoMap).length > 0) {
+            setCommandes(prev => prev.map(c => {
+                if (stockNoMap[c.id]) {
+                    return { ...c, stockNo: stockNoMap[c.id] };
+                }
+                return c;
+            }));
+        }
+        // Update invoice lines: assign new stockNo + set lineStatut to 'Commandé' + reset dropdown
+        setLines(prev => prev.map(line => {
+            const matchingCmd = bonCommandeLines.find(bl =>
+                bl.sourceInvoice === invoiceNo &&
+                bl.description === line.description &&
+                (line.statut === 'Commander' || line.lineStatut === 'En Commande')
+            );
+            if (matchingCmd) {
+                return {
+                    ...line,
+                    stockNo: stockNoMap[matchingCmd.id] || line.stockNo,
+                    lineStatut: 'Commandé',
+                    statut: ''
+                };
+            }
+            return line;
+        }));
+        bonCommandeLines.forEach(bl => logAction('Bon de commande confirmé', `PO: ${poNum} — ${bl.description} — Qté: ${bl.qtyCommande}, Fournisseur: ${bonCommandeVendor}`));
+        // Print bon de commande
+        printBonCommande(poNum);
+    };
+
+    const printBonCommande = (poNum) => {
+        const now = new Date();
+        const heure = now.toLocaleTimeString('fr-CA', { hour: '2-digit', minute: '2-digit' });
+        const dateFormatted = now.toLocaleDateString('fr-CA', { year: 'numeric', month: 'long', day: 'numeric' });
+        const vendorObj = fournisseurs.find(f => f.name === bonCommandeVendor) || { name: bonCommandeVendor, address: '', attention: '', email: '' };
+
+        const linesHtml = bonCommandeLines.map((l, i) => `
+            <tr style="border-bottom:1px solid #e5e7eb;">
+                <td style="padding:8px 12px;text-align:center;font-weight:bold;">${i + 1}</td>
+                <td style="padding:8px 12px;font-weight:600;">${l.stockNo || ''}</td>
+                <td style="padding:8px 12px;">${l.description || ''}</td>
+                <td style="padding:8px 12px;text-align:center;font-weight:bold;">${l.qtyCommande || 0}</td>
+                <td style="padding:8px 12px;text-align:center;">${l.um || 'PC'}</td>
+                <td style="padding:8px 12px;text-align:right;">${l.coutant ? '$' + parseFloat(l.coutant).toFixed(2) : '—'}</td>
+                <td style="padding:8px 12px;text-align:right;">${l.prix ? '$' + parseFloat(l.prix).toFixed(2) : '—'}</td>
+                <td style="padding:8px 12px;text-align:center;">${l.dateReceptionPrevue || '—'}</td>
+            </tr>
+        `).join('');
+
+        const totalCoutant = bonCommandeLines.reduce((s, l) => s + ((parseFloat(l.coutant) || 0) * (l.qtyCommande || 0)), 0);
+        const total = bonCommandeLines.reduce((s, l) => s + ((parseFloat(l.prix) || 0) * (l.qtyCommande || 0)), 0);
+
+        const html = `
+            <html>
+            <head>
+                <title>Bon de Commande - ${poNum}</title>
+                <style>
+                    @page { size: letter; margin: 15mm; }
+                    body { font-family: 'Segoe UI', Arial, sans-serif; color: #1f2937; margin: 0; padding: 20px; }
+                    .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #51aff7; padding-bottom: 16px; margin-bottom: 20px; }
+                    .header-left h1 { margin: 0; font-size: 24px; color: #1f2937; }
+                    .header-left p { margin: 2px 0; font-size: 12px; color: #6b7280; }
+                    .header-right { text-align: right; }
+                    .header-right h2 { margin: 0; font-size: 28px; font-weight: 900; color: #51aff7; text-transform: uppercase; }
+                    .meta { display: flex; gap: 30px; margin-bottom: 20px; }
+                    .meta-box { background: #f3f4f6; border-radius: 8px; padding: 12px 16px; flex: 1; }
+                    .meta-box label { display: block; font-size: 10px; text-transform: uppercase; color: #6b7280; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 4px; }
+                    .meta-box span { font-size: 15px; font-weight: 700; color: #111827; }
+                    .vendor-box { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 14px 18px; margin-bottom: 20px; }
+                    .vendor-box h3 { margin: 0 0 6px; font-size: 11px; text-transform: uppercase; color: #1d4ed8; font-weight: 700; letter-spacing: 0.5px; }
+                    .vendor-box p { margin: 2px 0; font-size: 13px; }
+                    table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+                    th { background: #51aff7; color: #fff; font-size: 11px; text-transform: uppercase; padding: 10px 12px; text-align: left; font-weight: 700; }
+                    td { font-size: 13px; }
+                    tr:nth-child(even) { background: #f9fafb; }
+                    .footer { display: flex; justify-content: space-between; border-top: 2px solid #e5e7eb; padding-top: 16px; margin-top: 20px; }
+                    .footer-box { border: 1px solid #d1d5db; border-radius: 8px; padding: 12px 16px; width: 45%; }
+                    .footer-box label { display: block; font-size: 10px; text-transform: uppercase; color: #6b7280; font-weight: 700; margin-bottom: 8px; }
+                    .signature-line { border-bottom: 1px solid #9ca3af; height: 40px; }
+                    .totals { text-align: right; margin-bottom: 16px; }
+                    .totals span { font-size: 16px; font-weight: 900; }
+                    .stamp { text-align: center; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 12px; margin-top: 20px; }
+                    .stamp p { margin: 2px 0; font-size: 12px; color: #15803d; font-weight: 600; }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <div class="header-left">
+                        <h1>Surfagest</h1>
+                        <p>123 Rue de l'Industrie</p>
+                        <p>Saint-Georges, QC G5Y 5C3</p>
+                        <p>Tél: (418) 555-0123</p>
+                    </div>
+                    <div class="header-right">
+                        <h2>Bon de Commande</h2>
+                        <p style="font-size:14px;font-weight:700;color:#374151;margin:4px 0;">${poNum}</p>
+                    </div>
+                </div>
+
+                <div class="meta">
+                    <div class="meta-box">
+                        <label>Date</label>
+                        <span>${dateFormatted}</span>
+                    </div>
+                    <div class="meta-box">
+                        <label>Heure</label>
+                        <span>${heure}</span>
+                    </div>
+                    <div class="meta-box">
+                        <label>Émis par</label>
+                        <span>${bonCommandeUser}</span>
+                    </div>
+                </div>
+
+                <div class="vendor-box">
+                    <h3>Fournisseur</h3>
+                    <p style="font-weight:700;font-size:15px;">${vendorObj.name}</p>
+                    ${vendorObj.address ? `<p>${vendorObj.address}</p>` : ''}
+                    ${vendorObj.attention ? `<p>Attn: ${vendorObj.attention}</p>` : ''}
+                    ${vendorObj.email ? `<p>Email: ${vendorObj.email}</p>` : ''}
+                </div>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width:40px;text-align:center;">#</th>
+                            <th style="width:120px;">Code / Stock</th>
+                            <th>Description</th>
+                            <th style="width:70px;text-align:center;">Quantité</th>
+                            <th style="width:50px;text-align:center;">UM</th>
+                            <th style="width:90px;text-align:right;">Coûtant</th>
+                            <th style="width:90px;text-align:right;">Prix vente</th>
+                            <th style="width:100px;text-align:center;">Réception</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${linesHtml}
+                    </tbody>
+                </table>
+
+                ${totalCoutant > 0 ? `<div class="totals"><span>Total coûtant: $${totalCoutant.toFixed(2)}</span>${total > 0 ? ` &nbsp;|&nbsp; <span style="color:#6b7280;font-size:14px;">Total vente: $${total.toFixed(2)}</span>` : ''}</div>` : (total > 0 ? `<div class="totals"><span>Total estimé: $${total.toFixed(2)}</span></div>` : '')}
+
+                ${bonCommandeLines[0]?.noteSuivi ? `<div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:12px 16px;margin-bottom:12px;"><p style="font-size:11px;text-transform:uppercase;color:#0369a1;font-weight:700;margin:0 0 4px;"><i class="fa fa-clipboard-list" style="margin-right:4px;"></i>Suivi CRM</p><p style="font-size:13px;margin:0;color:#0c4a6e;white-space:pre-line;">${bonCommandeLines[0].noteSuivi}</p></div>` : ''}
+
+                ${bonCommandeNotes ? `<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:12px 16px;margin-bottom:16px;"><p style="font-size:11px;text-transform:uppercase;color:#92400e;font-weight:700;margin:0 0 4px;">Notes / Conditions</p><p style="font-size:13px;margin:0;color:#78350f;white-space:pre-line;">${bonCommandeNotes}</p></div>` : ''}
+
+                <div class="footer">
+                    <div class="footer-box">
+                        <label>Autorisé par</label>
+                        <div class="signature-line"></div>
+                    </div>
+                    <div class="footer-box">
+                        <label>Confirmé par le fournisseur</label>
+                        <div class="signature-line"></div>
+                    </div>
+                </div>
+
+                <div class="stamp">
+                    <p>Imprimé le ${now.toLocaleDateString('fr-CA')} à ${heure} par ${bonCommandeUser}</p>
+                </div>
+            </body>
+            </html>
+        `;
+
+        const printWindow = window.open('', '_blank', 'width=900,height=700');
+        printWindow.document.write(html);
+        printWindow.document.close();
+        printWindow.onload = () => { printWindow.print(); };
+
+        setShowBonCommande(false);
+        DevExpress.ui.notify('Bon de commande ' + poNum + ' généré avec succès', 'success', 3000);
+    };
+
+    // Receive commande (réception de marchandise) — supports partial (backorder)
+    const handleReceiveCommande = (commandeId, qtyToReceive) => {
+        const cmd = commandes.find(c => c.id === commandeId);
+        if (!cmd) return;
+        const qtyOrdered = parseFloat(cmd.qtyCommande) || 0;
+        const alreadyReceived = parseFloat(cmd.qtyRecue) || 0;
+        const remaining = qtyOrdered - alreadyReceived;
+        const qtyRecv = qtyToReceive !== undefined ? parseFloat(qtyToReceive) : remaining;
+        if (isNaN(qtyRecv) || qtyRecv <= 0) {
+            DevExpress.ui.notify('La quantité reçue doit être supérieure à 0', 'warning', 2000);
+            return;
+        }
+        const newQtyRecue = alreadyReceived + qtyRecv;
+        const isComplete = newQtyRecue >= qtyOrdered;
+        setCommandes(prev => prev.map(c => {
+            if (c.id !== commandeId) return c;
+            return {
+                ...c,
+                qtyRecue: newQtyRecue,
+                statut: isComplete ? 'Reçu' : 'Backorder',
+                dateReceptionReelle: new Date().toISOString()
+            };
+        }));
+        // Add received quantity to inventory
+        if (cmd.stockNo) {
+            setInventory(prev => {
+                const idx = prev.findIndex(item => item.stockNo === cmd.stockNo);
+                if (idx >= 0) {
+                    const updated = [...prev];
+                    updated[idx] = { ...updated[idx], qty: (updated[idx].qty || 0) + qtyRecv };
+                    localStorage.setItem('inventory', JSON.stringify(updated));
+                    return updated;
+                }
+                return prev;
+            });
+        }
+        if (isComplete) {
+            DevExpress.ui.notify(`${qtyRecv} ${cmd.um} reçu — commande ${cmd.stockNo} complétée`, 'success', 3000);
+        } else {
+            DevExpress.ui.notify(`${qtyRecv} ${cmd.um} reçu — backorder: ${qtyOrdered - newQtyRecue} restant(s) pour ${cmd.stockNo}`, 'info', 4000);
+        }
+    };
+
     return (
         <div className="max-w-full mx-auto space-y-6 print:space-y-2 print:max-w-none">
+            {/* Bon de Préparation Modal */}
+            {showBonPrep && (
+                <div className="fixed inset-0 z-[100] bg-black/50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full p-6">
+                        <div className="flex justify-between items-center mb-5">
+                            <h3 className="text-lg font-bold text-gray-800">
+                                <i className="fa-solid fa-truck-fast mr-2 text-[#51aff7]"></i>Bon de Préparation
+                            </h3>
+                            <button onClick={() => setShowBonPrep(false)} className="text-gray-400 hover:text-red-500">
+                                <i className="fa-solid fa-times text-xl"></i>
+                            </button>
+                        </div>
+
+                        <div className="space-y-4">
+                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                <p className="text-sm text-blue-800 font-semibold mb-1">
+                                    <i className="fa fa-box mr-1"></i>{bonPrepLines.length} ligne(s) à expédier
+                                </p>
+                                <div className="max-h-32 overflow-y-auto text-xs text-blue-700 space-y-1">
+                                    {bonPrepLines.map((l, i) => (
+                                        <div key={i} className="flex justify-between">
+                                            <span>{l.stockNo || '—'} — {l.description || '—'}</span>
+                                            <span className="font-bold">{l.qtyVendu || 0} {l.um || 'PC'}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">
+                                    Date d'expédition
+                                </label>
+                                <input
+                                    type="date"
+                                    value={bonPrepDate}
+                                    onChange={e => setBonPrepDate(e.target.value)}
+                                    className="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-[#51aff7] focus:outline-none"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">
+                                    Préparé par (usager) <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    value={bonPrepUser}
+                                    onChange={e => setBonPrepUser(e.target.value)}
+                                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); confirmBonPreparation(); } }}
+                                    className="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-[#51aff7] focus:outline-none"
+                                    placeholder="Nom de l'employé..."
+                                    autoFocus
+                                />
+                            </div>
+                        </div>
+
+                        <div className="flex gap-3 mt-6">
+                            <button
+                                type="button"
+                                onClick={() => setShowBonPrep(false)}
+                                className="flex-1 py-2.5 border border-gray-300 text-gray-600 font-bold rounded-lg hover:bg-gray-100 transition"
+                            >
+                                Annuler
+                            </button>
+                            <button
+                                type="button"
+                                onClick={confirmBonPreparation}
+                                className="flex-1 py-2.5 bg-[#51aff7] text-white font-bold rounded-lg hover:bg-blue-600 transition"
+                            >
+                                <i className="fa fa-print mr-2"></i>Confirmer et Imprimer
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Bon de Commande Modal */}
+            {showBonCommande && (
+                <div className="fixed inset-0 z-[100] bg-black/50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-xl shadow-2xl max-w-3xl w-full p-6">
+                        <div className="flex justify-between items-center mb-5">
+                            <h3 className="text-lg font-bold text-gray-800">
+                                <i className="fa-solid fa-file-invoice mr-2 text-[#51aff7]"></i>Créer un Bon de Commande
+                            </h3>
+                            <button onClick={() => setShowBonCommande(false)} className="text-gray-400 hover:text-red-500">
+                                <i className="fa-solid fa-times text-xl"></i>
+                            </button>
+                        </div>
+
+                        <div className="space-y-4">
+                            {/* Fournisseur */}
+                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                <p className="text-sm font-bold text-blue-800 mb-1">
+                                    <i className="fa fa-building mr-1"></i>Fournisseur: {bonCommandeVendor}
+                                </p>
+                                {fournisseurs.find(f => f.name === bonCommandeVendor) && (
+                                    <p className="text-xs text-blue-600">
+                                        {fournisseurs.find(f => f.name === bonCommandeVendor).address} — Attn: {fournisseurs.find(f => f.name === bonCommandeVendor).attention}
+                                    </p>
+                                )}
+                            </div>
+
+                            {/* Lines summary with editable coûtant, date réception, note suivi */}
+                            <div className="border border-gray-200 rounded-lg overflow-hidden">
+                                <table className="w-full text-sm">
+                                    <thead>
+                                        <tr className="bg-gray-100">
+                                            <th className="px-3 py-2 text-left text-xs font-bold text-gray-600 uppercase">Code</th>
+                                            <th className="px-3 py-2 text-left text-xs font-bold text-gray-600 uppercase">Description</th>
+                                            <th className="px-3 py-2 text-center text-xs font-bold text-gray-600 uppercase" style={{width:'65px'}}>Qté</th>
+                                            <th className="px-3 py-2 text-center text-xs font-bold text-gray-600 uppercase" style={{width:'50px'}}>UM</th>
+                                            <th className="px-3 py-2 text-center text-xs font-bold text-gray-600 uppercase" style={{width:'90px'}}>Coûtant</th>
+                                            <th className="px-3 py-2 text-center text-xs font-bold text-gray-600 uppercase" style={{width:'120px'}}>Date réception</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {bonCommandeLines.map((l, i) => (
+                                            <tr key={i} className="border-b border-gray-100">
+                                                <td className="px-3 py-2 font-semibold">{l.stockNo || '—'}</td>
+                                                <td className="px-3 py-2">{l.description || '—'}</td>
+                                                <td className="px-3 py-2 text-center font-bold">{l.qtyCommande || 0}</td>
+                                                <td className="px-3 py-2 text-center">{l.um || 'PC'}</td>
+                                                <td className="px-2 py-1">
+                                                    <input
+                                                        type="number"
+                                                        step="0.01"
+                                                        value={l.coutant || ''}
+                                                        onChange={e => {
+                                                            const val = e.target.value;
+                                                            setBonCommandeLines(prev => prev.map((x, j) => j === i ? { ...x, coutant: val } : x));
+                                                        }}
+                                                        className="w-full p-1 border border-gray-300 rounded text-xs text-right focus:ring-1 focus:ring-[#51aff7] focus:outline-none"
+                                                        placeholder="0.00"
+                                                    />
+                                                </td>
+                                                <td className="px-2 py-1">
+                                                    <input
+                                                        type="date"
+                                                        value={l.dateReceptionPrevue || ''}
+                                                        onChange={e => {
+                                                            const val = e.target.value;
+                                                            setBonCommandeLines(prev => prev.map((x, j) => j === i ? { ...x, dateReceptionPrevue: val } : x));
+                                                        }}
+                                                        className="w-full p-1 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-[#51aff7] focus:outline-none"
+                                                    />
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            {/* Note de suivi CRM */}
+                            <div>
+                                <label className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">
+                                    <i className="fa fa-clipboard-list mr-1"></i>Note de suivi CRM
+                                </label>
+                                <textarea
+                                    value={bonCommandeLines[0]?.noteSuivi || ''}
+                                    onChange={e => {
+                                        const val = e.target.value;
+                                        setBonCommandeLines(prev => prev.map(x => ({ ...x, noteSuivi: val })));
+                                    }}
+                                    rows={2}
+                                    className="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-[#51aff7] focus:outline-none resize-vertical"
+                                    placeholder="Conditions spéciales, suivi requis, relance prévue..."
+                                />
+                            </div>
+
+                            {/* Notes */}
+                            <div>
+                                <label className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">Notes / Conditions</label>
+                                <textarea
+                                    value={bonCommandeNotes}
+                                    onChange={e => setBonCommandeNotes(e.target.value)}
+                                    rows={3}
+                                    className="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-[#51aff7] focus:outline-none resize-vertical"
+                                />
+                            </div>
+
+                            {/* Usager */}
+                            <div>
+                                <label className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">
+                                    Émis par (usager) <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    value={bonCommandeUser}
+                                    onChange={e => setBonCommandeUser(e.target.value)}
+                                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); confirmBonCommande(); } }}
+                                    className="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-[#51aff7] focus:outline-none"
+                                    placeholder="Nom de l'employé..."
+                                    autoFocus
+                                />
+                            </div>
+                        </div>
+
+                        <div className="flex gap-3 mt-6">
+                            <button
+                                type="button"
+                                onClick={() => setShowBonCommande(false)}
+                                className="flex-1 py-2.5 border border-gray-300 text-gray-600 font-bold rounded-lg hover:bg-gray-100 transition"
+                            >
+                                Annuler
+                            </button>
+                            <button
+                                type="button"
+                                onClick={confirmBonCommande}
+                                className="flex-1 py-2.5 bg-[#51aff7] text-white font-bold rounded-lg hover:bg-blue-600 transition"
+                            >
+                                <i className="fa fa-print mr-2"></i>Confirmer et Imprimer
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Proc\u00e9d\u00e9 Selection Modal */}
             {procedeLineIndex !== null && (() => {
                 const allProcs = [
@@ -3579,6 +5102,68 @@ const DataEntryView = ({ t, addBatch, setActiveTab, customProcesses = [], woodTr
                                     disabled={procedeSelection.length === 0}
                                 >
                                     <i className="fa fa-check mr-2"></i>Confirmer ({procedeSelection.length})
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            })()}
+            {/* Inventory Detail Modal */}
+            {viewInventoryItem && (() => {
+                const item = viewInventoryItem;
+                const qtyDisp = Math.max(0, (item.qty || 0) + (item.qtyComm || 0) - (item.qtyReserve || 0));
+                return (
+                    <div className="fixed inset-0 z-[90] bg-black/50 flex items-center justify-center print:hidden" onClick={(e) => { if (e.target === e.currentTarget) setViewInventoryItem(null); }}>
+                        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg m-4 overflow-hidden">
+                            <div className="p-5 border-b bg-gray-50 flex justify-between items-center rounded-t-2xl">
+                                <h2 className="text-lg font-bold text-gray-800">
+                                    <i className="fa-solid fa-box mr-2 text-[#51aff7]"></i>
+                                    Fiche inventaire
+                                </h2>
+                                <button onClick={() => setViewInventoryItem(null)} className="text-gray-400 hover:text-red-500 text-xl transition">
+                                    <i className="fa fa-times"></i>
+                                </button>
+                            </div>
+                            <div className="p-6 space-y-3">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-2xl font-black text-[#51aff7]">{item.stockNo}</span>
+                                    {item.productCode && <span className="text-sm font-mono bg-gray-100 px-3 py-1 rounded">{item.productCode}</span>}
+                                </div>
+                                {item.description && <p className="text-gray-700 font-medium">{item.description}</p>}
+                                <div className="grid grid-cols-2 gap-3 pt-2">
+                                    {item.wood && <div><span className="text-xs text-gray-400 uppercase block">Essence</span><span className="font-semibold text-gray-800">{item.wood}</span></div>}
+                                    {item.grade && <div><span className="text-xs text-gray-400 uppercase block">Grade</span><span className="font-semibold text-gray-800">{item.grade}</span></div>}
+                                    {item.epaisseur && <div><span className="text-xs text-gray-400 uppercase block">Épaisseur</span><span className="font-semibold text-gray-800">{item.epaisseur}</span></div>}
+                                    {item.largeur && <div><span className="text-xs text-gray-400 uppercase block">Largeur</span><span className="font-semibold text-gray-800">{item.largeur}</span></div>}
+                                    {item.unite && <div><span className="text-xs text-gray-400 uppercase block">Unité</span><span className="font-semibold text-gray-800">{item.unite}</span></div>}
+                                    {item.categorie && <div><span className="text-xs text-gray-400 uppercase block">Catégorie</span><span className="font-semibold text-gray-800">{item.categorie}</span></div>}
+                                    {item.state && <div><span className="text-xs text-gray-400 uppercase block">État</span><span className="font-semibold text-gray-800">{item.state}</span></div>}
+                                    {item.location && <div><span className="text-xs text-gray-400 uppercase block">Emplacement</span><span className="font-semibold text-gray-800">{item.location}</span></div>}
+                                </div>
+                                <div className="grid grid-cols-3 gap-3 pt-3 border-t">
+                                    <div className="text-center p-3 bg-green-50 rounded-lg">
+                                        <span className="text-xs text-gray-400 uppercase block">Quantité</span>
+                                        <span className="text-xl font-black text-green-700">{item.qty || 0}</span>
+                                    </div>
+                                    <div className="text-center p-3 bg-orange-50 rounded-lg">
+                                        <span className="text-xs text-gray-400 uppercase block">Réservé</span>
+                                        <span className="text-xl font-black text-orange-700">{item.qtyReserve || 0}</span>
+                                    </div>
+                                    <div className="text-center p-3 bg-blue-50 rounded-lg">
+                                        <span className="text-xs text-gray-400 uppercase block">Disponible</span>
+                                        <span className="text-xl font-black text-blue-700">{qtyDisp}</span>
+                                    </div>
+                                </div>
+                                {item.prixDetail != null && (
+                                    <div className="pt-2 border-t">
+                                        <span className="text-xs text-gray-400 uppercase block">Prix détail</span>
+                                        <span className="text-lg font-black text-gray-800">${parseFloat(item.prixDetail).toFixed(2)}</span>
+                                    </div>
+                                )}
+                            </div>
+                            <div className="p-4 border-t bg-gray-50 flex justify-end rounded-b-2xl">
+                                <button onClick={() => setViewInventoryItem(null)} className="px-5 py-2.5 bg-gray-200 text-gray-700 font-bold rounded-lg hover:bg-gray-300 transition">
+                                    <i className="fa fa-times mr-2"></i>Fermer
                                 </button>
                             </div>
                         </div>
@@ -3672,13 +5257,23 @@ const DataEntryView = ({ t, addBatch, setActiveTab, customProcesses = [], woodTr
                                         </div>
                                     );
                                 }
-                                return filtered.slice(0, 100).map(s => (
+                                return filtered.slice(0, 100).map(s => {
+                                    const isSelected = selectedInventoryItems.some(i => i.stockNo === s.stockNo);
+                                    return (
                                     <div
                                         key={s.stockNo}
-                                        className="p-4 hover:bg-blue-50 cursor-pointer border-b last:border-b-0 transition group"
+                                        className={`p-4 hover:bg-blue-50 cursor-pointer border-b last:border-b-0 transition group ${isSelected ? 'bg-blue-50 ring-1 ring-blue-300' : ''}`}
                                         onClick={() => selectInventoryForLine(activeLineSearch, s)}
                                     >
                                         <div className="flex justify-between items-start">
+                                            <div className="flex items-start gap-3 flex-1">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={isSelected}
+                                                    onChange={(e) => { e.stopPropagation(); toggleInventorySelection(s); }}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    className="mt-1.5 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                                />
                                             <div className="flex-1">
                                                 <div className="flex items-center gap-3">
                                                     <span className="font-bold text-[#51aff7] text-base">{s.stockNo}</span>
@@ -3694,36 +5289,91 @@ const DataEntryView = ({ t, addBatch, setActiveTab, customProcesses = [], woodTr
                                                     {s.location && <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded"><i className="fa fa-map-marker-alt mr-1"></i>{s.location}</span>}
                                                 </div>
                                             </div>
+                                            </div>
                                             <div className="text-right ml-4 flex flex-col items-end gap-2">
-                                                <span className="text-sm bg-green-100 text-green-700 px-3 py-1 rounded-lg font-bold">{s.qty} {s.unite || 'PC'}</span>
+                                                <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+                                                    <span className="text-gray-500 text-right">En main:</span>
+                                                    <span className="font-bold text-green-700">{s.qty || 0}</span>
+                                                    <span className="text-gray-500 text-right">Réservé:</span>
+                                                    <span className="font-bold text-orange-600">{s.qtyReserve || 0}</span>
+                                                    <span className="text-gray-500 text-right">En comm.:</span>
+                                                    <span className="font-bold text-blue-600">{s.qtyComm || 0}</span>
+                                                    <span className="text-gray-500 text-right">Disp.:</span>
+                                                    <span className="font-bold text-emerald-600">{Math.max(0, (s.qty || 0) + (s.qtyComm || 0) - (s.qtyReserve || 0))}</span>
+                                                </div>
                                                 <span className="text-xs text-blue-500 font-semibold opacity-0 group-hover:opacity-100 transition">
                                                     <i className="fa fa-arrow-right mr-1"></i>Sélectionner
                                                 </span>
                                             </div>
                                         </div>
                                     </div>
-                                ));
+                                    );
+                                });
                             })()}
                         </div>
 
                         {/* Modal Footer */}
-                        <div className="p-4 border-t bg-gray-50 flex justify-end rounded-b-2xl">
-                            <button
-                                onClick={() => setActiveLineSearch(null)}
-                                className="px-5 py-2.5 bg-gray-200 text-gray-700 font-bold rounded-lg hover:bg-gray-300 transition"
-                            >
-                                <i className="fa fa-times mr-2"></i>Fermer
-                            </button>
+                        <div className="p-4 border-t bg-gray-50 flex justify-between items-center rounded-b-2xl">
+                            <div className="text-sm text-gray-600 font-semibold">
+                                {selectedInventoryItems.length > 0 && (
+                                    <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-lg">
+                                        <i className="fa fa-check-square mr-1"></i>{selectedInventoryItems.length} sélectionné(s)
+                                    </span>
+                                )}
+                            </div>
+                            <div className="flex gap-2">
+                                {selectedInventoryItems.length > 0 && (
+                                    <button
+                                        onClick={importSelectedItems}
+                                        className="px-5 py-2.5 bg-[#51aff7] text-white font-bold rounded-lg hover:bg-[#3a9de6] transition"
+                                    >
+                                        <i className="fa fa-file-import mr-2"></i>Importer ({selectedInventoryItems.length})
+                                    </button>
+                                )}
+                                <button
+                                    onClick={() => { setActiveLineSearch(null); setSelectedInventoryItems([]); }}
+                                    className="px-5 py-2.5 bg-gray-200 text-gray-700 font-bold rounded-lg hover:bg-gray-300 transition"
+                                >
+                                    <i className="fa fa-times mr-2"></i>Fermer
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
             )}
 
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden print:shadow-none print:border-none">
+            {/* Tab Bar */}
+            <div className="flex border-b border-gray-200 mb-4 print:hidden">
+                <button
+                    onClick={() => setFacturationTab('factures')}
+                    className={`px-6 py-3 font-bold text-sm transition border-b-2 ${facturationTab === 'factures' ? 'border-[#51aff7] text-[#51aff7]' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                >
+                    <i className="fa-solid fa-folder-open mr-2"></i>Transactions
+                </button>
+                <button
+                    onClick={() => setFacturationTab('formulaire')}
+                    className={`px-6 py-3 font-bold text-sm transition border-b-2 ${facturationTab === 'formulaire' ? 'border-[#51aff7] text-[#51aff7]' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                >
+                    <i className="fa-solid fa-file-invoice mr-2"></i>Formulaire
+                </button>
+                <button
+                    onClick={() => setFacturationTab('commandes')}
+                    className={`px-6 py-3 font-bold text-sm transition border-b-2 ${facturationTab === 'commandes' ? 'border-[#51aff7] text-[#51aff7]' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                >
+                    <i className="fa-solid fa-cart-shopping mr-2"></i>Commandes d'achat
+                    {commandes.filter(c => c.statut === 'En attente').length > 0 && (
+                        <span className="ml-2 bg-red-500 text-white text-xs rounded-full px-2 py-0.5">{commandes.filter(c => c.statut === 'En attente').length}</span>
+                    )}
+                </button>
+            </div>
+
+            {facturationTab === 'formulaire' && (
+            <div className="invoice-form-container bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden print:shadow-none print:border-none" onKeyDown={handleInvoiceKeyDown}>
                 {/* Invoice Header */}
-                <div className="bg-gray-800 text-white px-6 py-3 flex flex-wrap items-center justify-between gap-3 print:bg-white print:text-black print:border-b-2 print:border-gray-800 print:pb-4">
+                <div className="bg-[#51aff7] text-white px-6 py-3 flex flex-wrap items-center justify-between gap-3 print:bg-white print:text-black print:border-b-2 print:border-[#51aff7] print:pb-4">
                     <div className="flex items-center gap-3">
                         <select
+                            ref={docTypeSelectRef}
                             value={docType}
                             onChange={(e) => {
                                 const newType = e.target.value;
@@ -3731,8 +5381,8 @@ const DataEntryView = ({ t, addBatch, setActiveTab, customProcesses = [], woodTr
                                     if (!docType || !docConfirmed || confirm(`Êtes-vous certain de vouloir changer le type de document à "${newType}" ?`)) {
                                         setDocType(newType);
                                         setDocConfirmed(false);
-                                        // Generate invoice number only when switching to Bon de vente or Facture
-                                        if ((newType === 'Bon de vente' || newType === 'Facture') && !invoiceNo) {
+                                        // Generate invoice number only when switching directly to Facture
+                                        if (newType === 'Facture' && !invoiceNo) {
                                             setInvoiceNo(generateInvoiceNo());
                                         }
                                         if (newType === 'Soumission') {
@@ -3744,7 +5394,7 @@ const DataEntryView = ({ t, addBatch, setActiveTab, customProcesses = [], woodTr
                                 }
                             }}
                             disabled={docConfirmed}
-                            className="text-2xl font-black tracking-tight bg-gray-700 text-white rounded px-3 py-1 border-none cursor-pointer focus:ring-2 focus:ring-[#51aff7] focus:outline-none print:bg-white print:text-black print:border print:border-gray-300 disabled:opacity-60 disabled:cursor-not-allowed"
+                            className="text-2xl font-black tracking-tight bg-[#3a9be0] text-white rounded px-3 py-1 border-none cursor-pointer focus:ring-2 focus:ring-white focus:outline-none print:bg-white print:text-black print:border print:border-gray-300 disabled:opacity-60 disabled:cursor-not-allowed"
                         >
                             <option value="" disabled>— SÉLECTIONNER —</option>
                             {docTypeOptions.map(opt => (
@@ -3756,41 +5406,491 @@ const DataEntryView = ({ t, addBatch, setActiveTab, customProcesses = [], woodTr
                                 type="button"
                                 onClick={() => {
                                     setDocConfirmed(true);
-                                    setTransactionNo(generateTransactionNo());
+                                    const newTxn = generateTransactionNo();
+                                    setTransactionNo(newTxn);
+                                    logAction('Création', `Transaction ${newTxn} créée — Type: ${docType}`);
                                 }}
                                 className="px-4 py-1.5 bg-green-500 text-white font-bold rounded hover:bg-green-600 transition text-sm print:hidden"
                             >
                                 <i className="fa fa-check mr-1"></i>Confirmer
                             </button>
                         )}
-                        <span className="text-gray-500 text-sm hidden md:inline">Surfagest Production</span>
+                        <span className="text-white/70 text-sm hidden md:inline">Surfagest Production</span>
                     </div>
                     <div className="flex items-center gap-6">
                         <div className="flex items-center gap-2">
-                            <span className="text-xs text-gray-400 uppercase print:text-gray-600">Transaction</span>
-                            <span className="text-lg font-bold font-mono text-gray-300 print:text-gray-500">{transactionNo || '—'}</span>
+                            <span className="text-xs text-white/70 uppercase print:text-gray-600">Transaction</span>
+                            <span className="text-lg font-bold font-mono text-white print:text-gray-500">{transactionNo || '—'}</span>
                         </div>
                         <div className="flex items-center gap-2">
-                            <span className="text-xs text-gray-400 uppercase print:text-gray-600">Facture</span>
+                            <span className="text-xs text-white/70 uppercase print:text-gray-600">Facture</span>
                             <input
                                 type="text"
                                 value={invoiceNo}
                                 onChange={(e) => setInvoiceNo(e.target.value)}
-                                className="bg-gray-700 text-white text-lg font-bold text-right rounded px-2 py-1 w-32 print:bg-white print:text-black print:border print:border-gray-300"
+                                className="bg-[#3a9be0] text-white text-lg font-bold text-right rounded px-2 py-1 w-32 print:bg-white print:text-black print:border print:border-gray-300"
                                 placeholder="—"
                             />
                         </div>
                         <div className="flex items-center gap-2">
-                            <span className="text-xs text-gray-400 uppercase print:text-gray-600">Date</span>
+                            <span className="text-xs text-white/70 uppercase print:text-gray-600">Date</span>
                             <input
                                 type="date"
                                 value={invoiceDate}
                                 onChange={(e) => setInvoiceDate(e.target.value)}
-                                className="bg-gray-700 text-white rounded px-2 py-1 print:bg-white print:text-black print:border print:border-gray-300"
+                                className="bg-[#3a9be0] text-white rounded px-2 py-1 print:bg-white print:text-black print:border print:border-gray-300"
                             />
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs text-white/70 uppercase print:text-gray-600">Vendeur</span>
+                            <input
+                                type="text"
+                                value={vendeur}
+                                onChange={(e) => setVendeur(e.target.value)}
+                                className="bg-[#3a9be0] text-white rounded px-2 py-1 w-36 print:bg-white print:text-black print:border print:border-gray-300"
+                                placeholder="Nom vendeur"
+                                list="vendeursList"
+                            />
+                            <datalist id="vendeursList">
+                                <option value="" />
+                            </datalist>
+                        </div>
+                        <div className="flex items-center gap-2 print:hidden">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setClientInfo({ name: '', address: '', city: '', postalCode: '', phone: '', email: '', deliveryAddress: '', deliveryCity: '', deliveryPostalCode: '', deliveryNotes: '' });
+                                    setLines(Array.from({ length: 1 }, () => ({ ...emptyLine })));
+                                    setInvoiceNotes('');
+                                    setInvoiceNo('');
+                                    setDocType('');
+                                    setTransactionNo('');
+                                    setDocConfirmed(false);
+                                    setOrderStatus('');
+                                    setClientDeliveryExpanded(true);
+                                    setEditingInvoiceNo(null);
+                                    setTimeout(() => {
+                                        if (docTypeSelectRef.current) {
+                                            docTypeSelectRef.current.focus();
+                                            docTypeSelectRef.current.click();
+                                        }
+                                    }, 100);
+                                }}
+                                className="px-3 py-1.5 bg-gray-600 text-gray-200 font-bold rounded hover:bg-gray-500 transition text-xs"
+                            >
+                                <i className="fa fa-plus mr-1"></i>Nouveau
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handlePrintInvoice}
+                                className="px-3 py-1.5 bg-gray-600 text-gray-200 font-bold rounded hover:bg-gray-500 transition text-xs"
+                            >
+                                <i className="fa fa-print mr-1"></i>Imprimer / PDF
+                            </button>
+                            {docType === 'Soumission' && docConfirmed && (
+                                <button
+                                    type="button"
+                                    onClick={() => setShowTransferModal(true)}
+                                    className="px-3 py-1.5 bg-green-600 text-white font-bold rounded hover:bg-green-700 transition text-xs shadow"
+                                >
+                                    <i className="fa fa-exchange-alt mr-1"></i>Transférer en Bon de vente
+                                </button>
+                            )}
+                            {docType === 'Bon de vente' && docConfirmed && (
+                                <button
+                                    type="button"
+                                    onClick={() => setShowTransferModal(true)}
+                                    className="px-3 py-1.5 bg-orange-600 text-white font-bold rounded hover:bg-orange-700 transition text-xs shadow"
+                                >
+                                    <i className="fa fa-file-invoice-dollar mr-1"></i>Transférer en Facture
+                                </button>
+                            )}
+                            <button
+                                type="button"
+                                onClick={handleSaveInvoice}
+                                className="px-3 py-1.5 bg-[#51aff7] text-white font-bold rounded hover:bg-blue-600 transition text-xs shadow"
+                            >
+                                <i className="fa fa-save mr-1"></i>Enregistrement
+                            </button>
                         </div>
                     </div>
                 </div>
+
+                {/* Transfer Modal (Soumission → Bon de vente / Bon de vente → Facture) */}
+                {showTransferModal && (
+                    <div className="fixed inset-0 z-[100] bg-black/50 flex items-center justify-center print:hidden" onClick={(e) => { if (e.target === e.currentTarget) setShowTransferModal(false); }}>
+                        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md m-4 overflow-hidden">
+                            <div className="p-6 border-b bg-gray-50 text-center">
+                                <i className={`fa-solid ${docType === 'Soumission' ? 'fa-exchange-alt' : 'fa-file-invoice-dollar'} text-4xl text-[#51aff7] mb-3`}></i>
+                                <h2 className="text-lg font-bold text-gray-800">
+                                    {docType === 'Soumission' ? 'Transférer en Bon de vente' : 'Transférer en Facture'}
+                                </h2>
+                            </div>
+                            <div className="p-6 text-center">
+                                <p className="text-gray-700 text-sm leading-relaxed">
+                                    {docType === 'Soumission'
+                                        ? <>Êtes-vous bien certain de vouloir transférer cette soumission en <strong>Bon de vente</strong> ?</>
+                                        : <>Êtes-vous bien certain de vouloir transférer ce bon de vente en <strong>Facture</strong> ?</>
+                                    }
+                                </p>
+                                <p className="text-gray-400 text-xs mt-2">
+                                    {docType === 'Soumission'
+                                        ? 'Cette action changera le type de document.'
+                                        : 'Cette action changera le type de document et attribuera un numéro de facture.'
+                                    }
+                                </p>
+                            </div>
+                            <div className="p-4 border-t bg-gray-50 flex justify-center gap-3">
+                                <button
+                                    onClick={() => setShowTransferModal(false)}
+                                    className="px-6 py-2.5 bg-gray-200 text-gray-700 font-bold rounded-lg hover:bg-gray-300 transition text-sm"
+                                >
+                                    <i className="fa fa-times mr-2"></i>Non
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        if (docType === 'Soumission') {
+                                            setDocType('Bon de vente');
+                                            setShowTransferModal(false);
+                                            DevExpress.ui.notify('Soumission transférée en Bon de vente', 'success', 3000);
+                                        } else {
+                                            setDocType('Facture');
+                                            if (!invoiceNo) setInvoiceNo(generateInvoiceNo());
+                                            setShowTransferModal(false);
+                                            DevExpress.ui.notify('Bon de vente transféré en Facture', 'success', 3000);
+                                        }
+                                    }}
+                                    className={`px-6 py-2.5 ${docType === 'Soumission' ? 'bg-green-600 hover:bg-green-700' : 'bg-orange-600 hover:bg-orange-700'} text-white font-bold rounded-lg transition text-sm shadow`}
+                                >
+                                    <i className="fa fa-check mr-2"></i>Oui, transférer
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Historique / Audit Trail Modal */}
+                {showHistorique && (
+                    <div className="fixed inset-0 z-[100] bg-black/50 flex items-center justify-center print:hidden" onClick={(e) => { if (e.target === e.currentTarget) setShowHistorique(false); }}>
+                        <div className="bg-white rounded-2xl shadow-2xl w-[750px] max-h-[85vh] flex flex-col overflow-hidden">
+                            <div className="p-4 border-b bg-gray-50 flex justify-between items-center rounded-t-2xl">
+                                <h2 className="text-lg font-bold text-gray-800">
+                                    <i className="fa fa-history mr-2 text-[#51aff7]"></i>
+                                    Historique de la transaction {transactionNo || ''}
+                                </h2>
+                                <button onClick={() => setShowHistorique(false)} className="text-gray-400 hover:text-red-500">
+                                    <i className="fa fa-times text-xl"></i>
+                                </button>
+                            </div>
+                            <div className="flex-1 overflow-auto p-4">
+                                {txHistory.length === 0 ? (
+                                    <div className="text-center py-12 text-gray-400">
+                                        <i className="fa fa-inbox text-4xl mb-3 block"></i>
+                                        <p className="text-sm">Aucun historique pour cette transaction</p>
+                                    </div>
+                                ) : (
+                                    <table className="w-full text-sm border border-gray-200 rounded-lg overflow-hidden">
+                                        <thead>
+                                            <tr className="bg-gray-100 text-gray-600 uppercase text-[11px]">
+                                                <th className="px-3 py-2 text-left w-[90px]">Date</th>
+                                                <th className="px-3 py-2 text-left w-[70px]">Heure</th>
+                                                <th className="px-3 py-2 text-left w-[100px]">Usager</th>
+                                                <th className="px-3 py-2 text-left w-[150px]">Action</th>
+                                                <th className="px-3 py-2 text-left">Détail</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {txHistory.map((h, i) => (
+                                                <tr key={i} className={`border-t border-gray-100 ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-blue-50 transition`}>
+                                                    <td className="px-3 py-2 text-gray-700 font-mono text-xs">{h.date}</td>
+                                                    <td className="px-3 py-2 text-gray-700 font-mono text-xs">{h.heure}</td>
+                                                    <td className="px-3 py-2 font-semibold text-gray-800 text-xs">{h.usager}</td>
+                                                    <td className="px-3 py-2">
+                                                        <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold ${
+                                                            h.action === 'Création' ? 'bg-green-100 text-green-700' :
+                                                            h.action === 'Sauvegarde' ? 'bg-blue-100 text-blue-700' :
+                                                            h.action === 'Commander' ? 'bg-orange-100 text-orange-700' :
+                                                            h.action === 'Bon de commande confirmé' ? 'bg-cyan-100 text-cyan-700' :
+                                                            h.action === 'Annulation commande' ? 'bg-red-100 text-red-700' :
+                                                            h.action === 'Expédition' ? 'bg-green-100 text-green-700' :
+                                                            h.action === 'Suppression ligne' ? 'bg-red-100 text-red-700' :
+                                                            'bg-gray-100 text-gray-600'
+                                                        }`}>{h.action}</span>
+                                                    </td>
+                                                    <td className="px-3 py-2 text-gray-600 text-xs">{h.detail}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                )}
+                            </div>
+                            <div className="p-3 border-t bg-gray-50 flex justify-between items-center rounded-b-2xl">
+                                <span className="text-xs text-gray-400">{txHistory.length} entrée(s)</span>
+                                <button onClick={() => setShowHistorique(false)} className="px-4 py-1.5 bg-gray-200 text-gray-700 rounded font-bold text-sm hover:bg-gray-300 transition">
+                                    Fermer
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Scheduler / Horaire Modal */}
+                {showScheduler && (
+                    <div className="fixed inset-0 z-[100] bg-black/50 flex items-center justify-center print:hidden" onClick={(e) => { if (e.target === e.currentTarget) setShowScheduler(false); }}>
+                        <div className="bg-white rounded-2xl shadow-2xl w-[95vw] h-[92vh] flex flex-col overflow-hidden">
+                            {/* Header */}
+                            <div className="p-4 border-b bg-gray-50 flex justify-between items-center rounded-t-2xl">
+                                <h2 className="text-lg font-bold text-gray-800">
+                                    <i className="fa fa-calendar-alt mr-2 text-[#51aff7]"></i>
+                                    Horaire
+                                    {(transactionNo || invoiceNo) && <span className="ml-2 text-sm font-normal text-gray-500">({transactionNo || invoiceNo})</span>}
+                                    {clientInfo.name && <span className="ml-2 text-sm font-normal text-blue-500">&mdash; {clientInfo.name}</span>}
+                                </h2>
+                                <div className="flex items-center gap-3">
+                                    <div className="flex gap-1">
+                                        {schedulerCategories.map(cat => {
+                                            const isActive = schedulerFilterCats.includes(cat.id);
+                                            return (
+                                                <button
+                                                    key={cat.id}
+                                                    onClick={() => {
+                                                        setSchedulerFilterCats(prev => {
+                                                            if (prev.includes(cat.id)) {
+                                                                const next = prev.filter(id => id !== cat.id);
+                                                                return next.length > 0 ? next : prev;
+                                                            }
+                                                            return [...prev, cat.id];
+                                                        });
+                                                    }}
+                                                    className={`text-xs font-bold px-3 py-1.5 rounded-full transition cursor-pointer border-2 ${isActive ? '' : 'opacity-30'}`}
+                                                    style={{
+                                                        backgroundColor: isActive ? cat.color : 'transparent',
+                                                        color: isActive ? 'white' : cat.color,
+                                                        borderColor: cat.color
+                                                    }}
+                                                    title={isActive ? 'Cliquer pour masquer ' + cat.text : 'Cliquer pour afficher ' + cat.text}
+                                                >
+                                                    {isActive && <i className="fa fa-check mr-1" style={{fontSize:'9px'}}></i>}
+                                                    {cat.text}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                    <button onClick={() => setShowScheduler(false)} className="text-gray-400 hover:text-red-500 text-xl transition ml-2">
+                                        <i className="fa fa-times"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            {/* Tabs: Liste / Calendrier */}
+                            <div className="flex border-b bg-white px-4 pt-2 gap-1">
+                                <button
+                                    onClick={() => setSchedulerViewTab('liste')}
+                                    className={`px-5 py-2 font-bold text-sm rounded-t-lg transition border-b-2 ${schedulerViewTab === 'liste' ? 'border-[#51aff7] text-[#51aff7] bg-blue-50' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                                >
+                                    <i className="fa fa-list mr-1"></i>Liste des assignations
+                                </button>
+                                <button
+                                    onClick={() => setSchedulerViewTab('calendrier')}
+                                    className={`px-5 py-2 font-bold text-sm rounded-t-lg transition border-b-2 ${schedulerViewTab === 'calendrier' ? 'border-[#51aff7] text-[#51aff7] bg-blue-50' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                                >
+                                    <i className="fa fa-calendar mr-1"></i>Calendrier
+                                </button>
+                                {schedulerViewTab === 'liste' && (
+                                    <div className="ml-auto flex items-center pb-1">
+                                        <button
+                                            onClick={() => {
+                                                const now = new Date();
+                                                const end = new Date(now.getTime() + 60 * 60 * 1000);
+                                                const txLabel = transactionNo || invoiceNo || 'Sans num\u00e9ro';
+                                                const clientLabel = clientInfo.name || 'Client non sp\u00e9cifi\u00e9';
+                                                const deliveryAddr = [clientInfo.deliveryAddress, clientInfo.deliveryCity, clientInfo.deliveryPostalCode].filter(Boolean).join(', ') || [clientInfo.address, clientInfo.city, clientInfo.postalCode].filter(Boolean).join(', ') || '';
+                                                setEditingEvent({
+                                                    id: Date.now(),
+                                                    text: clientLabel + ' - ' + txLabel,
+                                                    noTransaction: txLabel,
+                                                    adresseLivraison: deliveryAddr,
+                                                    vendeur: vendeur || '',
+                                                    description: 'Transaction: ' + txLabel + '\nClient: ' + clientLabel + (deliveryAddr ? '\nAdresse: ' + deliveryAddr : '') + (vendeur ? '\nVendeur: ' + vendeur : ''),
+                                                    startDate: now.toISOString().slice(0, 16),
+                                                    endDate: end.toISOString().slice(0, 16),
+                                                    categoryId: 1,
+                                                    _isNew: true
+                                                });
+                                            }}
+                                            className="px-3 py-1.5 bg-green-500 text-white text-xs font-bold rounded hover:bg-green-600 transition"
+                                        >
+                                            <i className="fa fa-plus mr-1"></i>Nouvelle assignation
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                            {/* Content */}
+                            <div className="flex-1 overflow-auto">
+                                {schedulerViewTab === 'liste' ? (
+                                    <div className="p-4">
+                                        {/* Edit Event Form */}
+                                        {editingEvent && (
+                                            <div className="mb-4 bg-blue-50 border border-blue-200 rounded-xl p-4">
+                                                <h3 className="text-sm font-bold text-blue-800 mb-3">
+                                                    <i className={`fa ${editingEvent._isNew ? 'fa-plus' : 'fa-edit'} mr-2`}></i>
+                                                    {editingEvent._isNew ? 'Nouvelle assignation' : 'Modifier l\'assignation'}
+                                                </h3>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                                    <div>
+                                                        <label className="text-xs font-semibold text-gray-600 block mb-1">Titre</label>
+                                                        <input type="text" value={editingEvent.text || ''} onChange={(e) => setEditingEvent({...editingEvent, text: e.target.value})} className="w-full border rounded px-2 py-1.5 text-sm" />
+                                                    </div>
+                                                    <div>
+                                                        <label className="text-xs font-semibold text-gray-600 block mb-1">Cat&eacute;gorie</label>
+                                                        <select value={editingEvent.categoryId || ''} onChange={(e) => setEditingEvent({...editingEvent, categoryId: parseInt(e.target.value)})} className="w-full border rounded px-2 py-1.5 text-sm">
+                                                            {schedulerCategories.map(cat => (
+                                                                <option key={cat.id} value={cat.id}>{cat.text}</option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+                                                    <div>
+                                                        <label className="text-xs font-semibold text-gray-600 block mb-1">No Transaction</label>
+                                                        <input type="text" value={editingEvent.noTransaction || ''} onChange={(e) => setEditingEvent({...editingEvent, noTransaction: e.target.value})} className="w-full border rounded px-2 py-1.5 text-sm" />
+                                                    </div>
+                                                    <div>
+                                                        <label className="text-xs font-semibold text-gray-600 block mb-1">D&eacute;but</label>
+                                                        <input type="datetime-local" value={editingEvent.startDate ? (typeof editingEvent.startDate === 'string' ? editingEvent.startDate.slice(0,16) : new Date(editingEvent.startDate).toISOString().slice(0,16)) : ''} onChange={(e) => setEditingEvent({...editingEvent, startDate: e.target.value})} className="w-full border rounded px-2 py-1.5 text-sm" />
+                                                    </div>
+                                                    <div>
+                                                        <label className="text-xs font-semibold text-gray-600 block mb-1">Fin</label>
+                                                        <input type="datetime-local" value={editingEvent.endDate ? (typeof editingEvent.endDate === 'string' ? editingEvent.endDate.slice(0,16) : new Date(editingEvent.endDate).toISOString().slice(0,16)) : ''} onChange={(e) => setEditingEvent({...editingEvent, endDate: e.target.value})} className="w-full border rounded px-2 py-1.5 text-sm" />
+                                                    </div>
+                                                    <div>
+                                                        <label className="text-xs font-semibold text-gray-600 block mb-1">Vendeur</label>
+                                                        <input type="text" value={editingEvent.vendeur || ''} onChange={(e) => setEditingEvent({...editingEvent, vendeur: e.target.value})} className="w-full border rounded px-2 py-1.5 text-sm" />
+                                                    </div>
+                                                    <div className="md:col-span-2">
+                                                        <label className="text-xs font-semibold text-gray-600 block mb-1">Adresse livraison</label>
+                                                        <input type="text" value={editingEvent.adresseLivraison || ''} onChange={(e) => setEditingEvent({...editingEvent, adresseLivraison: e.target.value})} className="w-full border rounded px-2 py-1.5 text-sm" />
+                                                    </div>
+                                                    <div className="lg:col-span-3">
+                                                        <label className="text-xs font-semibold text-gray-600 block mb-1">Description / Notes</label>
+                                                        <textarea value={editingEvent.description || ''} onChange={(e) => setEditingEvent({...editingEvent, description: e.target.value})} className="w-full border rounded px-2 py-1.5 text-sm" rows={2}></textarea>
+                                                    </div>
+                                                </div>
+                                                <div className="mt-3 flex gap-2 justify-end">
+                                                    <button onClick={() => setEditingEvent(null)} className="px-4 py-1.5 bg-gray-200 text-gray-700 text-xs font-bold rounded hover:bg-gray-300 transition">
+                                                        Annuler
+                                                    </button>
+                                                    <button onClick={() => {
+                                                        const evToSave = { ...editingEvent, startDate: new Date(editingEvent.startDate).toISOString(), endDate: new Date(editingEvent.endDate).toISOString() };
+                                                        delete evToSave._isNew;
+                                                        if (editingEvent._isNew) {
+                                                            setSchedulerEvents(prev => {
+                                                                const updated = [...prev, evToSave];
+                                                                localStorage.setItem('schedulerEvents', JSON.stringify(updated));
+                                                                return updated;
+                                                            });
+                                                        } else {
+                                                            setSchedulerEvents(prev => {
+                                                                const updated = prev.map(ev => ev.id === evToSave.id ? evToSave : ev);
+                                                                localStorage.setItem('schedulerEvents', JSON.stringify(updated));
+                                                                return updated;
+                                                            });
+                                                        }
+                                                        setEditingEvent(null);
+                                                        DevExpress.ui.notify('Assignation sauvegard\u00e9e', 'success', 2000);
+                                                    }} className="px-4 py-1.5 bg-[#51aff7] text-white text-xs font-bold rounded hover:bg-blue-600 transition">
+                                                        <i className="fa fa-save mr-1"></i>Sauvegarder
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
+                                        {/* Events Table */}
+                                        {schedulerEvents.filter(ev => schedulerFilterCats.includes(ev.categoryId)).length === 0 ? (
+                                            <div className="text-center py-12">
+                                                <i className="fa fa-calendar-xmark text-5xl text-gray-300 mb-4 block"></i>
+                                                <p className="text-gray-400 font-semibold">Aucune assignation</p>
+                                                <p className="text-gray-300 text-sm mt-1">Cliquez &laquo; Nouvelle assignation &raquo; pour en cr&eacute;er une</p>
+                                            </div>
+                                        ) : (
+                                            <div className="overflow-x-auto border rounded-lg">
+                                                <table className="w-full text-sm">
+                                                    <thead>
+                                                        <tr className="bg-[#51aff7] text-white">
+                                                            <th className="px-3 py-2 text-left font-bold">Cat&eacute;gorie</th>
+                                                            <th className="px-3 py-2 text-left font-bold">Titre</th>
+                                                            <th className="px-3 py-2 text-left font-bold">Transaction</th>
+                                                            <th className="px-3 py-2 text-left font-bold">D&eacute;but</th>
+                                                            <th className="px-3 py-2 text-left font-bold">Fin</th>
+                                                            <th className="px-3 py-2 text-left font-bold">Vendeur</th>
+                                                            <th className="px-3 py-2 text-left font-bold">Adresse</th>
+                                                            <th className="px-3 py-2 text-center font-bold">Actions</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {schedulerEvents
+                                                            .filter(ev => schedulerFilterCats.includes(ev.categoryId))
+                                                            .slice()
+                                                            .sort((a, b) => new Date(a.startDate) - new Date(b.startDate))
+                                                            .map((ev) => {
+                                                                const cat = schedulerCategories.find(c => c.id === ev.categoryId);
+                                                                const startD = ev.startDate ? new Date(ev.startDate) : null;
+                                                                const endD = ev.endDate ? new Date(ev.endDate) : null;
+                                                                const formatDT = (d) => d ? d.toLocaleDateString('fr-CA') + ' ' + d.toLocaleTimeString('fr-CA', { hour: '2-digit', minute: '2-digit' }) : '—';
+                                                                const isPast = startD && startD < new Date();
+                                                                return (
+                                                                    <tr key={ev.id} className={`border-t hover:bg-blue-50 transition ${isPast ? 'opacity-50' : ''}`}>
+                                                                        <td className="px-3 py-2">
+                                                                            {cat ? (
+                                                                                <span className="text-xs font-bold px-2 py-0.5 rounded" style={{ backgroundColor: cat.color + '20', color: cat.color }}>
+                                                                                    {cat.text}
+                                                                                </span>
+                                                                            ) : '—'}
+                                                                        </td>
+                                                                        <td className="px-3 py-2 font-semibold text-gray-800">{ev.text || '—'}</td>
+                                                                        <td className="px-3 py-2 text-gray-600 font-mono text-xs">{ev.noTransaction || '—'}</td>
+                                                                        <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{formatDT(startD)}</td>
+                                                                        <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{formatDT(endD)}</td>
+                                                                        <td className="px-3 py-2 text-gray-600">{ev.vendeur || '—'}</td>
+                                                                        <td className="px-3 py-2 text-gray-600 text-xs max-w-[200px] truncate" title={ev.adresseLivraison || ''}>{ev.adresseLivraison || '—'}</td>
+                                                                        <td className="px-3 py-2 text-center">
+                                                                            <div className="flex gap-1 justify-center">
+                                                                                <button onClick={() => {
+                                                                                    setEditingEvent({
+                                                                                        ...ev,
+                                                                                        startDate: ev.startDate ? new Date(ev.startDate).toISOString().slice(0,16) : '',
+                                                                                        endDate: ev.endDate ? new Date(ev.endDate).toISOString().slice(0,16) : ''
+                                                                                    });
+                                                                                }} className="px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 text-xs font-bold" title="Modifier">
+                                                                                    <i className="fa fa-edit"></i>
+                                                                                </button>
+                                                                                <button onClick={() => {
+                                                                                    if (confirm('Supprimer cette assignation?')) {
+                                                                                        setSchedulerEvents(prev => {
+                                                                                            const updated = prev.filter(e => e.id !== ev.id);
+                                                                                            localStorage.setItem('schedulerEvents', JSON.stringify(updated));
+                                                                                            return updated;
+                                                                                        });
+                                                                                        DevExpress.ui.notify('Assignation supprim\u00e9e', 'warning', 2000);
+                                                                                    }
+                                                                                }} className="px-2 py-1 bg-red-100 text-red-600 rounded hover:bg-red-200 text-xs font-bold" title="Supprimer">
+                                                                                    <i className="fa fa-trash"></i>
+                                                                                </button>
+                                                                            </div>
+                                                                        </td>
+                                                                    </tr>
+                                                                );
+                                                            })}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div className="flex-1 p-4" style={{ overflow: 'hidden', minHeight: 0, height: '100%' }}>
+                                        <div ref={schedulerContainerRef} style={{ height: '100%', width: '100%' }}></div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {/* Client + Delivery Info */}
                 <div className={`p-6 grid grid-cols-1 md:grid-cols-2 gap-6 border-b border-gray-200 print:p-4 ${!docConfirmed ? 'opacity-40 pointer-events-none' : ''}`}>
@@ -3907,19 +6007,74 @@ const DataEntryView = ({ t, addBatch, setActiveTab, customProcesses = [], woodTr
                         <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wider">
                             <i className="fa-solid fa-list mr-2"></i>Lignes de Facture
                         </h3>
-                        <button
-                            type="button"
-                            onClick={addLine}
-                            className="px-3 py-1 bg-[#51aff7] text-white text-sm font-bold rounded hover:bg-blue-600 transition print:hidden"
-                        >
-                            <i className="fa fa-plus mr-1"></i>Ajouter une ligne
-                        </button>
+                        <div className="flex items-center gap-2 print:hidden">
+                            {/* Bulk Action for checked lines */}
+                            <select
+                                value=""
+                                onChange={e => {
+                                    const val = e.target.value;
+                                    if (!val) return;
+                                    const checkedIndexes = lines.map((l, i) => l.checked ? i : -1).filter(i => i >= 0);
+                                    if (checkedIndexes.length === 0) {
+                                        DevExpress.ui.notify('Aucune ligne sélectionnée', 'warning', 2000);
+                                        e.target.value = '';
+                                        return;
+                                    }
+                                    if (val === 'Expédier') {
+                                        handleExpedier(checkedIndexes);
+                                    } else if (val === 'Commander') {
+                                        handleCommander(checkedIndexes);
+                                    } else if (val === 'Procédé') {
+                                        setProcedeLineIndex(checkedIndexes[0]);
+                                        setProcedeSelection(lines[checkedIndexes[0]].procedes || []);
+                                    } else {
+                                        setLines(prev => prev.map((line, i) => {
+                                            if (!line.checked) return line;
+                                            return { ...line, statut: val };
+                                        }));
+                                        DevExpress.ui.notify(`Action "${val}" appliquée à ${checkedIndexes.length} ligne(s)`, 'success', 2000);
+                                    }
+                                    e.target.value = '';
+                                }}
+                                className="px-2 py-1 border border-gray-300 rounded text-sm font-bold text-gray-600 focus:ring-1 focus:ring-[#51aff7] focus:outline-none cursor-pointer bg-white"
+                                title="Appliquer une action aux lignes cochées"
+                            >
+                                <option value="">Action groupée</option>
+                                {orderStatusOptions.map(opt => (
+                                    <option key={opt} value={opt}>{opt}</option>
+                                ))}
+                            </select>
+                            <button
+                                type="button"
+                                onClick={addLine}
+                                className="px-3 py-1 bg-[#51aff7] text-white text-sm font-bold rounded hover:bg-blue-600 transition"
+                            >
+                                <i className="fa fa-plus mr-1"></i>Ajouter une ligne
+                            </button>
+                            <div className="h-4 border-l border-gray-300 mx-1"></div>
+                            <button type="button" onClick={() => setShowScheduler(true)} className="px-3 py-1 bg-gray-100 text-gray-600 text-xs font-bold rounded hover:bg-gray-200 transition border border-gray-300">
+                                <i className="fa fa-calendar-alt mr-1"></i>Horaire
+                            </button>
+                            <button type="button" onClick={() => DevExpress.ui.notify('Module Profitabilité à venir', 'info', 2000)} className="px-3 py-1 bg-gray-100 text-gray-600 text-xs font-bold rounded hover:bg-gray-200 transition border border-gray-300">
+                                <i className="fa fa-chart-line mr-1"></i>Profitabilité
+                            </button>
+                            <button type="button" onClick={() => DevExpress.ui.notify('Module Gestion main-d\'oeuvre à venir', 'info', 2000)} className="px-3 py-1 bg-gray-100 text-gray-600 text-xs font-bold rounded hover:bg-gray-200 transition border border-gray-300">
+                                <i className="fa fa-users-cog mr-1"></i>Gestion main-d'oeuvre
+                            </button>
+                            <button type="button" onClick={() => DevExpress.ui.notify('Module Opération Spécial à venir', 'info', 2000)} className="px-3 py-1 bg-gray-100 text-gray-600 text-xs font-bold rounded hover:bg-gray-200 transition border border-gray-300">
+                                <i className="fa fa-cogs mr-1"></i>Opération Spécial
+                            </button>
+                            <button type="button" onClick={() => setShowHistorique(true)} className="px-3 py-1 bg-gray-100 text-gray-600 text-xs font-bold rounded hover:bg-gray-200 transition border border-gray-300">
+                                <i className="fa fa-history mr-1"></i>Historique
+                            </button>
+                        </div>
                     </div>
 
                     <div className="overflow-x-auto border border-gray-200 rounded-lg" style={{minHeight: '555px'}}>
                         <table className="w-full text-sm">
                             <thead>
                                 <tr>
+                                    <th className={`${thClass} print:hidden`} style={{width: '30px'}}></th>
                                     <th className={thClass} style={{width: '160px'}}>Code / Stock</th>
                                     <th className={thClass}>Description</th>
                                     <th className={thClass} style={{width: '90px'}}>Qté vendu</th>
@@ -3937,26 +6092,50 @@ const DataEntryView = ({ t, addBatch, setActiveTab, customProcesses = [], woodTr
                             <tbody onFocus={() => { if (clientDeliveryExpanded) setClientDeliveryExpanded(false); }}>
                                 {lines.map((line, idx) => (
                                     <tr key={idx} className="border-b border-gray-100 hover:bg-gray-50 transition">
+                                        {/* Checkbox */}
+                                        <td className="px-1 py-1 text-center print:hidden">
+                                            <input
+                                                type="checkbox"
+                                                checked={!!line.checked}
+                                                onChange={e => updateLine(idx, 'checked', e.target.checked)}
+                                                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                            />
+                                        </td>
                                         {/* Code / Stock with inventory search */}
                                         <td className="px-2 py-1">
                                             <div className="flex gap-1">
+                                                {line.stockNo && line.lineStatut && line.lineStatut !== 'En attente' ? (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            const invItem = inventory.find(i => i.stockNo === line.stockNo);
+                                                            if (invItem) setViewInventoryItem(invItem);
+                                                        }}
+                                                        className="w-full p-1.5 border border-gray-300 rounded text-sm text-left bg-gray-50 hover:bg-blue-50 hover:border-blue-300 text-blue-600 font-semibold cursor-pointer transition"
+                                                        title="Voir la fiche inventaire"
+                                                    >
+                                                        <i className="fa fa-eye mr-1 text-xs"></i>{line.lineStatut === 'Insuffisant' ? (line.productCode || line.stockNo) : line.stockNo}
+                                                    </button>
+                                                ) : (
                                                 <input
                                                     type="text"
                                                     value={line.stockNo}
                                                     onChange={e => updateLine(idx, 'stockNo', e.target.value)}
                                                     onBlur={e => lookupInventoryForLine(idx, e.target.value)}
-                                                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); lookupInventoryForLine(idx, e.target.value); e.target.blur(); } }}
+                                                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); lookupInventoryForLine(idx, e.target.value); handleInvoiceKeyDown(e); } }}
                                                     placeholder="Code ou stock..."
                                                     maxLength={40}
                                                     size={20}
                                                     className="w-full p-1.5 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-blue-400 focus:outline-none"
                                                     autoComplete="off"
                                                 />
+                                                )}
                                                 <button
                                                     type="button"
                                                     onClick={() => { setActiveLineSearch(idx); setLineSearch(''); setLineSearchFilter(''); }}
-                                                    className="px-1.5 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 text-xs print:hidden"
+                                                    className={`px-1.5 rounded text-xs print:hidden ${line.lineStatut && line.lineStatut !== 'En attente' ? 'hidden' : 'bg-blue-100 text-blue-600 hover:bg-blue-200'}`}
                                                     title="Rechercher dans l'inventaire"
+                                                    disabled={!!(line.lineStatut && line.lineStatut !== 'En attente')}
                                                 >
                                                     <i className="fa fa-search"></i>
                                                 </button>
@@ -3968,7 +6147,7 @@ const DataEntryView = ({ t, addBatch, setActiveTab, customProcesses = [], woodTr
                                         </td>
                                         {/* Qté vendu */}
                                         <td className="px-2 py-1">
-                                            <input type="number" value={line.qtyVendu} onChange={e => updateLine(idx, 'qtyVendu', e.target.value)} className="w-full p-1.5 border border-gray-300 rounded text-sm text-right focus:ring-1 focus:ring-blue-400 focus:outline-none" placeholder="0" min="0" />
+                                            <input type="number" value={line.qtyVendu} onChange={e => updateLine(idx, 'qtyVendu', e.target.value)} className={`w-full p-1.5 border rounded text-sm text-right focus:ring-1 focus:ring-blue-400 focus:outline-none ${line.stockNo && !line.qtyVendu ? 'border-yellow-400 bg-yellow-50' : 'border-gray-300'}`} placeholder="0" min="0" />
                                         </td>
                                         {/* Qté exp */}
                                         <td className="px-2 py-1">
@@ -4000,7 +6179,11 @@ const DataEntryView = ({ t, addBatch, setActiveTab, customProcesses = [], woodTr
                                         <td className="px-2 py-1">
                                             <select value={line.statut === 'Proc\u00e9d\u00e9' ? 'Proc\u00e9d\u00e9' : line.statut} onChange={e => {
                                                 const val = e.target.value;
-                                                if (val === 'Proc\u00e9d\u00e9') {
+                                                if (val === 'Expédier') {
+                                                    handleExpedier([idx]);
+                                                } else if (val === 'Commander') {
+                                                    handleCommander([idx]);
+                                                } else if (val === 'Proc\u00e9d\u00e9') {
                                                     setProcedeLineIndex(idx);
                                                     setProcedeSelection(line.procedes || []);
                                                 } else {
@@ -4022,11 +6205,36 @@ const DataEntryView = ({ t, addBatch, setActiveTab, customProcesses = [], woodTr
                                                     </button>
                                                 </div>
                                             )}
+                                            {line.statut === 'Commander' && line.lineStatut === 'En Commande' && (() => {
+                                                const hasConfirmedPO = commandes.some(c =>
+                                                    (c.stockNo === line.stockNo || c.description === line.description) &&
+                                                    c.sourceTransaction === (transactionNo || '') &&
+                                                    (c.statut === 'Confirm\u00e9' || c.statut === 'Re\u00e7u')
+                                                );
+                                                return !hasConfirmedPO ? (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            if (confirm('Annuler la commande pour cette ligne? La ligne redeviendra modifiable.')) {
+                                                                handleAnnulerCommander(idx);
+                                                            }
+                                                        }}
+                                                        className="mt-1 w-full px-2 py-1 bg-red-50 text-red-600 border border-red-200 rounded text-[10px] font-bold hover:bg-red-100 transition"
+                                                        title="Annuler la commande et remettre la ligne en \u00e9dition"
+                                                    >
+                                                        <i className="fa fa-undo mr-1"></i>Annuler commande
+                                                    </button>
+                                                ) : null;
+                                            })()}
                                         </td>
                                         {/* Statut */}
                                         <td className="px-2 py-1 text-center">
                                             <span className={`inline-block px-2 py-1 rounded text-xs font-bold ${
+                                                line.lineStatut === 'Expédié' ? 'bg-green-100 text-green-700' :
+                                                line.lineStatut === 'Commandé' ? 'bg-cyan-100 text-cyan-700' :
+                                                line.lineStatut === 'Exp. (Commandé)' ? 'bg-teal-100 text-teal-700' :
                                                 line.lineStatut === 'R\u00e9serv\u00e9' ? 'bg-purple-100 text-purple-700' :
+                                                line.lineStatut === 'Insuffisant' ? 'bg-red-100 text-red-700' :
                                                 line.statut === 'Commander' ? 'bg-blue-100 text-blue-700' :
                                                 line.statut === 'Production' ? 'bg-yellow-100 text-yellow-700' :
                                                 line.statut === 'Proc\u00e9d\u00e9' ? 'bg-indigo-100 text-indigo-700' :
@@ -4085,53 +6293,18 @@ const DataEntryView = ({ t, addBatch, setActiveTab, customProcesses = [], woodTr
                             </div>
                         </div>
                     </div>
-
-                    {/* Action Buttons */}
-                    <div className="mt-6 flex justify-end gap-3 print:hidden">
-                        <button
-                            type="button"
-                            onClick={() => {
-                                if (!confirm('Êtes-vous bien sûr de tout réinitialiser ?')) return;
-                                setClientInfo({ name: '', address: '', city: '', postalCode: '', phone: '', email: '', deliveryAddress: '', deliveryCity: '', deliveryPostalCode: '', deliveryNotes: '' });
-                                setLines(Array.from({ length: 1 }, () => ({ ...emptyLine })));
-                                setInvoiceNotes('');
-                                setInvoiceNo('');
-                                setDocType('');
-                                setTransactionNo('');
-                                setDocConfirmed(false);
-                                setOrderStatus('');
-                                setClientDeliveryExpanded(true);
-                                setEditingInvoiceNo(null);
-                            }}
-                            className="px-5 py-2.5 bg-gray-200 text-gray-700 font-bold rounded-lg hover:bg-gray-300 transition"
-                        >
-                            <i className="fa fa-eraser mr-2"></i>Réinitialiser
-                        </button>
-                        <button
-                            type="button"
-                            onClick={handlePrintInvoice}
-                            className="px-5 py-2.5 bg-gray-700 text-white font-bold rounded-lg hover:bg-gray-800 transition"
-                        >
-                            <i className="fa fa-print mr-2"></i>Imprimer / PDF
-                        </button>
-                        <button
-                            type="button"
-                            onClick={handleSaveInvoice}
-                            className="px-5 py-2.5 bg-[#51aff7] text-white font-bold rounded-lg hover:bg-blue-600 transition shadow-lg"
-                        >
-                            <i className="fa fa-save mr-2"></i>Sauvegarder la facture
-                        </button>
-                    </div>
                 </div>
             </div>
+            )}
 
-            {/* Saved Invoices List - DevExtreme DataGrid */}
-            {savedInvoices.length > 0 && (
+            {/* Saved Invoices Tab */}
+            {facturationTab === 'factures' && (
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 print:hidden">
                     <h3 className="text-lg font-bold text-gray-800 mb-4">
                         <i className="fa-solid fa-folder-open mr-2 text-[#51aff7]"></i>
-                        Factures sauvegardées ({savedInvoices.length})
+                        Transactions
                     </h3>
+                    {savedInvoices.length > 0 ? (
                     <InvoiceGrid
                         savedInvoices={savedInvoices}
                         setSavedInvoices={setSavedInvoices}
@@ -4142,19 +6315,258 @@ const DataEntryView = ({ t, addBatch, setActiveTab, customProcesses = [], woodTr
                         setDocConfirmed={setDocConfirmed}
                         setTransactionNo={setTransactionNo}
                         setOrderStatus={setOrderStatus}
+                        setVendeur={setVendeur}
                         setLines={setLines}
                         setInvoiceNotes={setInvoiceNotes}
+                        setTxHistory={setTxHistory}
                         setEditingInvoiceNo={setEditingInvoiceNo}
                         emptyLine={emptyLine}
+                        onLoadInvoice={() => setFacturationTab('formulaire')}
                     />
+                    ) : (
+                        <div className="text-center py-12">
+                            <i className="fa-solid fa-file-circle-xmark text-5xl text-gray-300 mb-4 block"></i>
+                            <p className="text-gray-400 font-semibold">Aucune facture sauvegardée</p>
+                            <p className="text-gray-300 text-sm mt-1">Les factures créées apparaîtront ici</p>
+                        </div>
+                    )}
                 </div>
             )}
+
+            {/* Commandes d'achat Tab */}
+            {facturationTab === 'commandes' && (() => {
+                // Group commandes by fournisseur
+                const grouped = {};
+                commandes.forEach(c => {
+                    const key = c.fournisseur || 'Non assigné';
+                    if (!grouped[key]) grouped[key] = [];
+                    grouped[key].push(c);
+                });
+                const groupKeys = Object.keys(grouped).sort((a, b) => a === 'Non assigné' ? 1 : b === 'Non assigné' ? -1 : a.localeCompare(b));
+
+                return (
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 print:hidden">
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-lg font-bold text-gray-800">
+                            <i className="fa-solid fa-cart-shopping mr-2 text-[#51aff7]"></i>
+                            Commandes d'achat
+                            <span className="ml-2 text-sm font-normal text-gray-500">({commandes.length} ligne{commandes.length > 1 ? 's' : ''})</span>
+                        </h3>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => {
+                                    const selected = commandes.filter(c => c._checked);
+                                    if (selected.length === 0) { DevExpress.ui.notify('Sélectionnez des lignes', 'warning', 2000); return; }
+                                    // Check if lines have a vendor assigned
+                                    const vendorsUsed = [...new Set(selected.map(c => c.fournisseur).filter(Boolean))];
+                                    if (vendorsUsed.length > 1) {
+                                        DevExpress.ui.notify('Sélectionnez des lignes d\'un seul fournisseur', 'warning', 2000);
+                                        return;
+                                    }
+                                    const vendor = vendorsUsed[0] || '';
+                                    if (!vendor) {
+                                        DevExpress.ui.notify('Assignez un fournisseur aux lignes sélectionnées', 'warning', 2000);
+                                        return;
+                                    }
+                                    handleCreateBonCommande(selected.map(c => c.id), vendor, 'direct');
+                                }}
+                                className="px-3 py-1.5 bg-[#51aff7] text-white text-sm font-bold rounded hover:bg-blue-600 transition"
+                            >
+                                <i className="fa fa-print mr-1"></i>Créer Bon de Commande
+                            </button>
+                            <button
+                                onClick={() => {
+                                    const selected = commandes.filter(c => c._checked);
+                                    if (selected.length === 0) { DevExpress.ui.notify('Sélectionnez des lignes', 'warning', 2000); return; }
+                                    const vendorsUsed = [...new Set(selected.map(c => c.fournisseur).filter(Boolean))];
+                                    if (vendorsUsed.length > 1) {
+                                        DevExpress.ui.notify('Sélectionnez des lignes d\'un seul fournisseur', 'warning', 2000);
+                                        return;
+                                    }
+                                    const vendor = vendorsUsed[0] || '';
+                                    if (!vendor) {
+                                        DevExpress.ui.notify('Assignez un fournisseur aux lignes sélectionnées', 'warning', 2000);
+                                        return;
+                                    }
+                                    handleCreateBonCommande(selected.map(c => c.id), vendor, 'bureau');
+                                }}
+                                className="px-3 py-1.5 bg-orange-500 text-white text-sm font-bold rounded hover:bg-orange-600 transition"
+                                title="Envoyer au bureau de commande pour traitement"
+                            >
+                                <i className="fa fa-paper-plane mr-1"></i>Envoyer au Bureau
+                            </button>
+                            <button
+                                onClick={() => {
+                                    const toRemove = commandes.filter(c => c._checked && c.statut === 'Reçu').map(c => c.id);
+                                    if (toRemove.length === 0) { DevExpress.ui.notify('Seules les commandes reçues peuvent être supprimées', 'warning', 2000); return; }
+                                    setCommandes(prev => prev.filter(c => !toRemove.includes(c.id)));
+                                    DevExpress.ui.notify(`${toRemove.length} commande(s) supprimée(s)`, 'success', 2000);
+                                }}
+                                className="px-3 py-1.5 bg-red-100 text-red-600 text-sm font-bold rounded hover:bg-red-200 transition"
+                            >
+                                <i className="fa fa-trash mr-1"></i>Supprimer
+                            </button>
+                        </div>
+                    </div>
+
+                    {commandes.length === 0 ? (
+                        <div className="text-center py-12">
+                            <i className="fa-solid fa-cart-plus text-5xl text-gray-300 mb-4 block"></i>
+                            <p className="text-gray-400 font-semibold">Aucune commande d'achat</p>
+                            <p className="text-gray-300 text-sm mt-1">Utilisez l'action "Commander" dans le formulaire de facture pour ajouter des lignes ici</p>
+                        </div>
+                    ) : (
+                    <div className="space-y-4">
+                        {groupKeys.map(groupName => {
+                            const groupLines = grouped[groupName];
+                            const allChecked = groupLines.every(c => c._checked);
+                            return (
+                                <div key={groupName} className="border border-gray-200 rounded-lg overflow-hidden">
+                                    <div className="bg-gray-50 px-4 py-2 flex justify-between items-center border-b border-gray-200">
+                                        <div className="flex items-center gap-3">
+                                            <input
+                                                type="checkbox"
+                                                checked={allChecked}
+                                                onChange={e => {
+                                                    const ids = groupLines.map(c => c.id);
+                                                    setCommandes(prev => prev.map(c => ids.includes(c.id) ? { ...c, _checked: e.target.checked } : c));
+                                                }}
+                                                className="h-4 w-4 rounded border-gray-300 text-blue-600 cursor-pointer"
+                                            />
+                                            <h4 className="font-bold text-sm text-gray-800 uppercase tracking-wider">
+                                                <i className="fa fa-building mr-1 text-[#51aff7]"></i>
+                                                {groupName}
+                                            </h4>
+                                            <span className="text-xs text-gray-500">({groupLines.length} article{groupLines.length > 1 ? 's' : ''})</span>
+                                        </div>
+                                    </div>
+                                    <div className="overflow-x-auto">
+                                    <table className="w-full text-sm" style={{minWidth:'1100px'}}>
+                                        <thead>
+                                            <tr className="bg-gray-100">
+                                                <th className="px-2 py-2 text-left" style={{width:'30px'}}></th>
+                                                <th className="px-2 py-2 text-left text-xs font-bold text-gray-600 uppercase">Code</th>
+                                                <th className="px-2 py-2 text-left text-xs font-bold text-gray-600 uppercase">Description</th>
+                                                <th className="px-2 py-2 text-center text-xs font-bold text-gray-600 uppercase" style={{width:'60px'}}>Qté</th>
+                                                <th className="px-2 py-2 text-center text-xs font-bold text-gray-600 uppercase" style={{width:'60px'}}>Reçu</th>
+                                                <th className="px-2 py-2 text-center text-xs font-bold text-gray-600 uppercase" style={{width:'45px'}}>UM</th>
+                                                <th className="px-2 py-2 text-center text-xs font-bold text-gray-600 uppercase" style={{width:'75px'}}>Coûtant</th>
+                                                <th className="px-2 py-2 text-left text-xs font-bold text-gray-600 uppercase" style={{width:'110px'}}>Fournisseur</th>
+                                                <th className="px-2 py-2 text-center text-xs font-bold text-gray-600 uppercase" style={{width:'90px'}}>Date réc.</th>
+                                                <th className="px-2 py-2 text-center text-xs font-bold text-gray-600 uppercase" style={{width:'100px'}}>Statut</th>
+                                                <th className="px-2 py-2 text-center text-xs font-bold text-gray-600 uppercase" style={{width:'80px'}}>PO#</th>
+                                                <th className="px-2 py-2 text-left text-xs font-bold text-gray-600 uppercase" style={{width:'80px'}}>Source</th>
+                                                <th className="px-2 py-2 text-center text-xs font-bold text-gray-600 uppercase" style={{width:'120px'}}>Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {groupLines.map(cmd => {
+                                                const qtyCmd = parseFloat(cmd.qtyCommande) || 0;
+                                                const qtyRec = parseFloat(cmd.qtyRecue) || 0;
+                                                const backorderQty = Math.max(0, qtyCmd - qtyRec);
+                                                return (
+                                                <tr key={cmd.id} className="border-b border-gray-100 hover:bg-gray-50 transition">
+                                                    <td className="px-2 py-2">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={!!cmd._checked}
+                                                            onChange={e => setCommandes(prev => prev.map(c => c.id === cmd.id ? { ...c, _checked: e.target.checked } : c))}
+                                                            className="h-4 w-4 rounded border-gray-300 text-blue-600 cursor-pointer"
+                                                        />
+                                                    </td>
+                                                    <td className="px-2 py-2 font-semibold text-blue-600">{cmd.stockNo || '—'}</td>
+                                                    <td className="px-2 py-2">
+                                                        <div>{cmd.description || '—'}</div>
+                                                        {cmd.noteSuivi && <div className="text-xs text-cyan-600 mt-0.5" title={cmd.noteSuivi}><i className="fa fa-clipboard-list mr-1"></i>{cmd.noteSuivi.length > 40 ? cmd.noteSuivi.slice(0,40) + '…' : cmd.noteSuivi}</div>}
+                                                    </td>
+                                                    <td className="px-2 py-2 text-center font-bold">{qtyCmd}</td>
+                                                    <td className="px-2 py-2 text-center">
+                                                        {qtyRec > 0 ? (
+                                                            <span className={`font-bold ${qtyRec >= qtyCmd ? 'text-green-600' : 'text-orange-600'}`}>{qtyRec}</span>
+                                                        ) : <span className="text-gray-300">—</span>}
+                                                    </td>
+                                                    <td className="px-2 py-2 text-center">{cmd.um || 'PC'}</td>
+                                                    <td className="px-2 py-2 text-right text-xs">{cmd.coutant ? '$' + parseFloat(cmd.coutant).toFixed(2) : '—'}</td>
+                                                    <td className="px-2 py-2">
+                                                        <select
+                                                            value={cmd.fournisseur || ''}
+                                                            onChange={e => setCommandes(prev => prev.map(c => c.id === cmd.id ? { ...c, fournisseur: e.target.value } : c))}
+                                                            className="w-full p-1 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-blue-400"
+                                                            disabled={cmd.statut === 'Commandé' || cmd.statut === 'Reçu' || cmd.statut === 'Backorder'}
+                                                        >
+                                                            <option value="">— Assigner —</option>
+                                                            {fournisseurs.map(f => <option key={f.name} value={f.name}>{f.name}</option>)}
+                                                        </select>
+                                                    </td>
+                                                    <td className="px-2 py-2 text-center text-xs">
+                                                        {cmd.dateReceptionPrevue ? (
+                                                            <span className={new Date(cmd.dateReceptionPrevue) < new Date() && cmd.statut !== 'Reçu' ? 'text-red-600 font-bold' : 'text-gray-600'}>{cmd.dateReceptionPrevue}</span>
+                                                        ) : '—'}
+                                                    </td>
+                                                    <td className="px-2 py-2 text-center">
+                                                        <span className={`inline-block px-2 py-1 rounded text-xs font-bold ${
+                                                            cmd.statut === 'En attente' ? 'bg-yellow-100 text-yellow-700' :
+                                                            cmd.statut === 'Envoyé au bureau' ? 'bg-orange-100 text-orange-700' :
+                                                            cmd.statut === 'Commandé' ? 'bg-blue-100 text-blue-700' :
+                                                            cmd.statut === 'Backorder' ? 'bg-amber-100 text-amber-700' :
+                                                            cmd.statut === 'Reçu' ? 'bg-green-100 text-green-700' :
+                                                            'bg-gray-100 text-gray-500'
+                                                        }`}>{cmd.statut}{cmd.statut === 'Backorder' ? ` (${backorderQty})` : ''}</span>
+                                                    </td>
+                                                    <td className="px-2 py-2 text-center text-xs font-mono font-bold text-gray-600">{cmd.poNumber || '—'}</td>
+                                                    <td className="px-2 py-2 text-xs text-gray-500">
+                                                        {cmd.sourceInvoice && <span className="font-semibold">#{cmd.sourceInvoice}</span>}
+                                                        {cmd.sourceClient && <span className="block text-gray-400">{cmd.sourceClient}</span>}
+                                                    </td>
+                                                    <td className="px-2 py-2 text-center">
+                                                        {(cmd.statut === 'Commandé' || cmd.statut === 'Backorder') && (
+                                                            <div className="flex gap-1 items-center justify-center">
+                                                                <input
+                                                                    type="number"
+                                                                    min="1"
+                                                                    max={backorderQty}
+                                                                    defaultValue={backorderQty}
+                                                                    className="w-14 p-0.5 border border-gray-300 rounded text-xs text-center"
+                                                                    id={`recv-qty-${cmd.id}`}
+                                                                />
+                                                                <button
+                                                                    onClick={() => {
+                                                                        const input = document.getElementById(`recv-qty-${cmd.id}`);
+                                                                        const qty = input ? parseFloat(input.value) : backorderQty;
+                                                                        handleReceiveCommande(cmd.id, qty);
+                                                                    }}
+                                                                    className="px-2 py-1 bg-green-500 text-white text-xs font-bold rounded hover:bg-green-600 transition"
+                                                                    title="Confirmer la réception"
+                                                                >
+                                                                    <i className="fa fa-check"></i>
+                                                                </button>
+                                                            </div>
+                                                        )}
+                                                        {cmd.statut === 'Reçu' && (
+                                                            <span className="text-green-600 text-xs font-bold"><i className="fa fa-check-double mr-1"></i>Complet</span>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                    )}
+                </div>
+                );
+            })()}
         </div>
     );
 };
 
 const InventoryView = ({ t, inventory, setInventory }) => {
     const fileInputRef = useRef(null);
+    const [editInventoryItem, setEditInventoryItem] = useState(null);
     
     const handleImportExcel = (e) => {
         const file = e.target.files[0];
@@ -4404,12 +6816,47 @@ const InventoryView = ({ t, inventory, setInventory }) => {
                     dataField: 'stockNo', 
                     caption: t.colStockNo, 
                     width: 120,
-                    validationRules: [{ type: 'required', message: 'Champ obligatoire' }]
+                    validationRules: [{ type: 'required', message: 'Champ obligatoire' }],
+                    cellTemplate: (container, options) => {
+                        const link = document.createElement('a');
+                        link.textContent = options.value || '';
+                        link.href = '#';
+                        link.style.color = '#51aff7';
+                        link.style.fontWeight = '700';
+                        link.style.textDecoration = 'none';
+                        link.style.cursor = 'pointer';
+                        link.addEventListener('mouseenter', () => { link.style.textDecoration = 'underline'; });
+                        link.addEventListener('mouseleave', () => { link.style.textDecoration = 'none'; });
+                        link.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setEditInventoryItem({ ...options.data });
+                        });
+                        container.append(link);
+                    }
                 },
                 { 
                     dataField: 'productCode', 
                     caption: t.colProductCode, 
-                    width: 150
+                    width: 150,
+                    cellTemplate: (container, options) => {
+                        if (!options.value) { container.textContent = ''; return; }
+                        const link = document.createElement('a');
+                        link.textContent = options.value;
+                        link.href = '#';
+                        link.style.color = '#6366f1';
+                        link.style.fontWeight = '600';
+                        link.style.textDecoration = 'none';
+                        link.style.cursor = 'pointer';
+                        link.addEventListener('mouseenter', () => { link.style.textDecoration = 'underline'; });
+                        link.addEventListener('mouseleave', () => { link.style.textDecoration = 'none'; });
+                        link.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setEditInventoryItem({ ...options.data });
+                        });
+                        container.append(link);
+                    }
                 },
                 { 
                     dataField: 'description', 
@@ -4459,6 +6906,25 @@ const InventoryView = ({ t, inventory, setInventory }) => {
                     allowEditing: false,
                     calculateCellValue: (rowData) => rowData.qtyReserve || 0
                 },
+                {
+                    dataField: 'qtyComm',
+                    caption: 'Qté Comm',
+                    width: 100,
+                    dataType: 'number',
+                    format: '#,##0',
+                    allowEditing: false,
+                    calculateCellValue: (rowData) => rowData.qtyComm || 0,
+                    cellTemplate: (container, options) => {
+                        const val = options.value || 0;
+                        const el = document.createElement('span');
+                        el.textContent = val;
+                        if (val > 0) {
+                            el.style.color = '#d97706';
+                            el.style.fontWeight = 'bold';
+                        }
+                        container.append(el);
+                    }
+                },
                 { 
                     dataField: 'qtyDisp', 
                     caption: 'Qté disp', 
@@ -4466,7 +6932,7 @@ const InventoryView = ({ t, inventory, setInventory }) => {
                     dataType: 'number', 
                     format: '#,##0',
                     allowEditing: false,
-                    calculateCellValue: (rowData) => Math.max(0, (rowData.qty || 0) - (rowData.qtyReserve || 0))
+                    calculateCellValue: (rowData) => Math.max(0, (rowData.qty || 0) + (rowData.qtyComm || 0) - (rowData.qtyReserve || 0))
                 },
                 { 
                     dataField: 'location', 
@@ -4477,6 +6943,19 @@ const InventoryView = ({ t, inventory, setInventory }) => {
                     dataField: 'categorie', 
                     caption: 'Catégorie', 
                     width: 100
+                },
+                {
+                    dataField: 'prixDetail',
+                    caption: 'Prix détail',
+                    width: 110,
+                    dataType: 'number',
+                    format: { type: 'currency', precision: 2 },
+                    calculateCellValue: (rowData) => {
+                        if (rowData.prixDetail != null) return rowData.prixDetail;
+                        const cat = String(rowData.categorie || '');
+                        if (cat === '15' || cat === '10' || cat === '109') return 5.25;
+                        return null;
+                    }
                 },
                 { 
                     dataField: 'state', 
@@ -4576,6 +7055,206 @@ const InventoryView = ({ t, inventory, setInventory }) => {
             <div className="bg-white rounded-lg shadow-lg p-6">
                 <div id="inventoryGrid"></div>
             </div>
+
+            {/* Editable Inventory Detail Modal */}
+            {editInventoryItem && (() => {
+                const item = editInventoryItem;
+                const qtyDisp = Math.max(0, (item.qty || 0) + (item.qtyComm || 0) - (item.qtyReserve || 0));
+                const handleInventoryFormKeyDown = (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        const form = e.currentTarget;
+                        const focusable = Array.from(form.querySelectorAll('input:not([disabled]), textarea:not([disabled]), select:not([disabled])'));
+                        const idx = focusable.indexOf(document.activeElement);
+                        if (idx >= 0 && idx < focusable.length - 1) {
+                            focusable[idx + 1].focus();
+                            if (focusable[idx + 1].select) focusable[idx + 1].select();
+                        }
+                    }
+                };
+                const Field = ({ label, field, type, disabled, placeholder }) => (
+                    <div>
+                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">{label}</label>
+                        <input
+                            type={type || 'text'}
+                            value={item[field] ?? ''}
+                            onChange={e => setEditInventoryItem(prev => ({ ...prev, [field]: type === 'number' ? (e.target.value === '' ? '' : parseFloat(e.target.value)) : e.target.value }))}
+                            disabled={disabled}
+                            className={`w-full p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#51aff7] focus:border-[#51aff7] focus:outline-none transition ${disabled ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                            placeholder={placeholder || ''}
+                        />
+                    </div>
+                );
+                return (
+                    <div className="fixed inset-0 z-[100] bg-black/50 flex items-center justify-center print:hidden" onClick={(e) => { if (e.target === e.currentTarget) setEditInventoryItem(null); }}>
+                        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl m-4 overflow-hidden max-h-[90vh] flex flex-col" onKeyDown={handleInventoryFormKeyDown}>
+                            {/* Header */}
+                            <div className="p-5 border-b bg-gradient-to-r from-[#51aff7] to-blue-500 flex justify-between items-center rounded-t-2xl">
+                                <h2 className="text-lg font-bold text-white">
+                                    <i className="fa-solid fa-box-open mr-2"></i>
+                                    Fiche inventaire — {item.stockNo}
+                                </h2>
+                                <button onClick={() => setEditInventoryItem(null)} className="text-white/80 hover:text-white text-xl transition">
+                                    <i className="fa fa-times"></i>
+                                </button>
+                            </div>
+                            {/* Body */}
+                            <div className="p-6 space-y-5 overflow-y-auto flex-1">
+                                {/* Identifiers row */}
+                                <div className="grid grid-cols-3 gap-4">
+                                    <Field label="No de stock" field="stockNo" disabled={true} />
+                                    <Field label="Code produit" field="productCode" placeholder="Ex: BF-025-CL" />
+                                    <Field label="Catégorie" field="categorie" placeholder="Catégorie" />
+                                </div>
+                                {/* Description */}
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Description</label>
+                                    <textarea
+                                        value={item.description || ''}
+                                        onChange={e => setEditInventoryItem(prev => ({ ...prev, description: e.target.value }))}
+                                        rows={2}
+                                        className="w-full p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#51aff7] focus:border-[#51aff7] focus:outline-none resize-vertical"
+                                        placeholder="Description du produit..."
+                                    />
+                                </div>
+                                {/* Product specs */}
+                                <div className="grid grid-cols-2 gap-4">
+                                    <Field label="Essence / Produit" field="wood" placeholder="Ex: Merisier" />
+                                    <Field label="Grade" field="grade" placeholder="Ex: Select" />
+                                    <Field label="Épaisseur" field="epaisseur" placeholder='Ex: 3/4"' />
+                                    <Field label="Largeur" field="largeur" placeholder='Ex: 5"' />
+                                    <Field label="Unité" field="unite" placeholder="Ex: PC, PMP, PI" />
+                                    <Field label="État" field="state" placeholder="Ex: Brut, fini" />
+                                </div>
+                                {/* Location & supplier */}
+                                <div className="grid grid-cols-2 gap-4">
+                                    <Field label="Emplacement" field="location" placeholder="Ex: Entrepôt A, Rack 3" />
+                                    <Field label="Fournisseur" field="fournisseur" placeholder="Nom du fournisseur" />
+                                </div>
+                                {/* Pricing */}
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Prix détail ($)</label>
+                                        <input
+                                            type="text"
+                                            inputMode="decimal"
+                                            value={item.prixDetail ?? ''}
+                                            onChange={e => {
+                                                const val = e.target.value.replace(/[^0-9.]/g, '');
+                                                const parts = val.split('.');
+                                                const formatted = parts[0] + (parts.length > 1 ? '.' + parts[1].slice(0, 2) : '');
+                                                setEditInventoryItem(prev => ({ ...prev, prixDetail: formatted }));
+                                            }}
+                                            onBlur={e => {
+                                                const num = parseFloat(e.target.value);
+                                                if (!isNaN(num)) setEditInventoryItem(prev => ({ ...prev, prixDetail: num.toFixed(2) }));
+                                            }}
+                                            className="w-full p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#51aff7] focus:border-[#51aff7] focus:outline-none transition text-right font-mono"
+                                            placeholder="00000.00"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Coûtant ($)</label>
+                                        <input
+                                            type="text"
+                                            inputMode="decimal"
+                                            value={item.coutant ?? ''}
+                                            onChange={e => {
+                                                const val = e.target.value.replace(/[^0-9.]/g, '');
+                                                const parts = val.split('.');
+                                                const formatted = parts[0] + (parts.length > 1 ? '.' + parts[1].slice(0, 2) : '');
+                                                setEditInventoryItem(prev => ({ ...prev, coutant: formatted }));
+                                            }}
+                                            onBlur={e => {
+                                                const num = parseFloat(e.target.value);
+                                                if (!isNaN(num)) setEditInventoryItem(prev => ({ ...prev, coutant: num.toFixed(2) }));
+                                            }}
+                                            className="w-full p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#51aff7] focus:border-[#51aff7] focus:outline-none transition text-right font-mono"
+                                            placeholder="00000.00"
+                                        />
+                                    </div>
+                                </div>
+                                {/* Quantities */}
+                                <div className="border-t pt-4">
+                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Quantités</label>
+                                    <div className="grid grid-cols-4 gap-3">
+                                        <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+                                            <span className="text-xs text-gray-500 uppercase block mb-1 text-center">En main</span>
+                                            <input
+                                                type="number"
+                                                value={item.qty ?? 0}
+                                                onChange={e => setEditInventoryItem(prev => ({ ...prev, qty: e.target.value === '' ? 0 : parseFloat(e.target.value) }))}
+                                                className="w-full text-center text-xl font-black text-green-700 bg-transparent border-0 border-b-2 border-green-300 focus:border-green-500 focus:ring-0 focus:outline-none p-0"
+                                            />
+                                        </div>
+                                        <div className="p-3 bg-orange-50 rounded-lg border border-orange-200">
+                                            <span className="text-xs text-gray-500 uppercase block mb-1 text-center">Réservé</span>
+                                            <input
+                                                type="number"
+                                                value={item.qtyReserve ?? 0}
+                                                onChange={e => setEditInventoryItem(prev => ({ ...prev, qtyReserve: e.target.value === '' ? 0 : parseFloat(e.target.value) }))}
+                                                className="w-full text-center text-xl font-black text-orange-700 bg-transparent border-0 border-b-2 border-orange-300 focus:border-orange-500 focus:ring-0 focus:outline-none p-0"
+                                            />
+                                        </div>
+                                        <div className="p-3 bg-amber-50 rounded-lg border border-amber-200">
+                                            <span className="text-xs text-gray-500 uppercase block mb-1 text-center">En commande</span>
+                                            <input
+                                                type="number"
+                                                value={item.qtyComm ?? 0}
+                                                onChange={e => setEditInventoryItem(prev => ({ ...prev, qtyComm: e.target.value === '' ? 0 : parseFloat(e.target.value) }))}
+                                                className="w-full text-center text-xl font-black text-amber-700 bg-transparent border-0 border-b-2 border-amber-300 focus:border-amber-500 focus:ring-0 focus:outline-none p-0"
+                                            />
+                                        </div>
+                                        <div className="text-center p-3 bg-blue-50 rounded-lg border border-blue-200">
+                                            <span className="text-xs text-gray-500 uppercase block mb-1">Disponible</span>
+                                            <span className="text-xl font-black text-blue-700">{qtyDisp}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {/* Footer */}
+                            <div className="p-4 border-t bg-gray-50 flex justify-between items-center rounded-b-2xl">
+                                <button
+                                    onClick={() => {
+                                        if (window.confirm('Supprimer cet article de l\u0027inventaire?')) {
+                                            setInventory(prev => {
+                                                const updated = prev.filter(x => x.stockNo !== item.stockNo);
+                                                localStorage.setItem('inventory', JSON.stringify(updated));
+                                                return updated;
+                                            });
+                                            setEditInventoryItem(null);
+                                            DevExpress.ui.notify('Article supprimé', 'warning', 2000);
+                                        }
+                                    }}
+                                    className="px-4 py-2 text-red-600 hover:bg-red-50 font-bold rounded-lg transition text-sm"
+                                >
+                                    <i className="fa fa-trash mr-1"></i>Supprimer
+                                </button>
+                                <div className="flex gap-3">
+                                    <button onClick={() => setEditInventoryItem(null)} className="px-5 py-2.5 bg-gray-200 text-gray-700 font-bold rounded-lg hover:bg-gray-300 transition">
+                                        Annuler
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            const { _checked, qtyReserve, qtyComm, ...saveData } = editInventoryItem;
+                                            setInventory(prev => {
+                                                const updated = prev.map(x => x.stockNo === saveData.stockNo ? { ...x, ...saveData, dateUpdated: new Date().toISOString() } : x);
+                                                localStorage.setItem('inventory', JSON.stringify(updated));
+                                                return updated;
+                                            });
+                                            setEditInventoryItem(null);
+                                            DevExpress.ui.notify('Fiche inventaire mise à jour', 'success', 2000);
+                                        }}
+                                        className="px-5 py-2.5 bg-[#51aff7] text-white font-bold rounded-lg hover:bg-blue-600 transition"
+                                    >
+                                        <i className="fa fa-save mr-2"></i>Sauvegarder
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            })()}
         </div>
     );
 };
@@ -7481,6 +10160,323 @@ const WorkerStationView = ({ t, stationId, productionData, updateJobStatus, stat
     );
 };
 
+// ==================== AI Chat Widget ====================
+const ChatWidget = () => {
+    const [isOpen, setIsOpen] = React.useState(false);
+    const [messages, setMessages] = React.useState(() => {
+        try { return JSON.parse(localStorage.getItem('chatMessages') || '[]'); } catch { return []; }
+    });
+    const [input, setInput] = React.useState('');
+    const [isLoading, setIsLoading] = React.useState(false);
+    const [apiKey, setApiKey] = React.useState(() => localStorage.getItem('gemini_api_key') || '');
+    const [showSettings, setShowSettings] = React.useState(false);
+    const [keyInput, setKeyInput] = React.useState('');
+    const messagesEndRef = React.useRef(null);
+
+    React.useEffect(() => {
+        if (messages.length > 0) {
+            localStorage.setItem('chatMessages', JSON.stringify(messages.slice(-50)));
+        }
+    }, [messages]);
+
+    React.useEffect(() => {
+        if (messagesEndRef.current) {
+            messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+        }
+    }, [messages, isLoading]);
+
+    const systemPrompt = `Tu es l'assistant intelligent de Surfagest, un logiciel de gestion de production, d'inventaire et de facturation pour une entreprise de traitement du bois et de surfaces.
+
+Voici les modules et fonctionnalités de l'application que tu connais :
+
+1. **Tableau de bord (Dashboard)** : Vue d'ensemble de la production avec statistiques, graphiques et indicateurs de performance.
+
+2. **Production** : Gestion des lots de production avec stations de travail configurables (Sablage, Teinture, Scellant, Peinture, etc.). Chaque lot a un numéro, client, essence de bois, quantité de pièces, fini et couleur. Les lots passent par différents statuts: En attente, En cours, Terminé.
+
+3. **Inventaire** : Gestion complète de l'inventaire avec numéros de stock séquentiels, codes produit, descriptions, spécifications, emplacements, fournisseurs, prix détail et coûtant (format 00000.00). Colonnes Qté (en main), Qté Rés (réservé par transactions), Qté Comm (en commande). Cliquer sur un numéro de stock ou code produit ouvre un modal d'édition.
+
+4. **Saisie de données / Facturation** : 
+   - Onglet Transactions : Liste des factures créées avec recherche et filtrage.
+   - Onglet Formulaire : Création/édition de factures avec client, adresse, lignes de produit (stockNo, description, qty, prix, remise). Actions groupées : Expédier (crée bon de préparation, déduit inventaire), Commander (envoie en commande d'achat).
+   - Onglet Commandes d'achat : Gestion des commandes fournisseurs avec bon de commande, réception partielle (backorder), suivi des coûtants.
+
+5. **Efficacité employés** : Suivi de la performance des employés par station.
+
+6. **Paramètres** : Configuration du mode (production/inventaire/les deux), stations, processus personnalisés, traitements du bois, états d'inventaire, codes de processus.
+
+Fonctionnalités clés :
+- Navigation par touche Entrée dans les formulaires
+- Import/export Excel
+- Impression de bons (préparation, commande)
+- Gestion multi-fournisseurs (5 fournisseurs configurés)
+- Calcul automatique des totaux, taxes TPS/TVQ
+- Réservation automatique d'inventaire lors des transactions
+
+Réponds toujours en français (sauf si l'utilisateur parle en anglais). Sois concis, utile et pratique. Si on te demande comment faire quelque chose dans l'application, donne des étapes claires. Tu peux aussi aider avec des questions générales sur la gestion d'inventaire, la production ou la comptabilité.`;
+
+    const sendMessage = async () => {
+        if (!input.trim() || isLoading) return;
+        const userMsg = { role: 'user', content: input.trim() };
+        const newMessages = [...messages, userMsg];
+        setMessages(newMessages);
+        setInput('');
+        setIsLoading(true);
+
+        if (apiKey) {
+            try {
+                // Build Gemini conversation history
+                const geminiContents = [];
+                // Add system instruction as first user/model exchange
+                const recentMsgs = newMessages.slice(-20);
+                recentMsgs.forEach(m => {
+                    geminiContents.push({
+                        role: m.role === 'assistant' ? 'model' : 'user',
+                        parts: [{ text: m.content }]
+                    });
+                });
+
+                const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + apiKey, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        system_instruction: { parts: [{ text: systemPrompt }] },
+                        contents: geminiContents,
+                        generationConfig: {
+                            maxOutputTokens: 800,
+                            temperature: 0.7
+                        }
+                    })
+                });
+                const data = await response.json();
+                if (data.candidates && data.candidates[0]?.content?.parts?.[0]?.text) {
+                    setMessages(prev => [...prev, { role: 'assistant', content: data.candidates[0].content.parts[0].text }]);
+                } else {
+                    const errMsg = data.error?.message || JSON.stringify(data).substring(0, 200);
+                    setMessages(prev => [...prev, { role: 'assistant', content: 'Erreur: ' + errMsg }]);
+                }
+            } catch (err) {
+                setMessages(prev => [...prev, { role: 'assistant', content: 'Erreur de connexion: ' + err.message }]);
+            }
+        } else {
+            setMessages(prev => [...prev, { role: 'assistant', content: 'Pour activer l\'assistant IA, veuillez configurer votre clé API Google Gemini en cliquant sur l\'icône ⚙️ en haut du chat.\n\nObtenez une clé gratuite sur aistudio.google.com/apikey' }]);
+        }
+        setIsLoading(false);
+    };
+
+    const handleKeyDown = (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
+    };
+
+    const saveApiKey = () => {
+        const k = keyInput.trim();
+        setApiKey(k);
+        if (k) {
+            localStorage.setItem('gemini_api_key', k);
+        } else {
+            localStorage.removeItem('gemini_api_key');
+        }
+        setShowSettings(false);
+        setKeyInput('');
+    };
+
+    const clearChat = () => {
+        setMessages([]);
+        localStorage.removeItem('chatMessages');
+    };
+
+    const formatMessage = (text) => {
+        // Simple markdown-like formatting
+        let html = text
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.*?)\*/g, '<em>$1</em>')
+            .replace(/`(.*?)`/g, '<code style="background:#e5e7eb;padding:1px 4px;border-radius:3px;font-size:0.85em">$1</code>')
+            .replace(/\n/g, '<br/>');
+        return html;
+    };
+
+    return (
+        <div style={{ position: 'fixed', bottom: '24px', right: '24px', zIndex: 9999 }}>
+            {/* Chat Panel */}
+            {isOpen && (
+                <div style={{
+                    position: 'absolute', bottom: '64px', right: '0',
+                    width: '380px', height: '520px',
+                    backgroundColor: '#fff', borderRadius: '16px',
+                    boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+                    display: 'flex', flexDirection: 'column',
+                    overflow: 'hidden', border: '1px solid #e5e7eb'
+                }}>
+                    {/* Header */}
+                    <div style={{
+                        background: 'linear-gradient(135deg, #51aff7 0%, #3a9be0 100%)',
+                        color: '#fff', padding: '14px 16px',
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        flexShrink: 0
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <i className="fas fa-robot" style={{ fontSize: '20px' }}></i>
+                            <div>
+                                <div style={{ fontWeight: 700, fontSize: '15px' }}>Surfagest AI</div>
+                                <div style={{ fontSize: '11px', opacity: 0.85 }}>
+                                    {apiKey ? 'Gemini connecté' : 'Clé API requise'}
+                                </div>
+                            </div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                            <button onClick={clearChat} title="Effacer la conversation"
+                                style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff', borderRadius: '8px', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <i className="fas fa-trash-alt" style={{ fontSize: '13px' }}></i>
+                            </button>
+                            <button onClick={() => { setShowSettings(!showSettings); setKeyInput(apiKey); }} title="Paramètres API"
+                                style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff', borderRadius: '8px', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <i className="fas fa-cog" style={{ fontSize: '13px' }}></i>
+                            </button>
+                            <button onClick={() => setIsOpen(false)} title="Fermer"
+                                style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff', borderRadius: '8px', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <i className="fas fa-times" style={{ fontSize: '14px' }}></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Settings panel */}
+                    {showSettings && (
+                        <div style={{ padding: '12px 16px', backgroundColor: '#f9fafb', borderBottom: '1px solid #e5e7eb', flexShrink: 0 }}>
+                            <label style={{ fontSize: '12px', fontWeight: 600, color: '#374151', display: 'block', marginBottom: '6px' }}>
+                                Clé API Google Gemini
+                            </label>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                                <input
+                                    type="password"
+                                    value={keyInput}
+                                    onChange={e => setKeyInput(e.target.value)}
+                                    placeholder="AIza..."
+                                    style={{ flex: 1, padding: '8px 10px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '13px', outline: 'none' }}
+                                    onKeyDown={e => { if (e.key === 'Enter') saveApiKey(); }}
+                                />
+                                <button onClick={saveApiKey}
+                                    style={{ padding: '8px 14px', background: '#51aff7', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 600, fontSize: '13px', cursor: 'pointer' }}>
+                                    OK
+                                </button>
+                            </div>
+                            <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '4px' }}>
+                                Gratuit: <a href="https://aistudio.google.com/apikey" target="_blank" style={{ color: '#51aff7' }}>aistudio.google.com/apikey</a>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Messages */}
+                    <div style={{
+                        flex: 1, overflowY: 'auto', padding: '16px',
+                        display: 'flex', flexDirection: 'column', gap: '12px',
+                        backgroundColor: '#f3f4f6'
+                    }}>
+                        {messages.length === 0 && (
+                            <div style={{ textAlign: 'center', color: '#9ca3af', marginTop: '40px' }}>
+                                <i className="fas fa-comments" style={{ fontSize: '48px', marginBottom: '16px', opacity: 0.3 }}></i>
+                                <div style={{ fontSize: '14px', fontWeight: 500 }}>Bienvenue!</div>
+                                <div style={{ fontSize: '12px', marginTop: '4px' }}>
+                                    Posez une question sur l'utilisation de Surfagest
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '16px' }}>
+                                    {['Comment créer une facture?', 'Comment fonctionne l\'inventaire?', 'Comment passer une commande fournisseur?'].map((q, i) => (
+                                        <button key={i} onClick={() => { setInput(q); }}
+                                            style={{ padding: '8px 12px', fontSize: '12px', background: '#fff', border: '1px solid #d1d5db', borderRadius: '8px', cursor: 'pointer', color: '#374151', textAlign: 'left' }}>
+                                            {q}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                        {messages.map((msg, idx) => (
+                            <div key={idx} style={{
+                                display: 'flex',
+                                justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start'
+                            }}>
+                                <div style={{
+                                    maxWidth: '85%',
+                                    padding: '10px 14px',
+                                    borderRadius: msg.role === 'user' ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
+                                    backgroundColor: msg.role === 'user' ? '#51aff7' : '#fff',
+                                    color: msg.role === 'user' ? '#fff' : '#1f2937',
+                                    fontSize: '13px', lineHeight: '1.5',
+                                    boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+                                    wordBreak: 'break-word'
+                                }}
+                                    dangerouslySetInnerHTML={{ __html: formatMessage(msg.content) }}
+                                />
+                            </div>
+                        ))}
+                        {isLoading && (
+                            <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+                                <div style={{
+                                    padding: '12px 18px', borderRadius: '14px 14px 14px 4px',
+                                    backgroundColor: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+                                    display: 'flex', gap: '5px', alignItems: 'center'
+                                }}>
+                                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#51aff7', animation: 'chatDot 1.4s ease-in-out infinite', animationDelay: '0s' }}></span>
+                                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#51aff7', animation: 'chatDot 1.4s ease-in-out infinite', animationDelay: '0.2s' }}></span>
+                                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#51aff7', animation: 'chatDot 1.4s ease-in-out infinite', animationDelay: '0.4s' }}></span>
+                                </div>
+                            </div>
+                        )}
+                        <div ref={messagesEndRef} />
+                    </div>
+
+                    {/* Input */}
+                    <div style={{
+                        padding: '12px 16px', borderTop: '1px solid #e5e7eb',
+                        backgroundColor: '#fff', display: 'flex', gap: '8px', alignItems: 'center',
+                        flexShrink: 0
+                    }}>
+                        <input
+                            value={input}
+                            onChange={e => setInput(e.target.value)}
+                            onKeyDown={handleKeyDown}
+                            placeholder="Tapez votre question..."
+                            style={{
+                                flex: 1, padding: '10px 14px', border: '1px solid #d1d5db',
+                                borderRadius: '24px', fontSize: '13px', outline: 'none',
+                                backgroundColor: '#f9fafb'
+                            }}
+                            disabled={isLoading}
+                        />
+                        <button onClick={sendMessage} disabled={isLoading || !input.trim()}
+                            style={{
+                                width: '40px', height: '40px', borderRadius: '50%',
+                                background: (isLoading || !input.trim()) ? '#d1d5db' : '#51aff7',
+                                border: 'none', color: '#fff', cursor: (isLoading || !input.trim()) ? 'default' : 'pointer',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                flexShrink: 0, transition: 'background 0.2s'
+                            }}>
+                            <i className="fas fa-paper-plane" style={{ fontSize: '14px' }}></i>
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Floating Button */}
+            <button onClick={() => setIsOpen(!isOpen)}
+                style={{
+                    width: '56px', height: '56px', borderRadius: '50%',
+                    background: 'linear-gradient(135deg, #51aff7 0%, #3a9be0 100%)',
+                    border: 'none', color: '#fff', cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    boxShadow: '0 4px 16px rgba(81,175,247,0.4)',
+                    transition: 'transform 0.2s, box-shadow 0.2s'
+                }}
+                onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.08)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(81,175,247,0.5)'; }}
+                onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(81,175,247,0.4)'; }}
+            >
+                <i className={isOpen ? 'fas fa-times' : 'fas fa-comment-dots'} style={{ fontSize: '22px' }}></i>
+            </button>
+        </div>
+    );
+};
+
 const App = () => {
     const [activeTab, setActiveTab] = useState('dashboard');
     const [lang, setLang] = useState('fr');
@@ -7583,15 +10579,6 @@ const App = () => {
         if (parsedInventory && parsedInventory.length > 0 && !parsedInventory[0].hasOwnProperty('grade')) {
             console.log('Migration de l\'inventaire vers la nouvelle structure avec grade');
             parsedInventory = null; // Forcer la réinitialisation
-        }
-        
-        // Vérifier si les items d'inventaire ont des états vides alors que des états sont configurés
-        if (parsedInventory && parsedInventory.length > 0 && availableStates.length > 0) {
-            const hasEmptyStates = parsedInventory.some(item => !item.state || item.state === '');
-            if (hasEmptyStates) {
-                console.log('Régénération de l\'inventaire avec les nouveaux états configurés');
-                parsedInventory = null; // Forcer la régénération
-            }
         }
         
         // Si l'inventaire existe, le garder
@@ -8359,10 +11346,12 @@ const App = () => {
                     {activeTab === 'inventory' && <InventoryView t={t} inventory={inventory} setInventory={setInventory} />}
                     {activeTab === 'rawWood' && <div className="p-12 text-center text-gray-400">Le tableau de traitement inventaire brut est désactivé.</div>}
                     {activeTab === 'dataEntry' && <DataEntryView t={t} addBatch={addBatch} setActiveTab={handleSetActiveTab} customProcesses={customProcesses} woodTreatments={woodTreatments} processParameters={processParameters} inventory={inventory} setInventory={setInventory} onDirtyChange={(dirty) => { invoiceDirtyRef.current = dirty; }} onSaveRef={(fn) => { saveInvoiceRef.current = fn; }} />}
+                    {activeTab === 'horaire' && <HoraireView t={t} />}
                     {activeTab === 'employeeEfficiency' && <EmployeeEfficiencyView t={t} productionData={productionData} />}
                     {activeTab === 'settings' && <SettingsView t={t} appMode={appMode} setAppMode={setAppMode} stationConfig={stationConfig} setStationConfig={setStationConfig} customProcesses={customProcesses} setCustomProcesses={setCustomProcesses} woodTreatments={woodTreatments} setWoodTreatments={setWoodTreatments} inventoryStates={inventoryStates} setInventoryStates={setInventoryStates} processCodes={processCodes} setProcessCodes={setProcessCodes} processParameters={processParameters} setProcessParameters={setProcessParameters} />}
                 </main>
             </div>
+            <ChatWidget />
         </div>
     );
 };

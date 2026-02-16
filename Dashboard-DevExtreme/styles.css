@@ -18,3 +18,8 @@ aside::-webkit-scrollbar-thumb {
 .transition-all-300 {
     transition: all 0.3s ease-in-out;
 }
+/* Chat Widget Loading Dots Animation */
+@keyframes chatDot {
+    0%, 80%, 100% { transform: scale(0.4); opacity: 0.4; }
+    40% { transform: scale(1); opacity: 1; }
+}
